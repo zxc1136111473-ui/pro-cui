@@ -209,7 +209,7 @@ run_container() {
     -v "$APP_DIR/data/input:/opt/comfyui/input" \
     -w /opt/comfyui/app \
     --entrypoint python \
-    "$IMAGE" main.py --listen 0.0.0.0 --port 8188 \
+    "$IMAGE" main.py --listen 0.0.0.0 --port 8188 --cpu \
     >/dev/null || die "容器起不来。看上面报错（端口被占？用菜单 4 换端口）"
 
   # 等它就绪（首次启动装依赖可能要 1-3 分钟）

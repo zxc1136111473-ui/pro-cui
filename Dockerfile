@@ -43,4 +43,5 @@ RUN mkdir -p /opt/comfyui/models /opt/comfyui/custom_nodes /opt/comfyui/output /
 EXPOSE 8188
 
 # 启动参数：监听所有网卡，API 模式（无本地模型）
-CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188"]
+# --cpu：无 GPU 环境强制 CPU 模式（否则 model_management 默认找 CUDA 崩溃）
+CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cpu"]
