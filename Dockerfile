@@ -6,6 +6,8 @@
 #   - 用 CPU 版 PyTorch（体积小、无 CUDA 依赖、不吃显存）
 #   - 不内置任何本地模型（models/ 目录留空，走 API 插件）
 #   - 源码挂载自宿主机（改代码方便，git pull 即可更新）
+#   - 官方 requirements.txt 在构建时安装（含新版需要的 sqlalchemy/alembic），
+#     运行容器即开即用，不在启动时临时装依赖
 #
 # 构建：docker build -t comfyui:local .
 # 运行：见 deploy.sh（自动生成 docker run 命令）
@@ -24,6 +26,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --index-url https://download.pytorch.org/whl/cpu \
         torch torchvision torchaudio \
     && pip install numpy
+
+# 官方 requirements.txt（构建时用宿主机源码里的，部署脚本负责先 clone 源码）
+# ★ 新版 ComfyUI 依赖 sqlalchemy + alembic（本地 SQLite 库），
+#   必须在构建时装好，否则容器启动报 ModuleNotFoundError
+# ★ deploy.sh 的 run_container 保证「先克隆源码到 app/ 再构建镜像」，
+#   所以这里的 COPY 一定能找到 requirements.txt
+COPY app/requirements.txt /tmp/comfyui-requirements.txt
+RUN pip install -r /tmp/comfyui-requirements.txt
 
 # 工作目录挂载点：宿主机源码 + 数据
 WORKDIR /opt/comfyui
