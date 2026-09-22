@@ -204,7 +204,7 @@ run_container() {
     -p "$port:8188" \
     -v "$src:/opt/comfyui/app" \
     -v "$APP_DIR/data/models:/opt/comfyui/models" \
-    -v "$APP_DIR/data/custom_nodes:/opt/comfyui/custom_nodes" \
+    -v "$APP_DIR/data/custom_nodes:/opt/comfyui/app/custom_nodes" \
     -v "$APP_DIR/data/output:/opt/comfyui/output" \
     -v "$APP_DIR/data/input:/opt/comfyui/input" \
     -w /opt/comfyui/app \
