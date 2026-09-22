@@ -35,6 +35,10 @@ RUN pip install --index-url https://download.pytorch.org/whl/cpu \
 COPY app/requirements.txt /tmp/comfyui-requirements.txt
 RUN pip install -r /tmp/comfyui-requirements.txt
 
+# ★ 预装 APIimage 插件依赖（google-genai / xai_sdk / dashscope），
+#   避免容器每次启动时现场 pip install（省 10-15 秒启动时间）
+RUN pip install google-genai xai_sdk dashscope
+
 # 工作目录挂载点：宿主机源码 + 数据
 WORKDIR /opt/comfyui
 # 数据目录（由 deploy.sh 建好并挂载，镜像里先建好避免权限问题）
