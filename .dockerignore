@@ -1,0 +1,4 @@
+# 构建只用到这两个文件；其余（data/ 出图模型、backups/、app/.git）不进构建上下文
+*
+!app/requirements.txt
+!app/manager_requirements.txt

@@ -5,7 +5,7 @@
 # 所以：
 #   - 用 CPU 版 PyTorch（体积小、无 CUDA 依赖、不吃显存）
 #   - 不内置任何本地模型（models/ 目录留空，走 API 插件）
-#   - 源码挂载自宿主机（改代码方便，git pull 即可更新）
+#   - 源码挂载自宿主机（改代码重启即生效；更新走 deploy.sh --update，会重建镜像装新依赖）
 #   - 官方 requirements.txt 在构建时安装（含新版需要的 sqlalchemy/alembic），
 #     运行容器即开即用，不在启动时临时装依赖
 #
@@ -25,7 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # CPU 版 PyTorch（官方 CPU index，不带 CUDA 运行库，省 ~4GB）
 RUN pip install --index-url https://download.pytorch.org/whl/cpu \
         torch torchvision torchaudio \
-    && pip install numpy
+    && pip install numpy \
+    && pip freeze | grep -E '^(torch|torchvision|torchaudio)==' > /etc/pip-constraints.txt
+
+# ★ 锁死 CPU 版 torch：之后所有 pip install 都不许替换它 —— 否则插件一要求新版 torch，
+#   PyPI 就换成带 CUDA 的版本（多几 GB）。真有冲突会直接报错，而不是悄悄换掉。
+#   Manager 默认用 uv 给插件装依赖，uv 不读 PIP_CONSTRAINT，所以 UV_CONSTRAINT 也要设
+ENV PIP_CONSTRAINT=/etc/pip-constraints.txt \
+    UV_CONSTRAINT=/etc/pip-constraints.txt
 
 # 官方 requirements.txt（构建时用宿主机源码里的，部署脚本负责先 clone 源码）
 # ★ 新版 ComfyUI 依赖 sqlalchemy + alembic（本地 SQLite 库），
@@ -35,17 +42,21 @@ RUN pip install --index-url https://download.pytorch.org/whl/cpu \
 COPY app/requirements.txt /tmp/comfyui-requirements.txt
 RUN pip install -r /tmp/comfyui-requirements.txt
 
-# ★ 预装 APIimage 插件依赖（google-genai / xai_sdk / dashscope），
-#   避免容器每次启动时现场 pip install（省 10-15 秒启动时间）
-RUN pip install google-genai xai_sdk dashscope
+# ★ ComfyUI-Manager 新版是 pip 包（版本由官方 manager_requirements.txt 固定），
+#   启动加 --enable-manager 启用，不再 git clone 到 custom_nodes
+COPY app/manager_requirements.txt /tmp/comfyui-manager-requirements.txt
+RUN pip install -r /tmp/comfyui-manager-requirements.txt
 
-# 工作目录挂载点：宿主机源码 + 数据
+# ★ 预装 deploy.sh 插件组的依赖，避免容器启动时现场 pip install（容器重建就丢）：
+#   APIimage：google-genai / xai_sdk / dashscope
+#   VideoHelperSuite：opencv-python-headless / imageio-ffmpeg（顶层 import cv2，缺了导入失败）
+RUN pip install google-genai xai_sdk dashscope opencv-python-headless imageio-ffmpeg
+
+# 工作目录挂载点：宿主机源码（数据目录由 deploy.sh 挂到 app/ 下）
 WORKDIR /opt/comfyui
-# 数据目录（由 deploy.sh 建好并挂载，镜像里先建好避免权限问题）
-RUN mkdir -p /opt/comfyui/models /opt/comfyui/custom_nodes /opt/comfyui/output /opt/comfyui/input
 
 EXPOSE 8188
 
 # 启动参数：监听所有网卡，API 模式（无本地模型）
 # --cpu：无 GPU 环境强制 CPU 模式（否则 model_management 默认找 CUDA 崩溃）
-CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cpu"]
+CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cpu", "--enable-manager"]
