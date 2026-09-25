@@ -236,7 +236,9 @@ run_container() {
 
   # ★ 数据目录都挂到 app/ 下：ComfyUI 按源码目录找 models/custom_nodes/output/input/user
   #   （user/ 里是网页保存的工作流、界面设置、Manager 配置、comfyui.db）
-  $DOCKER run -d --name "$CONTAINER" --restart unless-stopped \
+  # --stop-signal SIGINT：ComfyUI 不处理默认的 SIGTERM，docker stop/restart 要等 10 秒超时才 SIGKILL；
+  #   SIGINT 让它走 KeyboardInterrupt 正常退出（打印 Stopped server），重启秒级完成
+  $DOCKER run -d --name "$CONTAINER" --restart unless-stopped --stop-signal SIGINT \
     --log-driver json-file --log-opt max-size="$LOG_MAX_SIZE" --log-opt max-file="$LOG_MAX_FILE" \
     -p "${bind:+$bind:}$port:8188" \
     -v "$src:/opt/comfyui/app" \
