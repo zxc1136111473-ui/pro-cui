@@ -43,9 +43,19 @@ ZFC_BACKUP_FILE=""   # --restore 后面的备份文件路径
 
 json_out() {
   [ "$ZFC_JSON" = "1" ] || return 0
-  printf '{"ok":true,"action":"%s","detail":"%s"}\n' "${1:-}" "${2:-}"
+  printf '{"ok":%s,"action":"%s","detail":"%s"}\n' "${3:-true}" "${1:-}" "${2:-}"
 }
-if [ ! -r /dev/tty ]; then ZFC_YES=1; fi
+# 有没有能交互的终端。以下都算没有：打不开 /dev/tty（cron、ssh 不带 -t）、不在前台进程组（nohup … &、
+# 后台作业，读终端会被 SIGTTIN 停住）、输出全被重定向（前台 nohup）。
+# 没有终端时每个提问按默认值走（默认 n 的就不做），不等于 -y；只有显式 -y 才全部确认。
+# 用 true 不用 :：特殊内建命令的重定向失败在 bash --posix 下会直接退出脚本
+ZFC_NOTTY=0
+if ! { true </dev/tty; } 2>/dev/null \
+  || [ "$(ps -o tpgid= -p $$ 2>/dev/null | tr -d ' ')" != "$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')" ] \
+  || { [ ! -t 1 ] && [ ! -t 2 ]; }; then
+  ZFC_NOTTY=1
+fi
+interactive() { [ "${ZFC_YES:-0}" != "1" ] && [ "$ZFC_NOTTY" != "1" ]; }
 
 SELF_PATH=""
 self_cmd() {
@@ -62,7 +72,7 @@ self_cmd() {
 
 ask() {
   local __var="$1" __prompt="$2" __def="${3:-}" __ans
-  if [ "${ZFC_YES:-0}" = "1" ]; then
+  if ! interactive; then
     [ -n "$__def" ] || die "非交互模式下缺少必填项：${__prompt}（用参数或环境变量给出来）"
     printf -v "$__var" '%s' "$__def"; return 0
   fi
@@ -72,7 +82,7 @@ ask() {
 }
 ask_opt() {
   local __var="$1" __prompt="$2" __def="${3:-}" __ans
-  if [ "${ZFC_YES:-0}" = "1" ]; then
+  if ! interactive; then
     printf -v "$__var" '%s' "$__def"; return 0
   fi
   if [ -n "$__def" ]; then printf '%s [%s]: ' "$__prompt" "$__def"; else printf '%s（留空 = 不开）: ' "$__prompt"; fi
@@ -82,6 +92,11 @@ ask_opt() {
 askyn() {
   local __p="$1" __d="${2:-n}" __a
   if [ "${ZFC_YES:-0}" = "1" ]; then return 0; fi
+  # 没有终端：按默认值，并把问题和结果打出来（日志里看得到为什么没做）
+  if [ "$ZFC_NOTTY" = "1" ]; then
+    printf '%s (y/n) [%s]: %s（没有终端，按默认）\n' "$__p" "$__d" "$__d"
+    [ "$__d" = "y" ] && return 0 || return 1
+  fi
   printf '%s (y/n) [%s]: ' "$__p" "$__d"
   read -r __a </dev/tty || true
   __a="${__a:-$__d}"
@@ -174,6 +189,7 @@ LOG_TAIL=200         # 菜单 l 默认看最近多少行
 LOG_MAX_SIZE="10m"   # 容器日志轮转：单个文件上限 ×
 LOG_MAX_FILE=3       #               文件数（最多 30MB，只作用于本容器）
 BACKUP_KEEP=5        # 一键备份只保留最近几份（只清本目录 backups/comfyui-*.tar.gz）
+PREVIEW_COMMITS=3    # 菜单 2 更新前预览：每个仓库显示几条新提交（只影响显示）
 
 # 绑定地址在不在本机（香水商城网络没起 / 换了机器时不在）；空 = 所有网卡，总是可以
 bind_ok() {
@@ -191,9 +207,33 @@ probe_host() {
   case "$b" in ""|0.0.0.0) printf '127.0.0.1' ;; *) printf '%s' "$b" ;; esac
 }
 
+# 重启 / 重建前看有没有任务在跑：已发给 New API 的请求照样计费，重启会丢掉排队的任务。
+# 只打印个数（队列内容里有 prompt 和明文 key）；-y、容器没跑、查不到都放行；一次运行只问一次
+BUSY_PY='import sys,json
+try:
+    q=json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+print(len(q.get("queue_running",[])), len(q.get("queue_pending",[])))'
+BUSY_CHECKED=0
+busy_guard() {
+  [ "$BUSY_CHECKED" = "0" ] && [ "${ZFC_YES:-0}" != "1" ] || return 0
+  local r="" p=""
+  read -r r p <<<"$($DOCKER exec "$CONTAINER" sh -c 'curl -s --max-time "$1" http://127.0.0.1:8188/queue | python -c "$2"' \
+    _ "$PROBE_TIMEOUT" "$BUSY_PY" 2>/dev/null || true)"
+  [[ "$r" =~ ^[0-9]+$ ]] || r=0
+  [[ "$p" =~ ^[0-9]+$ ]] || p=0
+  if [ "$r" -gt 0 ] || [ "$p" -gt 0 ]; then
+    warn "现在有 $r 个任务在跑、$p 个在排队：重启会丢掉它们，已发给 New API 的请求照样计费"
+    askyn "还要继续？" "n" || return 1
+  fi
+  BUSY_CHECKED=1
+}
+
 # ── 构建并启动容器 ─────────────────────────────────────────────────────────
 run_container() {
   docker_ok || die "Docker 没就绪。先装：$(self_cmd) 里选 1（会自动装），或 apt install docker.io"
+  busy_guard || die "已取消，容器没动"
   local port src bind
   port="$(state_read port 8188)"
   src="$(state_read src '')"
@@ -229,6 +269,19 @@ run_container() {
   if [ "${ZFC_REBUILD:-0}" = "1" ] || [ -z "$old_img" ]; then
     # 构建失败时旧容器还没删，服务照旧；ZFC_ON_BUILD_FAIL（更新时）负责退回源码和插件
     build_image || { [ -z "${ZFC_ON_BUILD_FAIL:-}" ] || "$ZFC_ON_BUILD_FAIL"; die "构建失败。看上面报错"; }
+    # 构建要几分钟，这期间可能有人提交了新任务：删容器前再查一次（-y 不查）。
+    # 取消时镜像标签指回旧镜像、删掉刚建的，代码也退回，和还在跑的旧容器保持一致
+    if [ -n "$old_img" ] && [ "$BUSY_CHECKED" = "1" ]; then
+      BUSY_CHECKED=0
+      if ! busy_guard; then
+        local built=""
+        built="$($DOCKER image inspect -f '{{.Id}}' "$IMAGE" 2>/dev/null || true)"
+        $DOCKER tag "$old_img" "$IMAGE" >/dev/null 2>&1 || true
+        [ -z "$built" ] || [ "$built" = "$old_img" ] || $DOCKER rmi "$built" >/dev/null 2>&1 || true
+        [ -z "${ZFC_ON_BUILD_FAIL:-}" ] || "$ZFC_ON_BUILD_FAIL" "已取消，把代码退回和旧镜像一致 …"
+        die "已取消，旧容器和旧镜像都没动"
+      fi
+    fi
   fi
 
   # 停旧容器
@@ -287,6 +340,7 @@ wait_ready() {
 
 # 重启：docker restart，不删容器（现场装的包还在）；容器不在或起不来再重建
 restart_container() {
+  busy_guard || { say "已取消"; return 0; }
   if $DOCKER restart "$CONTAINER" >/dev/null 2>&1; then
     wait_ready || true
   else
@@ -350,6 +404,47 @@ plugin_show() {
   if [ "$i" = "0" ]; then say "  （空）"; else say "  （* = 本地改过文件）"; fi
 }
 
+# 插件依赖预检：用镜像起一次性容器 pip --dry-run（查的是镜像，不是现场装过包的容器；不用容器在跑）。
+# 只看不装；镜像里的 PIP_CONSTRAINT 生效，要换 torch 的会直接报冲突。
+# 「Would install」里已装的包算「要改版本」，没装的才算「缺」
+DEPS_AWK='/^@@FREEZE@@$/ {f=1; next}
+f { split($0, a, "=="); n = tolower(a[1]); gsub(/[_.]/, "-", n); have[n] = a[2]; next }
+/^Would install / { sub(/^Would install /, ""); want = $0 }
+END {
+  m = split(want, w, " ")
+  for (i = 1; i <= m; i++) {
+    t = w[i]; j = match(t, /-[^-]*$/)
+    nm = tolower(substr(t, 1, j - 1)); gsub(/[_.]/, "-", nm); v = substr(t, j + 1)
+    if (nm in have) chg = chg " " nm " " have[nm] "→" v; else miss = miss " " t
+  }
+  print "MISS:" miss; print "CHG:" chg
+}'
+plugin_deps_check() {
+  local n out miss chg why
+  $DOCKER image inspect "$IMAGE" >/dev/null 2>&1 || { warn "还没有镜像 ${IMAGE}，先菜单 1 部署"; return 0; }
+  say "  检查插件依赖（按镜像查，pip --dry-run，要联网，可能要几十秒）…"
+  [ "$#" -gt 0 ] || { say "  没有插件"; return 0; }
+  for n in "$@"; do
+    if [ ! -f "$APP_DIR/data/custom_nodes/$n/requirements.txt" ]; then say "  $n 没有 requirements.txt"; continue; fi
+    if out="$($DOCKER run --rm --entrypoint sh \
+        -v "$APP_DIR/data/custom_nodes:/opt/comfyui/app/custom_nodes:ro" "$IMAGE" \
+        -c 'pip install --dry-run --disable-pip-version-check -r "$1" 2>&1 && echo @@FREEZE@@ && pip list --format=freeze 2>/dev/null' \
+        _ "/opt/comfyui/app/custom_nodes/$n/requirements.txt" 2>&1)"; then
+      miss="$(printf '%s\n' "$out" | awk "$DEPS_AWK" | sed -n 's/^MISS: *//p')"
+      chg="$(printf '%s\n' "$out" | awk "$DEPS_AWK" | sed -n 's/^CHG: *//p')"
+      [ -z "$miss" ] || warn "  $n 缺：$miss"
+      [ -z "$chg" ] || warn "  $n 要改镜像里已装包的版本：${chg}（可能和 ComfyUI 核心依赖冲突，别直接写进 Dockerfile）"
+      [ -n "$miss$chg" ] || ok "  $n 依赖齐全"
+    else
+      warn "  $n 的依赖装不上（多半要换 torch 或版本冲突）："
+      # 只留原因段（ERROR / conflict 那几行），截不到再退回最后几行；awk 不会因为没匹配返回非零
+      why="$(printf '%s\n' "$out" | awk '/^To fix/{exit} /^ERROR|^error:|conflict is caused by|The user requested|depends on/{p=1} p')"
+      printf '%s\n' "${why:-$(printf '%s\n' "$out" | tail -5)}" | head -12 | sed 's/^/      /'
+    fi
+  done
+  say "  缺的包写进 Dockerfile 预装插件依赖那一行，再菜单 1（回车保持原设置）只重建镜像"
+}
+
 plugin_install_set() {
   # 参数：多行 "name|url" 字符串（PLUGIN_CORE / PLUGIN_TOOLS / PLUGIN_EXTRA）
   # ★ read 读完 EOF 返回非零会让函数返回 1，被 set -e 杀脚本 —— 必须显式 return 0
@@ -387,6 +482,7 @@ do_plugins() {
   say "  5) 自定义插件（填 git 地址）"
   say "  6) 列出已装插件"
   say "  7) 卸载插件（按序号）"
+  say "  8) 检查插件依赖（只看不装）"
   say "  0) 返回"
   ask WHAT "选一个" "1"
   case "$WHAT" in
@@ -401,8 +497,12 @@ do_plugins() {
        PNAME="$(basename "${PURL%/}")"
        ask PNAME "插件目录名" "${PNAME%.git}"
        case "$PNAME" in ""|*/*|.*) die "插件目录名不能为空、带 / 或以 . 开头：$PNAME" ;; esac
-       plugin_install "$PNAME" "$PURL" ;;
+       plugin_install "$PNAME" "$PURL"
+       plugin_deps_check "$PNAME" ;;
     6) say ""; plugin_show; return 0 ;;
+    8) local all=()
+       mapfile -t all < <(plugin_list)
+       plugin_deps_check "${all[@]}"; return 0 ;;
     7) say ""; plugin_show
        local names=() pick
        mapfile -t names < <(plugin_list)
@@ -430,11 +530,17 @@ do_backup() {
   fi
   # 备份里有插件配置和工作流里的明文 key：目录和文件都只给自己读
   (umask 077; mkdir -p "$(dirname "$dest")")
+  # 出图可能很大（保留 5 份就是 5 倍）：可以选不含；-y / 定时备份默认包含
+  local excl=()
+  if [ -d "$APP_DIR/data/output" ] \
+    && ! askyn "备份包含出图 data/output 吗（现在 $(du -sh "$APP_DIR/data/output" 2>/dev/null | cut -f1)）" "y"; then
+    excl=(--exclude='data/output')
+  fi
   say "备份数据目录（data/ + 配置）到 $dest …"
   # 不停容器：打包中途有文件在写（出图、日志）时 GNU tar 返回 1，归档仍完整，只算警告
   local rc=0
   (umask 077; tar czf "$dest" -C "$APP_DIR" \
-    --exclude='backups' --exclude='data/user/*.log' \
+    --exclude='backups' --exclude='data/user/*.log' "${excl[@]}" \
     data .install.conf 2>/dev/null) || rc=$?
   [ "$rc" -le 1 ] || die "备份失败（tar 退出码 ${rc}）"
   [ "$rc" = "0" ] || warn "打包时有文件正在写入（出图/日志），归档已生成；要严格一致可先停容器再备份"
@@ -444,7 +550,7 @@ do_backup() {
   # 只保留最近 $BACKUP_KEEP 份（只清本目录 backups/ 下脚本生成的 comfyui-*.tar.gz）
   ls -1t "$APP_DIR/backups/"comfyui-*.tar.gz 2>/dev/null | tail -n +$((BACKUP_KEEP + 1)) \
     | while IFS= read -r old; do rm -f "$old"; say "  清理旧备份：$(basename "$old")"; done || true
-  say "  定时备份（可选）：crontab -e 加一行  0 4 * * * $(self_cmd) --backup >/dev/null 2>&1"
+  say "  定时备份（可选）：crontab -e 加一行  0 4 * * * $(self_cmd) --backup >> $APP_DIR/backups/cron.log 2>&1"
   json_out "backup" "$dest"
 }
 
@@ -466,6 +572,7 @@ do_restore() {
   fi
   # 本机配置的绑定地址不在：容器和数据都不动
   [ "$had_state" = "0" ] || bind_ok "$cur_bind" || bind_die "$cur_bind"
+  busy_guard || { say "已取消，什么都没动"; return 0; }
   # 先停容器再恢复，避免写一半
   docker_ok && $DOCKER rm -f "$CONTAINER" >/dev/null 2>&1 || true
   say "恢复 $srcf …"
@@ -494,28 +601,98 @@ do_restore() {
 #   · pull 失败要明确报出来，不能照样显示「更新完成」
 #   · 插件用 --autostash：本地改过的文件（如汉化插件的开关写进 config.json）先暂存、拉完放回
 #   · 构建失败：旧容器还在跑，把源码和插件退回更新前的 commit，避免下次重启变成「新源码 + 旧依赖」
-UPD_DIRS=(); UPD_HEADS=()
+#   · 回退点 .last-update（目录<TAB>更新前 HEAD）在构建前就写好：Ctrl+C、docker run 失败时，
+#     菜单 12 也能退到这次更新之前；只有构建失败（已经自动退回）才换回上一次的回退点
+UPD_DIRS=(); UPD_HEADS=(); UPD_FAILED=(); LAST_UPDATE_NEW=0
 update_rollback() {
-  local i
-  warn "构建失败，把源码和插件退回更新前的版本 …"
+  local i d h
+  UPD_FAILED=()
+  warn "${1:-构建失败，把源码和插件退回更新前的版本 …}"
   for i in "${!UPD_DIRS[@]}"; do
-    [ -n "${UPD_HEADS[$i]}" ] || continue
-    git -C "${UPD_DIRS[$i]}" reset -q --keep "${UPD_HEADS[$i]}" 2>/dev/null \
-      || warn "  $(basename "${UPD_DIRS[$i]}") 退回失败（本地改动冲突？进目录看 git status）"
+    d="${UPD_DIRS[$i]}"; h="${UPD_HEADS[$i]}"
+    [ -n "$h" ] || continue
+    if ! git -C "$d" cat-file -e "$h^{commit}" 2>/dev/null; then
+      warn "  $(basename "$d") 退回失败：记录的提交已不在（重装过这个插件？）"; UPD_FAILED+=("$(basename "$d")")
+    elif ! git -C "$d" reset -q --keep "$h" 2>/dev/null; then
+      warn "  $(basename "$d") 退回失败：本地改动挡住了（进目录看 git status）"; UPD_FAILED+=("$(basename "$d")")
+    fi
   done
-  say "  旧容器没动，服务仍是更新前的版本"
+  [ -n "${1:-}" ] || say "  旧容器没动，服务仍是更新前的版本"
   return 0
+}
+
+# 更新时构建失败：退回源码和插件，这次写的回退点作废、换回上一次的
+update_build_failed() {
+  local lu="$APP_DIR/.last-update"
+  update_rollback "$@"
+  if [ "$LAST_UPDATE_NEW" = "1" ]; then
+    if [ -f "$lu.prev" ]; then mv "$lu.prev" "$lu"; else rm -f "$lu"; fi
+  fi
+  return 0
+}
+
+# 更新前预览：先 fetch 不合并，列出有新提交的仓库和风险；有风险默认不继续
+update_preview() {
+  local src="$1" d name n flag=0 quiet=0 mine theirs out overlap
+  say "检查更新（git fetch，不合并）…"
+  for d in "$src" "$APP_DIR"/data/custom_nodes/*/; do
+    [ -d "$d/.git" ] || continue
+    d="${d%/}"
+    if [ "$d" = "$src" ]; then name="ComfyUI 源码"; else name="$(basename "$d")"; fi
+    # GIT_TERMINAL_PROMPT=0：仓库被删或改私有时别弹账号密码提示卡住
+    if ! out="$(GIT_TERMINAL_PROMPT=0 git -C "$d" fetch -q 2>&1)"; then
+      # 取第一条 fatal/error（最后一行常是「Please make sure … exists.」这类套话），没有再退回最后一行
+      out="$(printf '%s\n' "$out" | awk '/^(fatal|error):/{print; f=1; exit} {l=$0} END{if(!f) print l}')"
+      warn "  ${name}：fetch 失败：$out"; flag=1; continue
+    fi
+    if ! git -C "$d" rev-parse -q --verify '@{u}' >/dev/null 2>&1; then
+      warn "  ${name}：不在分支上（detached HEAD），pull 会失败"; flag=1; continue
+    fi
+    if ! git -C "$d" merge-base --is-ancestor HEAD '@{u}' 2>/dev/null; then
+      warn "  ${name}：本地和上游分叉了（上游改写了历史，或本地有提交），pull 会失败"; flag=1; continue
+    fi
+    # --first-parent：浅克隆里合入早期分叉的分支时，不把整段旧历史算成新提交
+    n="$(git -C "$d" rev-list --first-parent --count 'HEAD..@{u}' 2>/dev/null || echo 0)"
+    if [ "$n" = "0" ]; then quiet=$((quiet + 1)); continue; fi
+    say "  ${BLD}${name}${RST}：主线 $n 个新提交"
+    git -C "$d" log --first-parent --oneline -n "$PREVIEW_COMMITS" 'HEAD..@{u}' | sed 's/^/    /'
+    mine="$(git -C "$d" diff --name-only HEAD)"
+    theirs="$(git -C "$d" diff --name-only HEAD '@{u}')"
+    overlap=0
+    if [ -n "$mine" ] && [ -n "$theirs" ] && printf '%s\n' "$mine" | grep -xF -f <(printf '%s\n' "$theirs") >/dev/null; then
+      overlap=1
+    fi
+    if [ "$d" = "$src" ]; then
+      git -C "$d" diff --quiet HEAD '@{u}' -- requirements.txt manager_requirements.txt \
+        || say "    · 依赖有变化，会重建依赖层（几分钟）"
+      # 源码 pull 不带 --autostash（改源码要自己判断冲突），本地改的文件上游也改了 pull 必然失败
+      [ "$overlap" = "0" ] || { warn "    源码本地改过的文件上游也改了：pull 会失败（先 git stash 或提交）"; flag=1; }
+      continue
+    fi
+    if ! git -C "$d" diff --quiet HEAD '@{u}' -- requirements.txt install.py; then
+      warn "    插件依赖有变化：新依赖不在镜像里，更新后可能 IMPORT FAILED（更新完跑 6 → 8 检查）"; flag=1
+    fi
+    [ "$overlap" = "0" ] || { warn "    本地改过的文件上游也改了：可能冲突，冲突时用上游版本，你的改动留在 stash"; flag=1; }
+  done
+  [ "$quiet" = "0" ] || say "  另有 $quiet 个仓库没有新提交"
+  askyn "继续更新？" "$([ "$flag" = "1" ] && echo n || echo y)"
 }
 
 do_update() {
   docker_ok || die "Docker 没就绪"
-  local src d failed=0
+  local src d i out failed=0 changed=0 lu="$APP_DIR/.last-update"
   src="$(state_read src '')"
   [ -n "$src" ] && [ -d "$src" ] || die "没有源码目录，先全新安装"
   # 绑定地址不在本机时重建必然失败：先查，别拉完代码才停（那样会留下「新源码 + 旧依赖」）
   bind_ok "$(state_read bind '')" || bind_die "$(state_read bind '')"
-  local out
-  UPD_DIRS=("$src"); UPD_HEADS=("$(git -C "$src" rev-parse HEAD 2>/dev/null || true)")
+  update_preview "$src" || { say "已取消，什么都没合并"; return 0; }
+  busy_guard || { say "已取消，什么都没合并"; return 0; }
+  # 记下更新前每个仓库的位置：构建失败时自动退回，也是菜单 12 的回退点
+  UPD_DIRS=(); UPD_HEADS=()
+  for d in "$src" "$APP_DIR"/data/custom_nodes/*/; do
+    [ -d "$d/.git" ] || continue
+    UPD_DIRS+=("${d%/}"); UPD_HEADS+=("$(git -C "$d" rev-parse HEAD 2>/dev/null || true)")
+  done
   say "更新源码（git pull）…"
   if out="$(cd "$src" && git pull --ff-only 2>&1)"; then
     printf '%s\n' "$out" | tail -2
@@ -525,7 +702,6 @@ do_update() {
   fi
   for d in "$APP_DIR"/data/custom_nodes/*/; do
     [ -d "$d/.git" ] || continue
-    UPD_DIRS+=("$d"); UPD_HEADS+=("$(git -C "$d" rev-parse HEAD 2>/dev/null || true)")
     say "更新插件 $(basename "$d") …"
     if ! out="$(cd "$d" && git pull --ff-only --autostash 2>&1)"; then
       printf '%s\n' "$out" | sed 's/^/    /'
@@ -539,8 +715,62 @@ do_update() {
       printf '%s\n' "$out" | tail -1
     fi
   done
-  ZFC_REBUILD=1 ZFC_ON_BUILD_FAIL=update_rollback run_container
+  # 有仓库真的变了才换回退点（只留最近一次）；没拉到新东西的更新不冲掉上一次的回退点
+  for i in "${!UPD_DIRS[@]}"; do
+    [ "$(git -C "${UPD_DIRS[$i]}" rev-parse HEAD 2>/dev/null || true)" = "${UPD_HEADS[$i]}" ] || changed=1
+  done
+  rm -f "$lu.prev"; LAST_UPDATE_NEW=0
+  if [ "$changed" = "1" ]; then
+    [ ! -f "$lu" ] || cp -p "$lu" "$lu.prev"
+    : > "$lu"
+    for i in "${!UPD_DIRS[@]}"; do printf '%s\t%s\n' "${UPD_DIRS[$i]}" "${UPD_HEADS[$i]}" >> "$lu"; done
+    LAST_UPDATE_NEW=1
+  fi
+  ZFC_REBUILD=1 ZFC_ON_BUILD_FAIL=update_build_failed run_container
+  rm -f "$lu.prev"
   if [ "$failed" = "1" ]; then warn "更新完成，但上面有要处理的（看 ! 开头的提示）"; else ok "更新完成"; fi
+}
+
+# 回到上次更新前：构建成功、但运行才出问题（插件加载失败、前端回归）时用。按旧 requirements 重建镜像
+RB_CUR=()
+# 回退时构建失败：把仓库恢复到回退前（和还在跑的容器、镜像一致），下次还能再退
+rollback_build_failed() {
+  UPD_HEADS=("${RB_CUR[@]}")
+  update_rollback "${1:-构建失败，把仓库恢复到回退前的版本（和正在跑的容器一致）…}"
+  [ -n "${1:-}" ] || say "  旧容器没动；网络好了再选菜单 12"
+  return 0
+}
+
+do_rollback() {
+  docker_ok || die "Docker 没就绪"
+  local f="$APP_DIR/.last-update" d h cur db="$APP_DIR/data/user/comfyui.db" keep=""
+  [ -f "$f" ] || die "没有更新记录（菜单 2 真正拉到新代码之后才有）"
+  UPD_DIRS=(); UPD_HEADS=(); RB_CUR=()
+  say ""
+  say "  上次更新前的版本（当前 → 退回到）："
+  while IFS=$'\t' read -r d h; do
+    [ -n "$h" ] || continue
+    if [ ! -d "$d/.git" ]; then say "    $(basename "$d")：目录不在了，跳过"; continue; fi
+    cur="$(git -C "$d" rev-parse HEAD 2>/dev/null || true)"
+    [ "$cur" != "$h" ] || continue
+    if ! git -C "$d" cat-file -e "$h^{commit}" 2>/dev/null; then
+      warn "    $(basename "$d")：${cur:0:7} → ${h:0:7}，记录的提交已不在（重装过？），跳过"; continue
+    fi
+    say "    $(basename "$d")：${cur:0:7} → ${h:0:7}"
+    UPD_DIRS+=("$d"); UPD_HEADS+=("$h"); RB_CUR+=("$cur")
+  done < "$f"
+  [ "${#UPD_DIRS[@]}" -gt 0 ] || { ok "没有能退的仓库（都已经是上次更新前的版本）"; return 0; }
+  askyn "退回这 ${#UPD_DIRS[@]} 个仓库，并按旧依赖重建镜像？" "n" || { say "取消"; return 0; }
+  bind_ok "$(state_read bind '')" || bind_die "$(state_read bind '')"
+  busy_guard || { say "已取消"; return 0; }
+  # 旧版启动时会拿当前库覆盖 comfyui.db.bkp、迁移失败后还会删掉它：先另存一份
+  if [ -f "$db.bkp" ]; then cp "$db.bkp" "$db.pre-update" && keep="$db.pre-update"; fi
+  update_rollback "退回上次更新前的版本 …"
+  [ "${#UPD_FAILED[@]}" -lt "${#UPD_DIRS[@]}" ] || die "一个都没退回（${UPD_FAILED[*]}），镜像没动"
+  ZFC_REBUILD=1 ZFC_ON_BUILD_FAIL=rollback_build_failed run_container
+  [ "${#UPD_FAILED[@]}" = "0" ] || warn "这些仓库没退回，仍是新版本：${UPD_FAILED[*]}"
+  say "  新版如果升级过数据库，旧版启动时可能在日志里报 DB 错误、资产库不可用；工作流不受影响"
+  [ -z "$keep" ] || say "  升级前的库可能在 ${keep}（从 comfyui.db.bkp 另存，旧版启动时会覆盖并删掉 .bkp）"
 }
 
 # ── 数据说明 ───────────────────────────────────────────────────────────────
@@ -593,6 +823,7 @@ do_https() {
   if [ "$(state_read bind '')" = "$CADDY_GW" ]; then
     say "  端口现在只绑 $CADDY_GW:${port}：公网不能直连（本机进程和本机容器仍可免密访问）。"
     if askyn "改回所有网卡开放（IP:$port 能直连，无鉴权）？选 n 继续配域名 / 密码" "n"; then
+      busy_guard || { say "已取消"; return 0; }
       state_write bind ""
       run_container
       return 0
@@ -601,7 +832,7 @@ do_https() {
   ask domain "ComfyUI 用的域名（DNS 已指向这台机器）" "$(state_read domain "$ph")"
   [ "$domain" = "$ph" ] || state_write domain "$domain"
   ask user "登录用户名" "admin"
-  if [ "${ZFC_YES:-0}" != "1" ]; then
+  if interactive; then
     local pw2=""
     printf '登录密码（不回显，留空 = 不加密码）: '
     IFS= read -rs pw </dev/tty || true
@@ -663,6 +894,7 @@ do_https() {
   [ "$(state_read bind '')" != "$CADDY_GW" ] || return 0
   say "  端口现在对所有网卡开放：谁访问 IP:$port 都不用密码，Caddy 的密码形同虚设。"
   askyn "改绑 $CADDY_GW:${port}，公网只能走域名？" "$([ "$reach" = "1" ] && echo y || echo n)" || return 0
+  busy_guard || { say "已取消"; return 0; }
   state_write bind "$CADDY_GW"
   run_container
 }
@@ -703,7 +935,7 @@ do_api_test() {
     *) warn "返回 HTTP $code —— 看 New API 日志"; return 0 ;;
   esac
   # 可选：带令牌列出能用的出图模型，核对令牌有没有这些模型的权限
-  if [ "${ZFC_YES:-0}" != "1" ]; then
+  if interactive; then
     printf '  New API 令牌（不回显，留空 = 跳过）: '
     IFS= read -rs key </dev/tty || true
     printf '\n'
@@ -713,6 +945,24 @@ do_api_test() {
     | $DOCKER exec -i "$CONTAINER" sh -c 'curl -s --max-time "$1" -H @- "$2/v1/models" | python -c "$3"' \
         _ "$PROBE_TIMEOUT" "$base" "$API_TEST_PY" \
     || warn "令牌可能无效，或没有模型权限（看上面的返回）"
+}
+
+# ── 空间占用：只看本项目（不跑 docker system df / prune，那是全机的，会动到别的项目）─
+do_space() {
+  docker_ok || true
+  local d
+  say ""
+  say "  ${BLD}空间占用${RST}（${APP_DIR}）"
+  for d in data/output data/input data/user data/custom_nodes data/models backups app; do
+    [ -e "$APP_DIR/$d" ] || continue
+    say "    $(du -sh "$APP_DIR/$d" 2>/dev/null | cut -f1)	$d"
+  done
+  # image ls 的 Size 在经典存储和 containerd 存储下都是磁盘占用（inspect .Size 在 containerd 下是压缩大小）
+  [ -z "$DOCKER" ] || say "    $($DOCKER image ls --format '{{.Size}}' "$IMAGE" 2>/dev/null | head -1)	镜像 $IMAGE"
+  say ""
+  df -h "$APP_DIR" | sed 's/^/    /'
+  say ""
+  say "  出图太多：备份时（菜单 8）可以选不含出图；清理出图目前要自己删 data/output 下的文件"
 }
 
 # ── 日志 ───────────────────────────────────────────────────────────────────
@@ -739,9 +989,36 @@ do_logs() {
 }
 
 # ── 体检 ───────────────────────────────────────────────────────────────────
+# 从 /system_stats 看：torch 还是不是 CPU 版；comfy* 包（前端、模板等）镜像里装的和源码要求的是否一致
+CHECK_PY='import sys,json
+try:
+    s=json.load(sys.stdin)["system"]
+except Exception:
+    print("  ! 读不到 /system_stats（服务还没起来？）"); sys.exit(0)
+try:
+    from packaging.version import parse
+except Exception:
+    parse=str
+tv=str(s.get("pytorch_version",""))
+print("  ComfyUI %s · Python %s · torch %s" % (s.get("comfyui_version","?"), str(s.get("python_version","?")).split()[0], tv))
+print("  启动参数：" + " ".join(s.get("argv",[])[1:]))
+bad=[]
+if "+cpu" not in tv:
+    bad.append("torch 不是 CPU 版（被插件依赖换掉了？）")
+for p in s.get("comfy_package_versions") or []:
+    i,r=p.get("installed"),p.get("required")
+    if not r: continue
+    try:
+        same = i is not None and parse(i)==parse(r)
+    except Exception:
+        same = i==r
+    if not same:
+        bad.append("%s 不一致：镜像里 %s，源码要求 %s" % (p.get("name"), i or "没装", r))
+for b in bad: print("  ! " + b)
+if bad: print("    → 菜单 1（回车保持原设置）只重建镜像，不拉代码")'
 do_check() {
   docker_ok || { warn "Docker 没就绪"; return 1; }
-  local port src
+  local port src rc=0
   port="$(state_read port 8188)"
   src="$(state_read src '')"
   say ""
@@ -750,7 +1027,12 @@ do_check() {
   local running=""
   running="$($DOCKER ps -q --filter "name=$CONTAINER" 2>/dev/null || true)"
   if [ -n "$running" ]; then
-    say "  版本：$($DOCKER exec "$CONTAINER" sh -c 'cat /opt/comfyui/app/comfyui_version.py 2>/dev/null | grep __version__' 2>/dev/null | grep -oE '[0-9.]+' || echo '?')"
+    $DOCKER exec "$CONTAINER" sh -c 'curl -s --max-time "$1" http://127.0.0.1:8188/system_stats | python -c "$2"' \
+      _ "$PROBE_TIMEOUT" "$CHECK_PY" 2>/dev/null || true
+    # 网页 Manager 的「更新 ComfyUI」会把源码切到 tag（不在分支上）且不重建镜像，之后菜单 2 也拉不动
+    if [ -d "$src/.git" ] && ! git -C "$src" symbolic-ref -q HEAD >/dev/null; then
+      warn "源码不在分支上（多半是网页 Manager 点了「更新 ComfyUI」）：进 $src 执行 git checkout master，再菜单 2"
+    fi
     say "  源码：$src"
     say "  插件：$(plugin_list | tr '\n' ' ')"
   fi
@@ -769,12 +1051,14 @@ do_check() {
     if curl -fsS -o /dev/null --max-time 5 "http://$(probe_host):$port/" 2>/dev/null; then
       ok "HTTP 200 —— 服务正常"
     else
-      warn "容器在跑但页面没响应（首次启动装依赖较慢）—— 菜单选 l 看日志"
+      warn "容器在跑但页面没响应（刚启动的话再等等）—— 菜单选 l 看日志"; rc=1
     fi
   else
-    warn "容器没在跑 —— 菜单选 1 重新部署，或 2 更新"
+    warn "容器没在跑 —— 菜单选 1 重新部署，或 2 更新"; rc=1
   fi
-  json_out "check" "port=$port running=$([ -n "$running" ] && echo yes || echo no)"
+  # 服务不可用时返回非零、--json 的 ok 为 false，外部监控可以直接调 --check
+  json_out "check" "port=$port running=$([ -n "$running" ] && echo yes || echo no)" "$([ "$rc" = "0" ] && echo true || echo false)"
+  return $rc
 }
 
 # ── 卸载 ───────────────────────────────────────────────────────────────────
@@ -876,6 +1160,8 @@ INSTALLED=0
 docker_ok && [ "$($DOCKER ps -aq --filter "name=$CONTAINER" 2>/dev/null | wc -l | tr -d ' ')" -ge 1 ] && INSTALLED=1
 
 if [ "$INSTALLED" = "1" ] && [ "$ZFC_ACTION" != "install" ]; then
+  # 没有终端时菜单只会拿默认值 1 走重装流程：必须用参数指定动作
+  interactive || [ "${ZFC_YES:-0}" = "1" ] || die "没有终端，进不了菜单：用参数指定动作（--update / --check / --backup …，--help 看全部）"
   say "这台机器上${BLD}已经装过${RST}了（容器 ${CONTAINER}，端口 $(state_read port 8188)）"
   say ""
   say "  1) ${BLD}全新安装${RST} / 重新部署（容器只有一个，换目录会替换现有这套）"
@@ -889,6 +1175,8 @@ if [ "$INSTALLED" = "1" ] && [ "$ZFC_ACTION" != "install" ]; then
   say "  9) 一键恢复${RST}（从备份文件还原数据并重启）"
   say "  10) ${RED}卸载${RST}"
   say "  11) 测试反代（容器 → New API 连通 + 令牌能用哪些出图模型）"
+  say "  12) 回到上次更新前（更新后运行出问题时用，按旧依赖重建镜像）"
+  say "  13) 空间占用（出图 / 备份 / 镜像各占多少）"
   say "  l) 看日志（最近 / 实时 / 只看问题）"
   say "  r) 重启容器（docker restart，不删容器，现场装的包还在）"
   say "  R) 重建容器（删了重新 run，现场装的包会丢）"
@@ -901,6 +1189,7 @@ if [ "$INSTALLED" = "1" ] && [ "$ZFC_ACTION" != "install" ]; then
     4) ask NP "改成哪个端口" "$(state_read port 8188)"
        port_check "$NP"
        port_busy "$NP" && die "端口 $NP 被别的进程占着"
+       busy_guard || { say "已取消"; exit 0; }
        state_write port "$NP"
        run_container
        ok "端口已改为 $NP"
@@ -912,6 +1201,8 @@ if [ "$INSTALLED" = "1" ] && [ "$ZFC_ACTION" != "install" ]; then
     8) do_backup; exit 0 ;;
     9) do_restore; exit 0 ;;
     11) do_api_test; exit 0 ;;
+    12) do_rollback; exit 0 ;;
+    13) do_space; exit 0 ;;
     10) say ""
         say "  a) 卸载但${GRN}保留目录${RST}（容器停掉，目录留着）"
         say "  b) 卸载并${RED}删掉整个目录${RST}（源码/插件/数据/备份全没了）"
@@ -971,6 +1262,7 @@ say "    端口：$PORT"
 say "    源码：${GAURL:-官方 https://github.com/comfyanonymous/ComfyUI.git}"
 if [ "$(probe_host)" = "127.0.0.1" ]; then say "    访问：所有网卡（IP:端口 直连）"; else say "    访问：公网只走 Caddy 域名（端口绑 $(probe_host)）"; fi
 askyn "开始部署？" "y" || { say "取消"; exit 1; }
+busy_guard || { say "已取消，容器没动"; exit 0; }
 
 state_write port "$PORT"
 
