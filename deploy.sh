@@ -309,6 +309,9 @@ run_container() {
   # 这样 API 出图节点能用 http://airelay-newapi:3000 直连网关；重建容器也不丢这条连接。
   attach_extra_network
 
+  # 把仓库自带的 API 出图工作流铺进 ComfyUI（已存在的不覆盖，保留用户改动）
+  seed_workflows
+
   # 重建过就删掉被替换的旧镜像（每份 1GB+；只删本项目的，共享机上不用全局 prune）
   local new_img=""
   new_img="$($DOCKER image inspect -f '{{.Id}}' "$IMAGE" 2>/dev/null || true)"
@@ -340,6 +343,22 @@ wait_ready() {
   done
   warn "60 秒内没等到 HTTP 200 —— 首次启动较慢，再等等；或看日志：$(self_cmd) 里选 l"
   return 1
+}
+
+# 把仓库自带的 API 出图工作流（workflows/*.json）铺进 ComfyUI 工作流目录。
+# 已存在的同名文件不覆盖（保留用户改动）；工作流不带 key，首次用在节点里填一次网关 Key 即可。
+seed_workflows() {
+  local srcdir="$APP_DIR/workflows" dstdir="$APP_DIR/data/user/default/workflows"
+  [ -d "$srcdir" ] || return 0
+  mkdir -p "$dstdir"
+  local n=0 f base
+  for f in "$srcdir"/*.json; do
+    [ -e "$f" ] || continue
+    base="$(basename "$f")"
+    [ -e "$dstdir/$base" ] && continue
+    cp "$f" "$dstdir/$base" && n=$((n + 1))
+  done
+  [ "$n" -gt 0 ] && say "  已铺入 $n 个内置 API 出图工作流（首次用请在 Relay API Settings 的 apikey 填一次网关 Key）" || true
 }
 
 # 把容器接到额外的 docker 网络（跨栈访问网关用）。没配或网络不存在都静默跳过。
