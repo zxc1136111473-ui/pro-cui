@@ -305,6 +305,10 @@ run_container() {
     "$IMAGE" main.py --listen 0.0.0.0 --port 8188 --cpu --enable-manager \
     >/dev/null || die "容器起不来。看上面报错（端口被占？用菜单 4 换端口）"
 
+  # 共享机：接入网关所在的 docker 网络（在 .install.conf 配 extra_network="airelay"）。
+  # 这样 API 出图节点能用 http://airelay-newapi:3000 直连网关；重建容器也不丢这条连接。
+  attach_extra_network
+
   # 重建过就删掉被替换的旧镜像（每份 1GB+；只删本项目的，共享机上不用全局 prune）
   local new_img=""
   new_img="$($DOCKER image inspect -f '{{.Id}}' "$IMAGE" 2>/dev/null || true)"
@@ -336,6 +340,18 @@ wait_ready() {
   done
   warn "60 秒内没等到 HTTP 200 —— 首次启动较慢，再等等；或看日志：$(self_cmd) 里选 l"
   return 1
+}
+
+# 把容器接到额外的 docker 网络（跨栈访问网关用）。没配或网络不存在都静默跳过。
+attach_extra_network() {
+  local net; net="$(state_read extra_network '')"
+  [ -n "$net" ] || return 0
+  if ! $DOCKER network inspect "$net" >/dev/null 2>&1; then
+    warn "extra_network=$net 不存在（网关栈没起？），跳过。等它起来后重跑或 docker network connect $net $CONTAINER"
+    return 0
+  fi
+  $DOCKER network connect "$net" "$CONTAINER" >/dev/null 2>&1 \
+    && say "  已接入网络 $net（API 出图节点可用 http://airelay-newapi:3000 走网关）" || true
 }
 
 # 重启：docker restart，不删容器（现场装的包还在）；容器不在或起不来再重建
