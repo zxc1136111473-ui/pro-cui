@@ -1,6 +1,6 @@
 {
-  "last_node_id": 4,
-  "last_link_id": 3,
+  "last_node_id": 5,
+  "last_link_id": 4,
   "nodes": [
     {
       "id": 1,
@@ -157,7 +157,9 @@
         {
           "name": "response",
           "type": "STRING",
-          "links": null,
+          "links": [
+            4
+          ],
           "slot_index": 1
         },
         {
@@ -248,6 +250,34 @@
         "demo_product.png",
         "image"
       ]
+    },
+    {
+      "id": 5,
+      "type": "PreviewAny",
+      "title": "结果 / 错误信息（出错时这里显示原因）",
+      "pos": [
+        960,
+        490
+      ],
+      "size": [
+        360,
+        150
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 4
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
     }
   ],
   "links": [
@@ -274,6 +304,14 @@
       2,
       1,
       "IMAGE"
+    ],
+    [
+      4,
+      2,
+      1,
+      5,
+      0,
+      "STRING"
     ]
   ],
   "groups": [],
