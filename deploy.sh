@@ -358,7 +358,7 @@ seed_workflows() {
     [ -e "$dstdir/$base" ] && continue
     cp "$f" "$dstdir/$base" && n=$((n + 1))
   done
-  [ "$n" -gt 0 ] && say "  已铺入 $n 个内置 API 出图工作流（首次用请在 Relay API Settings 的 apikey 填一次网关 Key）" || true
+  [ "$n" -gt 0 ] && say "  已铺入 $n 个内置 API 工作流（首次用请在 Relay API Settings 的 apikey 填一次：图片用网关 Key，04 文生视频用 geminiweb 的 API Key）" || true
 }
 
 # 把容器接到额外的 docker 网络（跨栈访问网关用）。没配或网络不存在都静默跳过。
