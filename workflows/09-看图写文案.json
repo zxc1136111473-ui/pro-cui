@@ -1,0 +1,234 @@
+{
+  "last_node_id": 5,
+  "last_link_id": 5,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        120
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "http://airelay-newapi:3000",
+        "gemini-3.5-flash-lite"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "RelayTextGenerator",
+      "pos": [
+        520,
+        120
+      ],
+      "size": [
+        420,
+        300
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            5
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayTextGenerator"
+      },
+      "widgets_values": [
+        "看这张商品图，写 1 个电商标题（30 字内）和 3 条卖点（每条 15 字内），中文，不要写图里看不出来的参数。",
+        1,
+        "randomize"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "PreviewAny",
+      "title": "生成的文案",
+      "pos": [
+        1000,
+        120
+      ],
+      "size": [
+        460,
+        320
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 2
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 4,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        470
+      ],
+      "size": [
+        380,
+        400
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "PreviewAny",
+      "title": "结果 / 错误信息（出错时这里显示原因）",
+      "pos": [
+        1000,
+        490
+      ],
+      "size": [
+        460,
+        150
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 5
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": []
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      0,
+      "STRING"
+    ],
+    [
+      4,
+      4,
+      0,
+      2,
+      1,
+      "IMAGE"
+    ],
+    [
+      5,
+      2,
+      1,
+      5,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

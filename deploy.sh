@@ -287,6 +287,9 @@ run_container() {
   # 停旧容器
   $DOCKER rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
+  # 自带自定义节点必须在容器启动前铺好，首次部署就能加载
+  seed_custom_nodes
+
   # ★ 数据目录都挂到 app/ 下：ComfyUI 按源码目录找 models/custom_nodes/output/input/user
   #   （user/ 里是网页保存的工作流、界面设置、Manager 配置、comfyui.db）
   # --stop-signal SIGINT：ComfyUI 不处理默认的 SIGTERM，docker stop/restart 要等 10 秒超时才 SIGKILL；
@@ -359,6 +362,21 @@ seed_workflows() {
     cp "$f" "$dstdir/$base" && n=$((n + 1))
   done
   [ "$n" -gt 0 ] && say "  已铺入 $n 个内置 API 工作流（首次用请在 Relay API Settings 的 apikey 填一次：图片用网关 Key，04 文生视频用 geminiweb 的 API Key）" || true
+}
+
+# 铺入本套件自带的自定义节点（custom-nodes/<名字>/ → data/custom_nodes/<名字>/）。已存在的不覆盖。
+seed_custom_nodes() {
+  local srcdir="$APP_DIR/custom-nodes" dstdir="$APP_DIR/data/custom_nodes"
+  [ -d "$srcdir" ] || return 0
+  mkdir -p "$dstdir"
+  local n=0 d name
+  for d in "$srcdir"/*/; do
+    [ -d "$d" ] || continue
+    name="$(basename "$d")"
+    [ -e "$dstdir/$name" ] && continue
+    cp -R "$d" "$dstdir/$name" && n=$((n + 1))
+  done
+  [ "$n" -gt 0 ] && say "  已铺入 $n 个自带节点（Gemini 音乐）" || true
 }
 
 # 把容器接到额外的 docker 网络（跨栈访问网关用）。没配或网络不存在都静默跳过。
