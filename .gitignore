@@ -1,0 +1,8 @@
+# 部署套件运行时在本目录生成的东西：data/ 里有存着 API Key 的 relay_config.json，绝不能提交
+data/
+backups/
+app/
+.install.conf
+.install.conf.*
+*.pyc
+__pycache__/
