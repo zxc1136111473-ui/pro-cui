@@ -61,7 +61,8 @@
           "name": "VIDEO",
           "type": "VIDEO",
           "links": [
-            5
+            2,
+            7
           ],
           "slot_index": 0
         }
@@ -73,72 +74,27 @@
         "请上传视频.mp4",
         "image"
       ],
-      "title": "① 上传视频（点节点上的上传按钮）"
+      "title": "① 上传有人声的视频"
     },
     {
-      "id": 6,
-      "type": "PrimitiveStringMultiline",
+      "id": 8,
+      "type": "ProVideoAudio",
       "pos": [
         520,
-        60
+        120
       ],
       "size": [
-        440,
-        200
+        300,
+        90
       ],
       "flags": {},
       "order": 2,
       "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            2,
-            3
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PrimitiveStringMultiline"
-      },
-      "widgets_values": [
-        "夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。"
-      ],
-      "title": "② 配音文案（同时用于配音和字幕）"
-    },
-    {
-      "id": 3,
-      "type": "ProAliTTS",
-      "pos": [
-        520,
-        320
-      ],
-      "size": [
-        440,
-        420
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
       "inputs": [
         {
-          "name": "info",
-          "type": "STRING",
-          "link": 1,
-          "widget": {
-            "name": "info"
-          }
-        },
-        {
-          "name": "text",
-          "type": "STRING",
-          "link": 2,
-          "widget": {
-            "name": "text"
-          }
+          "name": "video",
+          "type": "VIDEO",
+          "link": 2
         }
       ],
       "outputs": [
@@ -146,8 +102,54 @@
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            4,
+            3,
             6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProVideoAudio"
+      },
+      "widgets_values": [],
+      "title": "取音轨（不解码画面）"
+    },
+    {
+      "id": 9,
+      "type": "ProAliASR",
+      "pos": [
+        520,
+        270
+      ],
+      "size": [
+        400,
+        160
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 3
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "info"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            4,
+            5
           ],
           "slot_index": 0
         },
@@ -161,41 +163,65 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "ProAliTTS"
+        "Node name for S&R": "ProAliASR"
       },
       "widgets_values": [
-        "（由文案框提供）",
-        "Cherry",
-        "qwen3-tts-flash",
-        "Chinese",
-        ""
+        "auto"
       ],
-      "title": "配音"
+      "title": "② 阿里听写"
     },
     {
-      "id": 7,
-      "type": "ProSubtitles",
+      "id": 10,
+      "type": "PreviewAny",
       "pos": [
         520,
-        800
+        480
       ],
       "size": [
         440,
-        260
+        200
       ],
       "flags": {},
       "order": 4,
       "mode": 0,
       "inputs": [
         {
+          "name": "source",
+          "type": "*",
+          "link": 4
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "听写结果（可先看一眼对不对）"
+    },
+    {
+      "id": 7,
+      "type": "ProSubtitles",
+      "pos": [
+        1000,
+        120
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
           "name": "voice",
           "type": "AUDIO",
-          "link": 4
+          "link": 6
         },
         {
           "name": "text",
           "type": "STRING",
-          "link": 3,
+          "link": 5,
           "widget": {
             "name": "text"
           }
@@ -215,54 +241,19 @@
         "Node name for S&R": "ProSubtitles"
       },
       "widgets_values": [
-        "（由文案框提供）",
+        "（由听写结果提供）",
         16,
         0.0,
         "subtitles/字幕"
       ],
-      "title": "字幕（按配音停顿对齐，同时存 .srt）"
-    },
-    {
-      "id": 4,
-      "type": "LoadAudio",
-      "pos": [
-        60,
-        930
-      ],
-      "size": [
-        400,
-        200
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "AUDIO",
-          "type": "AUDIO",
-          "links": [
-            7
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadAudio"
-      },
-      "widgets_values": [
-        "请上传背景音乐.mp3",
-        "",
-        ""
-      ],
-      "title": "③ 上传背景音乐（可不接）"
+      "title": "③ 字幕（同时存 .srt）"
     },
     {
       "id": 5,
       "type": "ProVideoDub",
       "pos": [
-        1020,
-        60
+        1000,
+        460
       ],
       "size": [
         420,
@@ -275,17 +266,17 @@
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 5
+          "link": 7
         },
         {
           "name": "voice",
           "type": "AUDIO",
-          "link": 6
+          "link": null
         },
         {
           "name": "bgm",
           "type": "AUDIO",
-          "link": 7
+          "link": null
         },
         {
           "name": "subtitles",
@@ -308,20 +299,20 @@
         -14,
         0,
         1.5,
-        false,
-        "video/成片",
+        true,
+        "video/加字幕",
         "烧进画面",
         46,
         70
       ],
-      "title": "④ 合成成片（字幕模式可选「不加字幕」）"
+      "title": "④ 烧字幕（保留原声）"
     },
     {
       "id": 32,
       "type": "PreviewAny",
       "pos": [
-        1020,
-        600
+        520,
+        720
       ],
       "size": [
         360,
@@ -342,7 +333,7 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "状态：配音"
+      "title": "状态：听写"
     }
   ],
   "links": [
@@ -350,57 +341,57 @@
       1,
       31,
       0,
-      3,
-      0,
-      "STRING"
-    ],
-    [
-      2,
-      6,
-      0,
-      3,
+      9,
       1,
       "STRING"
     ],
     [
+      2,
+      2,
+      0,
+      8,
+      0,
+      "VIDEO"
+    ],
+    [
       3,
-      6,
+      8,
+      0,
+      9,
+      0,
+      "AUDIO"
+    ],
+    [
+      4,
+      9,
+      0,
+      10,
+      0,
+      "STRING"
+    ],
+    [
+      5,
+      9,
       0,
       7,
       1,
       "STRING"
     ],
     [
-      4,
-      3,
+      6,
+      8,
       0,
       7,
       0,
       "AUDIO"
     ],
     [
-      5,
+      7,
       2,
       0,
       5,
       0,
       "VIDEO"
-    ],
-    [
-      6,
-      3,
-      0,
-      5,
-      1,
-      "AUDIO"
-    ],
-    [
-      7,
-      4,
-      0,
-      5,
-      2,
-      "AUDIO"
     ],
     [
       8,
@@ -412,7 +403,7 @@
     ],
     [
       9,
-      3,
+      9,
       1,
       32,
       0,

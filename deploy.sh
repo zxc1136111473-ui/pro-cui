@@ -294,9 +294,13 @@ run_container() {
   #   （user/ 里是网页保存的工作流、界面设置、Manager 配置、comfyui.db）
   # --stop-signal SIGINT：ComfyUI 不处理默认的 SIGTERM，docker stop/restart 要等 10 秒超时才 SIGKILL；
   #   SIGINT 让它走 KeyboardInterrupt 正常退出（打印 Stopped server），重启秒级完成
+  # 烧字幕（pro-video）要中文字体：容器里没有，宿主机装了 fonts-noto-cjk 就只读挂进去（没装就不挂，烧字幕时节点会提示）
+  local fontd="/usr/share/fonts/opentype/noto" fontarg=()
+  [ -d "$fontd" ] && fontarg=(-v "$fontd:$fontd:ro")
   $DOCKER run -d --name "$CONTAINER" --restart unless-stopped --stop-signal SIGINT \
     --log-driver json-file --log-opt max-size="$LOG_MAX_SIZE" --log-opt max-file="$LOG_MAX_FILE" \
     -p "${bind:+$bind:}$port:8188" \
+    ${fontarg[@]+"${fontarg[@]}"} \
     -v "$src:/opt/comfyui/app" \
     -v "$APP_DIR/data/models:/opt/comfyui/app/models" \
     -v "$APP_DIR/data/custom_nodes:/opt/comfyui/app/custom_nodes" \

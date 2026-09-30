@@ -7,11 +7,13 @@ Key 与地址取自 Relay API Settings 节点的 info 输出（存在服务器 r
 import base64
 import io
 import json
+import wave
 from urllib.parse import urlparse
 
 import numpy as np
 import requests
 import torch
+import torchaudio.functional as taf
 from PIL import Image
 from comfy_api_nodes.util import audio_bytes_to_audio_input  # type: ignore[reportMissingImports]
 
@@ -19,6 +21,8 @@ DEFAULT_BASE = "https://dashscope.aliyuncs.com"
 GEN_API = "/api/v1/services/aigc/multimodal-generation/generation"
 IMAGE_TIMEOUT = 200   # qwen-image-3.0 实测约 66 秒，2048 大图约 40 秒
 TTS_TIMEOUT = 90      # 实测 2.5~6 秒
+ASR_TIMEOUT = 90      # 实测 6 秒音频约 4.5 秒
+ASR_MAX_SECONDS = 300  # 阿里 qwen3-asr-flash 单次上限约 5 分钟
 DOWNLOAD_TIMEOUT = 60
 
 # 只放实测过可用的：音色逐个用 1 个字合成验证过（50 个全部可用）
@@ -32,6 +36,7 @@ LANGS = ["Chinese", "English", "Japanese", "Korean", "German", "French", "Spanis
 IMAGE_MODELS = ["qwen-image-2.0-pro", "qwen-image-3.0"]
 EDIT_MODELS = ["qwen-image-edit-max"]
 TTS_MODELS = ["qwen3-tts-flash", "qwen3-tts-instruct-flash"]
+ASR_LANGS = ["auto", "zh", "en", "ja", "ko"]
 # 比例 × 档位 → 宽*高（1K≈1 百万像素，2K 最长边 2048）
 RATIOS = {"1:1": (1, 1), "3:4": (3, 4), "4:3": (4, 3), "9:16": (9, 16), "16:9": (16, 9), "2:3": (2, 3), "3:2": (3, 2)}
 
@@ -196,6 +201,62 @@ class ProAliTTS:
         return (audio, json.dumps({"code": "success", "model": model, "voice": voice, "usage": d.get("usage")}, ensure_ascii=False))
 
 
-NODE_CLASS_MAPPINGS = {"ProAliImage": ProAliImage, "ProAliImageEdit": ProAliImageEdit, "ProAliTTS": ProAliTTS}
+def _audio_to_wav16k(audio):
+    """ComfyUI AUDIO → 16kHz 单声道 16bit wav 字节（比原始音频小得多，传到阿里更快）"""
+    w = audio["waveform"]
+    w = (w[0] if w.dim() == 3 else w).float().mean(dim=0, keepdim=True)  # [1,T]
+    sr = int(audio["sample_rate"])
+    if sr != 16000:
+        w = taf.resample(w, sr, 16000)
+    pcm = (w[0].cpu().numpy().clip(-1, 1) * 32767).astype(np.int16)
+    if len(pcm) > ASR_MAX_SECONDS * 16000:
+        raise RuntimeError(f"[阿里 语音识别] 音频超过 {ASR_MAX_SECONDS} 秒，请先截短")
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as f:
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(16000)
+        f.writeframes(pcm.tobytes())
+    return buf.getvalue()
+
+
+class ProAliASR:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"audio": ("AUDIO",), "language": (ASR_LANGS, {"default": "auto"})},
+                "optional": {"info": ("STRING", {"default": "", "forceInput": True})}}
+
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("text", "response")
+    FUNCTION = "run"
+    CATEGORY = "pro/aliyun"
+
+    def run(self, audio, language, info=""):
+        key, base = _creds(info)
+        wav = _audio_to_wav16k(audio)
+        body = {"model": "qwen3-asr-flash", "stream": False,
+                "messages": [{"role": "user", "content": [{"type": "input_audio", "input_audio": {"data": "data:audio/wav;base64," + base64.b64encode(wav).decode()}}]}]}
+        if language != "auto":
+            body["asr_options"] = {"language": language}
+        try:
+            r = requests.post(base + "/compatible-mode/v1/chat/completions",
+                              headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"}, json=body, timeout=ASR_TIMEOUT)
+        except requests.RequestException as e:
+            raise RuntimeError(f"[阿里 语音识别] 连不上：{type(e).__name__}")
+        try:
+            d = r.json()
+        except Exception:
+            raise RuntimeError(f"[阿里 语音识别] HTTP {r.status_code}，返回不是 JSON：{r.text[:200]}")
+        if r.status_code != 200:
+            err = d.get("error", d)
+            raise RuntimeError(f"[阿里 语音识别] HTTP {r.status_code} {err.get('code', '')}：{str(err.get('message', ''))[:300]}")
+        try:
+            text = d["choices"][0]["message"]["content"].strip()
+        except Exception:
+            raise RuntimeError("[阿里 语音识别] 返回里没有文字：" + json.dumps(d, ensure_ascii=False)[:300])
+        return (text, json.dumps({"code": "success", "seconds": (d.get("usage") or {}).get("seconds")}, ensure_ascii=False))
+
+
+NODE_CLASS_MAPPINGS = {"ProAliImage": ProAliImage, "ProAliImageEdit": ProAliImageEdit, "ProAliTTS": ProAliTTS, "ProAliASR": ProAliASR}
 NODE_DISPLAY_NAME_MAPPINGS = {"ProAliImage": "阿里 文生图（qwen-image，支持 2K）", "ProAliImageEdit": "阿里 改图（qwen-image-edit）",
-                              "ProAliTTS": "阿里 配音（qwen3-tts）"}
+                              "ProAliTTS": "阿里 配音（qwen3-tts）", "ProAliASR": "阿里 语音识别（听写，qwen3-asr）"}

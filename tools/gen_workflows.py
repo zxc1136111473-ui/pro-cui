@@ -87,8 +87,8 @@ def with_status(obj, gen_id, resp_slot):
 
 # 类别文件夹（编号不变：文档和对话里都按编号称呼；侧栏里会显示成树）
 FOLDERS = {"1-一条龙": ("12", "20"), "2-图片生成": ("01", "03", "10", "14", "17", "18"),
-           "3-改图与合成": ("02", "06", "11", "13", "15"), "4-文案": ("08", "09"),
-           "5-配音与音乐": ("05", "07", "16"), "6-视频": ("04", "19")}
+           "3-改图与合成": ("02", "06", "11", "13", "15"), "4-文案": ("08", "09", "21"),
+           "5-配音与音乐": ("05", "07", "16"), "6-视频": ("04", "19", "22")}
 
 
 def write(name, obj):
@@ -314,7 +314,11 @@ SPEC = {
     "SaveAudioAdvanced": ([("audio", "AUDIO", False)], [], []),
     "LoadVideo": ([], [("VIDEO", "VIDEO")], []),
     "LoadAudio": ([], [("AUDIO", "AUDIO")], []),
-    "ProVideoDub": ([("video", "VIDEO", False), ("voice", "AUDIO", False), ("bgm", "AUDIO", False)], [("video", "VIDEO")], []),
+    "ProVideoDub": ([("video", "VIDEO", False), ("voice", "AUDIO", False), ("bgm", "AUDIO", False), ("subtitles", "STRING", False)], [("video", "VIDEO")], []),
+    "ProSubtitles": ([("voice", "AUDIO", False)], [("srt", "STRING")], ["text"]),
+    "ProVideoAudio": ([("video", "VIDEO", False)], [("audio", "AUDIO")], []),
+    "ProAliASR": ([("audio", "AUDIO", False), ("info", "STRING", True)], [("text", "STRING"), ("response", "STRING")], []),
+    "StringConcatenate": ([("string_a", "STRING", True), ("string_b", "STRING", True)], [("STRING", "STRING")], []),
     "RelayVideoGenerator": ([("info", "STRING", True)] + [(n, t, False) for n, t in _imgs(7)],
                             [("video", "VIDEO"), ("task_id", "STRING"), ("response", "STRING"), ("video_url", "STRING")], ["prompt"]),
     "PrimitiveStringMultiline": ([], [("STRING", "STRING")], []),
@@ -537,32 +541,79 @@ def size_set():       # 18：同一张商品图、同一段提示词，一次出
     return g.build()
 
 
-def dub():            # 19：视频 + 配音 + 背景音乐 → 成片（画面不重编码）
+DUB_WIDGETS = [-14, 0, 1.5, False, "video/成片", "烧进画面", 46, 70]  # 背景音乐/配音音量、淡出、保留原声、文件名、字幕模式、字号、底边距
+SCRIPT = "夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。"
+
+
+def dub():            # 19：视频 + 配音 + 背景音乐 + 字幕 → 成片（不烧字幕时画面不重编码）
     g = Graph()
     g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
     g.add(2, "LoadVideo", (60, 470), (400, 400), ["请上传视频.mp4", "image"], title="① 上传视频（点节点上的上传按钮）")
-    g.add(3, "ProAliTTS", (520, 120), (440, 420), ["夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="② 配音文字")
-    g.add(4, "LoadAudio", (520, 600), (440, 200), ["请上传背景音乐.mp3", "", ""], title="③ 上传背景音乐（可不接）")
-    g.add(5, "ProVideoDub", (1020, 120), (420, 420), [-14, 0, 1.5, False, "video/成片"], title="④ 合成成片")
-    g.connect(31, "STRING", 3, "info"); g.connect(2, "VIDEO", 5, "video"); g.connect(3, "audio", 5, "voice"); g.connect(4, "AUDIO", 5, "bgm")
+    g.add(6, "PrimitiveStringMultiline", (520, 60), (440, 200), [SCRIPT], title="② 配音文案（同时用于配音和字幕）")
+    g.add(3, "ProAliTTS", (520, 320), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="配音")
+    g.add(7, "ProSubtitles", (520, 800), (440, 260), ["（由文案框提供）", 16, 0.0, "subtitles/字幕"], title="字幕（按配音停顿对齐，同时存 .srt）")
+    g.add(4, "LoadAudio", (60, 930), (400, 200), ["请上传背景音乐.mp3", "", ""], title="③ 上传背景音乐（可不接）")
+    g.add(5, "ProVideoDub", (1020, 60), (420, 480), DUB_WIDGETS, title="④ 合成成片（字幕模式可选「不加字幕」）")
+    g.connect(31, "STRING", 3, "info"); g.connect(6, "STRING", 3, "text"); g.connect(6, "STRING", 7, "text"); g.connect(3, "audio", 7, "voice")
+    g.connect(2, "VIDEO", 5, "video"); g.connect(3, "audio", 5, "voice"); g.connect(4, "AUDIO", 5, "bgm"); g.connect(7, "srt", 5, "subtitles")
     status(g, 3, pos=(1020, 600), title="状态：配音")
     return g.build()
 
 
-def video_pipeline():  # 20：文生视频（Veo，每天约 3 个额度）→ 配音 → 成片，一条龙
+def sub_video():      # 22：给已有视频加字幕：抽音轨 → 阿里听写 → 按停顿对齐 → 烧进画面（保留原声）
+    g = Graph()
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
+    g.add(2, "LoadVideo", (60, 470), (400, 400), ["请上传视频.mp4", "image"], title="① 上传有人声的视频")
+    g.add(8, "ProVideoAudio", (520, 120), (300, 90), title="取音轨（不解码画面）")
+    g.add(9, "ProAliASR", (520, 270), (400, 160), ["auto"], title="② 阿里听写")
+    g.add(10, "PreviewAny", (520, 480), (440, 200), title="听写结果（可先看一眼对不对）")
+    g.add(7, "ProSubtitles", (1000, 120), (440, 260), ["（由听写结果提供）", 16, 0.0, "subtitles/字幕"], title="③ 字幕（同时存 .srt）")
+    g.add(5, "ProVideoDub", (1000, 460), (420, 480), [-14, 0, 1.5, True, "video/加字幕", "烧进画面", 46, 70], title="④ 烧字幕（保留原声）")
+    g.connect(31, "STRING", 9, "info"); g.connect(2, "VIDEO", 8, "video"); g.connect(8, "audio", 9, "audio")
+    g.connect(9, "text", 10, "source"); g.connect(9, "text", 7, "text"); g.connect(8, "audio", 7, "voice")
+    g.connect(2, "VIDEO", 5, "video"); g.connect(7, "srt", 5, "subtitles")
+    status(g, 9, pos=(520, 720), title="状态：听写")
+    return g.build()
+
+
+TRANSLATE = ("你是跨境电商文案翻译。把下面的商品标题和卖点分别翻译成：英语、日语、韩语、西班牙语。每种语言前单独一行写【语言名】。"
+             "保持电商营销口吻、简洁有吸引力，符合当地表达习惯，不要逐字直译，不要添加原文没有的参数。只输出译文。")
+SRC_COPY = "标题：新鲜带叶红苹果 果形圆润 脆甜多汁\n卖点：\n1. 果皮红润光滑，光泽饱满\n2. 带果梗鲜叶，新鲜看得见\n3. 果形圆润匀称，品相出众"
+
+
+def translate():      # 21：多语言文案（阿里通用文字模型，实测英/日质量地道）
+    g = Graph()
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"))
+    g.add(4, "PrimitiveStringMultiline", (60, 470), (460, 260), [TRANSLATE], title="翻译要求（改语言在这里改）")
+    g.add(5, "PrimitiveStringMultiline", (60, 780), (460, 300), [SRC_COPY], title="原文（换成你的中文文案）")
+    g.add(6, "StringConcatenate", (580, 470), (340, 140), ["", "", "\n\n"], title="拼成完整指令")
+    g.add(2, "RelayTextGenerator", (580, 120), (420, 300), ["（由「拼成完整指令」提供）", 1, "randomize"])
+    g.add(3, "PreviewAny", (1060, 120), (500, 480), title="译文")
+    g.connect(31, "STRING", 2, "info"); g.connect(4, "STRING", 6, "string_a"); g.connect(5, "STRING", 6, "string_b")
+    g.connect(6, "STRING", 2, "prompt"); g.connect(2, "text", 3, "source")
+    status(g, 2, pos=(1060, 660))
+    return g.build()
+
+
+def video_pipeline():  # 20：文生视频（Veo，每天约 3 个额度）→ 配音 + 字幕 → 成片，一条龙
     g = Graph()
     g.add(11, "RelayAPISettings", (60, 60), (400, 300), ["video", "Veo", "v1/videos", "https://www.runninghub.cn", "veo3.1", "", "http://airelay-geminiweb:8083", "gemini-video"], title="Relay API Settings（geminiweb 视频）")
     g.add(31, "RelayAPISettings", (60, 420), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里配音）")
     g.add(12, "RelayVideoGenerator", (520, 60), (420, 420), ["一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍", "16:9", "720P", "8", 1, "fixed", "false", "false"], title="① 文生视频（Veo）")
-    g.add(3, "ProAliTTS", (520, 560), (440, 420), ["快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="② 配音文字")
-    g.add(4, "LoadAudio", (520, 1040), (440, 200), ["请上传背景音乐.mp3", "", ""], title="③ 上传背景音乐（可不接）")
-    g.add(5, "ProVideoDub", (1020, 60), (420, 420), [-14, 0, 1.5, False, "video/成片"], title="④ 合成成片（替换 Veo 自带声音）")
-    g.connect(11, "STRING", 12, "info"); g.connect(31, "STRING", 3, "info")
-    g.connect(12, "video", 5, "video"); g.connect(3, "audio", 5, "voice"); g.connect(4, "AUDIO", 5, "bgm")
-    status(g, 12, pos=(1020, 540), title="状态：视频"); status(g, 3, pos=(1020, 700), title="状态：配音")
+    g.add(6, "PrimitiveStringMultiline", (520, 560), (440, 200), ["快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！"], title="② 配音文案（同时用于配音和字幕）")
+    g.add(3, "ProAliTTS", (520, 820), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="配音")
+    g.add(7, "ProSubtitles", (520, 1300), (440, 260), ["（由文案框提供）", 16, 0.0, "subtitles/字幕"], title="字幕（按配音停顿对齐）")
+    g.add(4, "LoadAudio", (60, 780), (440, 200), ["请上传背景音乐.mp3", "", ""], title="③ 上传背景音乐（可不接）")
+    g.add(5, "ProVideoDub", (1020, 60), (420, 480), DUB_WIDGETS, title="④ 合成成片（替换 Veo 自带声音）")
+    g.connect(11, "STRING", 12, "info"); g.connect(31, "STRING", 3, "info"); g.connect(6, "STRING", 3, "text"); g.connect(6, "STRING", 7, "text")
+    g.connect(3, "audio", 7, "voice"); g.connect(12, "video", 5, "video"); g.connect(3, "audio", 5, "voice"); g.connect(4, "AUDIO", 5, "bgm")
+    g.connect(7, "srt", 5, "subtitles")
+    status(g, 12, pos=(1020, 620), title="状态：视频", nid=40); status(g, 3, pos=(1020, 780), title="状态：配音", nid=41)
     return g.build()
 
 
 write("18-多尺寸套图.json", size_set())
 write("19-成片合成.json", dub())
 write("20-文生视频成片.json", video_pipeline())
+write("21-多语言文案.json", translate())
+write("22-视频加字幕.json", sub_video())
