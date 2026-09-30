@@ -87,8 +87,8 @@ def with_status(obj, gen_id, resp_slot):
 
 # 类别文件夹（编号不变：文档和对话里都按编号称呼；侧栏里会显示成树）
 FOLDERS = {"1-一条龙": ("12", "20"), "2-图片生成": ("01", "03", "10", "14", "17", "18"),
-           "3-改图与合成": ("02", "06", "11", "13", "15"), "4-文案": ("08", "09", "21"),
-           "5-配音与音乐": ("05", "07", "16"), "6-视频": ("04", "19", "22")}
+           "3-改图与合成": ("02", "06", "11", "13", "15", "24"), "4-文案": ("08", "09", "21"),
+           "5-配音与音乐": ("05", "07", "16"), "6-视频": ("04", "19", "22", "23")}
 
 
 def write(name, obj):
@@ -322,6 +322,8 @@ SPEC = {
     "RelayVideoGenerator": ([("info", "STRING", True)] + [(n, t, False) for n, t in _imgs(7)],
                             [("video", "VIDEO"), ("task_id", "STRING"), ("response", "STRING"), ("video_url", "STRING")], ["prompt"]),
     "PrimitiveStringMultiline": ([], [("STRING", "STRING")], []),
+    "ProLabels": ([("image", "IMAGE", False)], [("image", "IMAGE")], []),
+    "ProSlideshow": ([(n, t, False) for n, t in _imgs(8)] + [("fit_audio", "AUDIO", False)], [("video", "VIDEO")], []),
 }
 
 
@@ -552,7 +554,7 @@ def dub():            # 19：视频 + 配音 + 背景音乐 + 字幕 → 成片�
     g.add(6, "PrimitiveStringMultiline", (520, 60), (440, 200), [SCRIPT], title="② 配音文案（同时用于配音和字幕）")
     g.add(3, "ProAliTTS", (520, 320), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="配音")
     g.add(7, "ProSubtitles", (520, 800), (440, 260), ["（由文案框提供）", 16, 0.0, "subtitles/字幕"], title="字幕（按配音停顿对齐，同时存 .srt）")
-    g.add(4, "LoadAudio", (60, 930), (400, 200), ["请上传背景音乐.mp3", "", ""], title="③ 上传背景音乐（可不接）")
+    g.add(4, "LoadAudio", (60, 930), (400, 200), ["无背景音乐.wav", "", ""], title="③ 背景音乐（默认是静音文件=不加；想加就上传自己的）")
     g.add(5, "ProVideoDub", (1020, 60), (420, 480), DUB_WIDGETS, title="④ 合成成片（字幕模式可选「不加字幕」）")
     g.connect(31, "STRING", 3, "info"); g.connect(6, "STRING", 3, "text"); g.connect(6, "STRING", 7, "text"); g.connect(3, "audio", 7, "voice")
     g.connect(2, "VIDEO", 5, "video"); g.connect(3, "audio", 5, "voice"); g.connect(4, "AUDIO", 5, "bgm"); g.connect(7, "srt", 5, "subtitles")
@@ -603,7 +605,7 @@ def video_pipeline():  # 20：文生视频（Veo，每天约 3 个额度）→ �
     g.add(6, "PrimitiveStringMultiline", (520, 560), (440, 200), ["快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！"], title="② 配音文案（同时用于配音和字幕）")
     g.add(3, "ProAliTTS", (520, 820), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="配音")
     g.add(7, "ProSubtitles", (520, 1300), (440, 260), ["（由文案框提供）", 16, 0.0, "subtitles/字幕"], title="字幕（按配音停顿对齐）")
-    g.add(4, "LoadAudio", (60, 780), (440, 200), ["请上传背景音乐.mp3", "", ""], title="③ 上传背景音乐（可不接）")
+    g.add(4, "LoadAudio", (60, 780), (440, 200), ["无背景音乐.wav", "", ""], title="③ 背景音乐（默认是静音文件=不加；想加就上传自己的）")
     g.add(5, "ProVideoDub", (1020, 60), (420, 480), DUB_WIDGETS, title="④ 合成成片（替换 Veo 自带声音）")
     g.connect(11, "STRING", 12, "info"); g.connect(31, "STRING", 3, "info"); g.connect(6, "STRING", 3, "text"); g.connect(6, "STRING", 7, "text")
     g.connect(3, "audio", 7, "voice"); g.connect(12, "video", 5, "video"); g.connect(3, "audio", 5, "voice"); g.connect(4, "AUDIO", 5, "bgm")
@@ -617,3 +619,40 @@ write("19-成片合成.json", dub())
 write("20-文生视频成片.json", video_pipeline())
 write("21-多语言文案.json", translate())
 write("22-视频加字幕.json", sub_video())
+
+
+def slideshow():      # 23：图片轮播短视频：图片 → 推拉 + 转场（时长跟配音走）→ 配音 + 字幕 + 背景音乐 → 成片。不依赖任何视频服务，不占 Veo 额度
+    g = Graph()
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
+    for i, nid in enumerate((2, 12, 13)):
+        g.add(nid, "LoadImage", (60, 470 + i * 460), (400, 420), ["demo_product.png", "image"], title=f"① 图片 {i + 1}（最多接 8 张，可用 12/18 出的图）")
+    g.add(6, "PrimitiveStringMultiline", (520, 60), (440, 200), ["夏日清凉，新鲜脆甜，限时三天，欢迎选购。"], title="② 配音文案（同时用于配音和字幕）")
+    g.add(3, "ProAliTTS", (520, 320), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="配音")
+    g.add(7, "ProSubtitles", (520, 800), (440, 260), ["（由文案框提供）", 12, 0.0, "subtitles/字幕"], title="字幕（按配音停顿对齐，同时存 .srt）")
+    g.add(8, "ProSlideshow", (1020, 60), (420, 460), ["9:16", 720, 2.5, 0.5, 1.15, 24, "video/轮播"], title="③ 图片轮播（时长自动跟配音走）")
+    g.add(4, "LoadAudio", (520, 1120), (440, 200), ["无背景音乐.wav", "", ""], title="④ 背景音乐（默认静音=不加；想加就上传自己的）")
+    g.add(5, "ProVideoDub", (1020, 600), (420, 480), [-14, 0, 1.5, False, "video/轮播成片", "烧进画面", 46, 70], title="⑤ 合成成片")
+    g.connect(31, "STRING", 3, "info"); g.connect(6, "STRING", 3, "text"); g.connect(6, "STRING", 7, "text"); g.connect(3, "audio", 7, "voice")
+    for k, nid in enumerate((2, 12, 13), 1):
+        g.connect(nid, "IMAGE", 8, f"image{k}")
+    g.connect(3, "audio", 8, "fit_audio")
+    g.connect(8, "video", 5, "video"); g.connect(3, "audio", 5, "voice"); g.connect(4, "AUDIO", 5, "bgm"); g.connect(7, "srt", 5, "subtitles")
+    status(g, 3, pos=(1020, 1120), title="状态：配音")
+    return g.build()
+
+
+write("23-图片轮播短视频.json", slideshow())
+
+
+def labels():         # 24：给图片叠加价格 / 活动语标签（真字体渲染，文字一字不差；AI 海报里的价格文字偶尔会错）
+    g = Graph()
+    g.add(2, "LoadImage", (60, 120), (400, 420), ["demo_product.png", "image"], title="① 上传主图（可接 12/18/14 出的图）")
+    g.add(3, "ProLabels", (520, 120), (460, 700),
+          ["圆角矩形", 3.0, "限时三天", "左上", "红底白字", 5.0, "满199减50", "右下", "黄底黑字", 6.0, "新品首发", "左下", "黑底金字", 4.5],
+          title="② 促销标签（3 个，文字留空=不加；样式/位置/大小按图片宽度的百分比）")
+    g.add(4, "SaveImage", (1040, 120), (340, 320), ["labels/促销图"], title="保存")
+    g.connect(2, "IMAGE", 3, "image"); g.connect(3, "image", 4, "images")
+    return g.build()
+
+
+write("24-促销标签叠加.json", labels())

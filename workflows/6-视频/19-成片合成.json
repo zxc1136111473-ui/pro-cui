@@ -251,11 +251,11 @@
         "Node name for S&R": "LoadAudio"
       },
       "widgets_values": [
-        "请上传背景音乐.mp3",
+        "无背景音乐.wav",
         "",
         ""
       ],
-      "title": "③ 上传背景音乐（可不接）"
+      "title": "③ 背景音乐（默认是静音文件=不加；想加就上传自己的）"
     },
     {
       "id": 5,

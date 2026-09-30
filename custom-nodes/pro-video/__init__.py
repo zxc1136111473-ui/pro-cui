@@ -357,6 +357,104 @@ class ProVideoDub:
                 "result": (InputImpl.VideoFromFile(path),)}
 
 
-NODE_CLASS_MAPPINGS = {"ProVideoDub": ProVideoDub, "ProVideoAudio": ProVideoAudio, "ProSubtitles": ProSubtitles}
+# ── 图片轮播成视频 ────────────────────────────────────────────────────────────
+RATIOS = {"9:16": (9, 16), "1:1": (1, 1), "16:9": (16, 9), "3:4": (3, 4), "4:3": (4, 3)}
+
+
+def _out_size(ratio, short_side):
+    w, h = RATIOS[ratio]
+    k = short_side / min(w, h)
+    return int(round(w * k / 2) * 2), int(round(h * k / 2) * 2)  # 编码要偶数
+
+
+def _cover_base(img, out_w, out_h, zoom_max):
+    """按「铺满」缩放成比输出大 zoom_max 倍的底图（推拉时从里面取窗口，最清晰处是原生分辨率）"""
+    s = max(out_w * zoom_max / img.width, out_h * zoom_max / img.height)
+    return img.resize((int(np.ceil(img.width * s)), int(np.ceil(img.height * s))), Image.LANCZOS)
+
+
+def _kb_frame(base, out_w, out_h, zoom_max, p, zoom_in, pan):
+    """Ken Burns 一帧：p∈[0,1]；zoom_in 决定是推近还是拉远；pan=-1/0/1 左右缓移"""
+    e = p * p * (3 - 2 * p)  # 缓入缓出
+    z = 1 + (zoom_max - 1) * (e if zoom_in else 1 - e)
+    ww, wh = out_w * zoom_max / z, out_h * zoom_max / z
+    ww, wh = min(ww, base.width), min(wh, base.height)
+    x0 = (base.width - ww) / 2 + pan * (base.width - ww) / 2 * (e - 0.5) * 1.0
+    y0 = (base.height - wh) / 2
+    x0 = min(max(0.0, x0), base.width - ww)
+    return np.asarray(base.resize((out_w, out_h), Image.BILINEAR, box=(x0, y0, x0 + ww, y0 + wh)))
+
+
+class ProSlideshow:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "ratio": (list(RATIOS), {"default": "9:16"}),
+            "short_side": ([720, 1080], {"default": 720}),
+            "seconds_per_image": ("FLOAT", {"default": 2.5, "min": 0.8, "max": 12.0, "step": 0.1}),
+            "transition_s": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 2.0, "step": 0.1}),
+            "zoom": ("FLOAT", {"default": 1.15, "min": 1.0, "max": 1.5, "step": 0.01}),
+            "fps": ([24, 30], {"default": 24}),
+            "filename_prefix": ("STRING", {"default": "video/轮播"})},
+            "optional": dict({f"image{i}": ("IMAGE",) for i in range(1, 9)}, fit_audio=("AUDIO",))}
+
+    RETURN_TYPES = ("VIDEO",)
+    RETURN_NAMES = ("video",)
+    FUNCTION = "run"
+    OUTPUT_NODE = True
+    CATEGORY = "pro/video"
+
+    def run(self, ratio, short_side, seconds_per_image, transition_s, zoom, fps, filename_prefix, fit_audio=None, **imgs):
+        pil = []
+        for k in sorted(imgs):
+            t = imgs[k]
+            if t is None:
+                continue
+            for b in t:  # 每个 IMAGE 输入可能是一批图
+                pil.append(Image.fromarray((b.cpu().numpy().clip(0, 1) * 255).astype(np.uint8)).convert("RGB"))
+        n = len(pil)
+        if n == 0:
+            raise RuntimeError("[轮播] 没有图片：至少接入一张")
+        ow, oh = _out_size(ratio, short_side)
+        tr = min(transition_s, seconds_per_image * 0.45) if n > 1 else 0.0
+        dur = seconds_per_image
+        if fit_audio is not None:  # 总时长 = 配音长度 + 0.8 秒，平均分给每张
+            a_len = fit_audio["waveform"].shape[-1] / float(fit_audio["sample_rate"])
+            dur = max(0.8, (a_len + 0.8 + (n - 1) * tr) / n)
+        total = n * dur - (n - 1) * tr
+        nframes = max(1, int(round(total * fps)))
+        bases = [_cover_base(im, ow, oh, zoom) for im in pil]
+        del pil
+
+        folder, name, counter, subfolder, _ = folder_paths.get_save_image_path(filename_prefix, folder_paths.get_output_directory())
+        os.makedirs(folder, exist_ok=True)
+        fname = f"{name}_{counter:05}_.mp4"
+        path = os.path.join(folder, fname)
+        out = av.open(path, "w", format="mp4")
+        ov = out.add_stream("libx264", rate=fps)
+        ov.width, ov.height, ov.pix_fmt = ow, oh, "yuv420p"
+        ov.options = {"crf": "20", "preset": "veryfast"}
+        step = dur - tr  # 相邻两张的起点间隔
+        for i in range(nframes):
+            t = i / fps
+            k = min(n - 1, int(t // step)) if step > 0 else 0
+            def frame_of(j):
+                return _kb_frame(bases[j], ow, oh, zoom, min(1.0, max(0.0, (t - j * step) / dur)), j % 2 == 0, (1 if j % 4 < 2 else -1))
+            f = frame_of(k)
+            if k > 0 and tr > 0 and t < k * step + tr:  # 处在与上一张的转场里：交叉淡化
+                a = (t - k * step) / tr
+                f = (frame_of(k - 1).astype(np.float32) * (1 - a) + f.astype(np.float32) * a).astype(np.uint8)
+            fr = av.VideoFrame.from_ndarray(f, format="rgb24")
+            fr.pts, fr.time_base = i, Fraction(1, fps)
+            for p in ov.encode(fr):
+                out.mux(p)
+        for p in ov.encode(None):
+            out.mux(p)
+        out.close()
+        return {"ui": {"images": [{"filename": fname, "subfolder": subfolder, "type": "output"}], "animated": (True,)},
+                "result": (InputImpl.VideoFromFile(path),)}
+
+
+NODE_CLASS_MAPPINGS = {"ProVideoDub": ProVideoDub, "ProVideoAudio": ProVideoAudio, "ProSubtitles": ProSubtitles, "ProSlideshow": ProSlideshow}
 NODE_DISPLAY_NAME_MAPPINGS = {"ProVideoDub": "视频配音合成（配音 + 背景音乐 + 可烧字幕）", "ProVideoAudio": "视频取音轨（不解码画面）",
-                              "ProSubtitles": "字幕生成（文字 + 配音 → SRT）"}
+                              "ProSubtitles": "字幕生成（文字 + 配音 → SRT）", "ProSlideshow": "图片轮播成视频（推拉镜头 + 转场）"}

@@ -1,13 +1,13 @@
 {
-  "last_node_id": 41,
-  "last_link_id": 11,
+  "last_node_id": 32,
+  "last_link_id": 13,
   "nodes": [
     {
-      "id": 11,
+      "id": 31,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        60
+        120
       ],
       "size": [
         400,
@@ -31,46 +31,6 @@
         "Node name for S&R": "RelayAPISettings"
       },
       "widgets_values": [
-        "video",
-        "Veo",
-        "v1/videos",
-        "https://www.runninghub.cn",
-        "veo3.1",
-        "",
-        "http://airelay-geminiweb:8083",
-        "gemini-video"
-      ],
-      "title": "Relay API Settings（geminiweb 视频）"
-    },
-    {
-      "id": 31,
-      "type": "RelayAPISettings",
-      "pos": [
-        60,
-        420
-      ],
-      "size": [
-        400,
-        300
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            2
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "RelayAPISettings"
-      },
-      "widgets_values": [
         "text",
         "OpenaiText",
         "v1/chat/completions",
@@ -79,22 +39,175 @@
         "",
         "https://dashscope.aliyuncs.com",
         "qwen3.8-flash"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        470
       ],
-      "title": "Relay API Settings（阿里配音）"
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            5
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "① 图片 1（最多接 8 张，可用 12/18 出的图）"
     },
     {
       "id": 12,
-      "type": "RelayVideoGenerator",
+      "type": "LoadImage",
+      "pos": [
+        60,
+        930
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "① 图片 2（最多接 8 张，可用 12/18 出的图）"
+    },
+    {
+      "id": 13,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        1390
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "① 图片 3（最多接 8 张，可用 12/18 出的图）"
+    },
+    {
+      "id": 6,
+      "type": "PrimitiveStringMultiline",
       "pos": [
         520,
         60
       ],
       "size": [
-        420,
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            2,
+            3
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "夏日清凉，新鲜脆甜，限时三天，欢迎选购。"
+      ],
+      "title": "② 配音文案（同时用于配音和字幕）"
+    },
+    {
+      "id": 3,
+      "type": "ProAliTTS",
+      "pos": [
+        520,
+        320
+      ],
+      "size": [
+        440,
         420
       ],
       "flags": {},
-      "order": 2,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
@@ -106,147 +219,9 @@
           }
         },
         {
-          "name": "image1",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image2",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image3",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image4",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image5",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image6",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image7",
-          "type": "IMAGE",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "video",
-          "type": "VIDEO",
-          "links": [
-            6
-          ],
-          "slot_index": 0
-        },
-        {
-          "name": "task_id",
-          "type": "STRING",
-          "links": null,
-          "slot_index": 1
-        },
-        {
-          "name": "response",
-          "type": "STRING",
-          "links": [
-            10
-          ],
-          "slot_index": 2
-        },
-        {
-          "name": "video_url",
-          "type": "STRING",
-          "links": null,
-          "slot_index": 3
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "RelayVideoGenerator"
-      },
-      "widgets_values": [
-        "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍",
-        "16:9",
-        "720P",
-        "8",
-        1,
-        "fixed",
-        "false",
-        "false"
-      ],
-      "title": "① 文生视频（Veo）"
-    },
-    {
-      "id": 6,
-      "type": "PrimitiveStringMultiline",
-      "pos": [
-        520,
-        560
-      ],
-      "size": [
-        440,
-        200
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            3,
-            4
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PrimitiveStringMultiline"
-      },
-      "widgets_values": [
-        "快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！"
-      ],
-      "title": "② 配音文案（同时用于配音和字幕）"
-    },
-    {
-      "id": 3,
-      "type": "ProAliTTS",
-      "pos": [
-        520,
-        820
-      ],
-      "size": [
-        440,
-        420
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "info",
-          "type": "STRING",
-          "link": 2,
-          "widget": {
-            "name": "info"
-          }
-        },
-        {
           "name": "text",
           "type": "STRING",
-          "link": 3,
+          "link": 2,
           "widget": {
             "name": "text"
           }
@@ -257,8 +232,9 @@
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            5,
-            7
+            4,
+            8,
+            10
           ],
           "slot_index": 0
         },
@@ -266,7 +242,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            11
+            13
           ],
           "slot_index": 1
         }
@@ -288,25 +264,25 @@
       "type": "ProSubtitles",
       "pos": [
         520,
-        1300
+        800
       ],
       "size": [
         440,
         260
       ],
       "flags": {},
-      "order": 5,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
           "name": "voice",
           "type": "AUDIO",
-          "link": 5
+          "link": 4
         },
         {
           "name": "text",
           "type": "STRING",
-          "link": 4,
+          "link": 3,
           "widget": {
             "name": "text"
           }
@@ -317,7 +293,7 @@
           "name": "srt",
           "type": "STRING",
           "links": [
-            9
+            12
           ],
           "slot_index": 0
         }
@@ -327,25 +303,110 @@
       },
       "widgets_values": [
         "（由文案框提供）",
-        16,
+        12,
         0.0,
         "subtitles/字幕"
       ],
-      "title": "字幕（按配音停顿对齐）"
+      "title": "字幕（按配音停顿对齐，同时存 .srt）"
+    },
+    {
+      "id": 8,
+      "type": "ProSlideshow",
+      "pos": [
+        1020,
+        60
+      ],
+      "size": [
+        420,
+        460
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 5
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 6
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": 7
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image8",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "fit_audio",
+          "type": "AUDIO",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProSlideshow"
+      },
+      "widgets_values": [
+        "9:16",
+        720,
+        2.5,
+        0.5,
+        1.15,
+        24,
+        "video/轮播"
+      ],
+      "title": "③ 图片轮播（时长自动跟配音走）"
     },
     {
       "id": 4,
       "type": "LoadAudio",
       "pos": [
-        60,
-        780
+        520,
+        1120
       ],
       "size": [
         440,
         200
       ],
       "flags": {},
-      "order": 6,
+      "order": 8,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -353,7 +414,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            8
+            11
           ],
           "slot_index": 0
         }
@@ -366,42 +427,42 @@
         "",
         ""
       ],
-      "title": "③ 背景音乐（默认是静音文件=不加；想加就上传自己的）"
+      "title": "④ 背景音乐（默认静音=不加；想加就上传自己的）"
     },
     {
       "id": 5,
       "type": "ProVideoDub",
       "pos": [
         1020,
-        60
+        600
       ],
       "size": [
         420,
         480
       ],
       "flags": {},
-      "order": 7,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 6
+          "link": 9
         },
         {
           "name": "voice",
           "type": "AUDIO",
-          "link": 7
+          "link": 10
         },
         {
           "name": "bgm",
           "type": "AUDIO",
-          "link": 8
+          "link": 11
         },
         {
           "name": "subtitles",
           "type": "STRING",
-          "link": 9
+          "link": 12
         }
       ],
       "outputs": [
@@ -420,60 +481,32 @@
         0,
         1.5,
         false,
-        "video/成片",
+        "video/轮播成片",
         "烧进画面",
         46,
         70
       ],
-      "title": "④ 合成成片（替换 Veo 自带声音）"
+      "title": "⑤ 合成成片"
     },
     {
-      "id": 40,
+      "id": 32,
       "type": "PreviewAny",
       "pos": [
         1020,
-        620
+        1120
       ],
       "size": [
         360,
         110
       ],
       "flags": {},
-      "order": 8,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 10
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [],
-      "title": "状态：视频"
-    },
-    {
-      "id": 41,
-      "type": "PreviewAny",
-      "pos": [
-        1020,
-        780
-      ],
-      "size": [
-        360,
-        110
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 11
+          "link": 13
         }
       ],
       "outputs": [],
@@ -487,14 +520,6 @@
   "links": [
     [
       1,
-      11,
-      0,
-      12,
-      0,
-      "STRING"
-    ],
-    [
-      2,
       31,
       0,
       3,
@@ -502,7 +527,7 @@
       "STRING"
     ],
     [
-      3,
+      2,
       6,
       0,
       3,
@@ -510,7 +535,7 @@
       "STRING"
     ],
     [
-      4,
+      3,
       6,
       0,
       7,
@@ -518,7 +543,7 @@
       "STRING"
     ],
     [
-      5,
+      4,
       3,
       0,
       7,
@@ -526,15 +551,47 @@
       "AUDIO"
     ],
     [
+      5,
+      2,
+      0,
+      8,
+      0,
+      "IMAGE"
+    ],
+    [
       6,
       12,
+      0,
+      8,
+      1,
+      "IMAGE"
+    ],
+    [
+      7,
+      13,
+      0,
+      8,
+      2,
+      "IMAGE"
+    ],
+    [
+      8,
+      3,
+      0,
+      8,
+      8,
+      "AUDIO"
+    ],
+    [
+      9,
+      8,
       0,
       5,
       0,
       "VIDEO"
     ],
     [
-      7,
+      10,
       3,
       0,
       5,
@@ -542,7 +599,7 @@
       "AUDIO"
     ],
     [
-      8,
+      11,
       4,
       0,
       5,
@@ -550,7 +607,7 @@
       "AUDIO"
     ],
     [
-      9,
+      12,
       7,
       0,
       5,
@@ -558,18 +615,10 @@
       "STRING"
     ],
     [
-      10,
-      12,
-      2,
-      40,
-      0,
-      "STRING"
-    ],
-    [
-      11,
+      13,
       3,
       1,
-      41,
+      32,
       0,
       "STRING"
     ]

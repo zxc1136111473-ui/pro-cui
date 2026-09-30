@@ -289,6 +289,7 @@ run_container() {
 
   # 自带自定义节点必须在容器启动前铺好，首次部署就能加载
   seed_custom_nodes
+  seed_assets
 
   # ★ 数据目录都挂到 app/ 下：ComfyUI 按源码目录找 models/custom_nodes/output/input/user
   #   （user/ 里是网页保存的工作流、界面设置、Manager 配置、comfyui.db）
@@ -367,6 +368,20 @@ seed_workflows() {
     cp "$f" "$dstdir/$rel" && n=$((n + 1))
   done < <(find "$srcdir" -name '*.json' -print0)
   [ "$n" -gt 0 ] && say "  已铺入 $n 个内置工作流（Key 见 README：网关 id 1、geminiweb id 11、Suno id 21、阿里 id 31）" || true
+}
+
+# 铺入本套件自带的输入素材（assets/* → data/input/*）。目前只有一个 1 秒静音的「无背景音乐.wav」，
+# 让成片模板里的背景音乐节点开箱即用（不想加 BGM 就保持它）。已存在的不覆盖。
+seed_assets() {
+  local srcdir="$APP_DIR/assets" dstdir="$APP_DIR/data/input"
+  [ -d "$srcdir" ] || return 0
+  mkdir -p "$dstdir"
+  local f base
+  for f in "$srcdir"/*; do
+    [ -f "$f" ] || continue
+    base="$(basename "$f")"
+    [ -e "$dstdir/$base" ] || cp "$f" "$dstdir/$base"
+  done
 }
 
 # 铺入本套件自带的自定义节点（custom-nodes/<名字>/ → data/custom_nodes/<名字>/）。已存在的不覆盖。
