@@ -6,7 +6,7 @@
 ## 文件
 
 ```
-comfyui-deploy/
+(仓库根目录)
   deploy.sh    一键部署脚本（交互菜单 + 非交互参数）
   Dockerfile   CPU 版 PyTorch 镜像（无 CUDA，省 ~4GB）
   .dockerignore  构建只带 requirements，不把 data/ backups/ 打进构建上下文（传服务器别漏了这个点文件）
@@ -18,8 +18,7 @@ comfyui-deploy/
 ## 怎么用（在服务器上）
 
 ```bash
-# 把 comfyui-deploy/ 传到服务器（或 git clone 仓库后取这份）
-cd comfyui-deploy
+git clone https://github.com/zxc1136111473-ui/pro-cui.git && cd pro-cui   # 在服务器上
 bash deploy.sh                    # 交互菜单
 bash deploy.sh --install -y --port 8188   # 一条命令装完
 ```
