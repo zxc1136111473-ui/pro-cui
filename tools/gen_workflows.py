@@ -88,7 +88,7 @@ def with_status(obj, gen_id, resp_slot):
 # 类别文件夹（编号不变：文档和对话里都按编号称呼；侧栏里会显示成树）
 FOLDERS = {"1-一条龙": ("12", "20"), "2-图片生成": ("01", "03", "10", "14", "17", "18"),
            "3-改图与合成": ("02", "06", "11", "13", "15", "24"), "4-文案": ("08", "09", "21"),
-           "5-配音与音乐": ("05", "07", "16"), "6-视频": ("04", "19", "22", "23")}
+           "5-配音与音乐": ("05", "07", "16", "25", "26"), "6-视频": ("04", "19", "22", "23")}
 
 
 def write(name, obj):
@@ -310,7 +310,9 @@ SPEC = {
     "ProAliImage": ([("info", "STRING", True)], [("image", "IMAGE"), ("response", "STRING")], ["prompt"]),
     "ProAliImageEdit": ([("info", "STRING", True), ("image1", "IMAGE", False), ("image2", "IMAGE", False), ("image3", "IMAGE", False)],
                         [("image", "IMAGE"), ("response", "STRING")], ["prompt"]),
-    "ProAliTTS": ([("info", "STRING", True)], [("audio", "AUDIO"), ("response", "STRING")], ["text"]),
+    "ProAliTTS": ([("info", "STRING", True)], [("audio", "AUDIO"), ("response", "STRING")], ["text", "custom_voice"]),
+    "ProAliVoiceDesign": ([("info", "STRING", True)], [("voice", "STRING"), ("preview", "AUDIO")], []),
+    "ProAliVoiceClone": ([("audio", "AUDIO", False), ("info", "STRING", True)], [("voice", "STRING")], []),
     "SaveAudioAdvanced": ([("audio", "AUDIO", False)], [], []),
     "LoadVideo": ([], [("VIDEO", "VIDEO")], []),
     "LoadAudio": ([], [("AUDIO", "AUDIO")], []),
@@ -496,7 +498,7 @@ def ali_edit():       # 15 商品改图（阿里）：默认换纯白背景；�
 def ali_tts():        # 16 配音（阿里）
     g = Graph()
     g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
-    g.add(2, "ProAliTTS", (520, 120), (440, 420), ["夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="阿里 配音（instruct 模型可写语气指令）")
+    g.add(2, "ProAliTTS", (520, 120), (440, 420), ["夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。", "Cherry", "qwen3-tts-flash", "Chinese", "", 1.0, 0.0, ""], title="阿里 配音（instruct 模型可写语气指令）")
     g.add(3, "SaveAudioAdvanced", (1020, 120), (340, 200), ["audio/配音", "mp3", "V0"], title="保存配音")
     g.connect(31, "STRING", 2, "info"); g.connect(2, "audio", 3, "audio")
     status(g, 2, pos=(1020, 380))
@@ -552,7 +554,7 @@ def dub():            # 19：视频 + 配音 + 背景音乐 + 字幕 → 成片�
     g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
     g.add(2, "LoadVideo", (60, 470), (400, 400), ["请上传视频.mp4", "image"], title="① 上传视频（点节点上的上传按钮）")
     g.add(6, "PrimitiveStringMultiline", (520, 60), (440, 200), [SCRIPT], title="② 配音文案（同时用于配音和字幕）")
-    g.add(3, "ProAliTTS", (520, 320), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="配音")
+    g.add(3, "ProAliTTS", (520, 320), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", "", 1.0, 0.0, ""], title="配音")
     g.add(7, "ProSubtitles", (520, 800), (440, 260), ["（由文案框提供）", 16, 0.0, "subtitles/字幕"], title="字幕（按配音停顿对齐，同时存 .srt）")
     g.add(4, "LoadAudio", (60, 930), (400, 200), ["无背景音乐.wav", "", ""], title="③ 背景音乐（默认是静音文件=不加；想加就上传自己的）")
     g.add(5, "ProVideoDub", (1020, 60), (420, 480), DUB_WIDGETS, title="④ 合成成片（字幕模式可选「不加字幕」）")
@@ -603,7 +605,7 @@ def video_pipeline():  # 20：文生视频（Veo，每天约 3 个额度）→ �
     g.add(31, "RelayAPISettings", (60, 420), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里配音）")
     g.add(12, "RelayVideoGenerator", (520, 60), (420, 420), ["一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍", "16:9", "720P", "8", 1, "fixed", "false", "false"], title="① 文生视频（Veo）")
     g.add(6, "PrimitiveStringMultiline", (520, 560), (440, 200), ["快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！"], title="② 配音文案（同时用于配音和字幕）")
-    g.add(3, "ProAliTTS", (520, 820), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="配音")
+    g.add(3, "ProAliTTS", (520, 820), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", "", 1.0, 0.0, ""], title="配音")
     g.add(7, "ProSubtitles", (520, 1300), (440, 260), ["（由文案框提供）", 16, 0.0, "subtitles/字幕"], title="字幕（按配音停顿对齐）")
     g.add(4, "LoadAudio", (60, 780), (440, 200), ["无背景音乐.wav", "", ""], title="③ 背景音乐（默认是静音文件=不加；想加就上传自己的）")
     g.add(5, "ProVideoDub", (1020, 60), (420, 480), DUB_WIDGETS, title="④ 合成成片（替换 Veo 自带声音）")
@@ -627,7 +629,7 @@ def slideshow():      # 23：图片轮播短视频：图片 → 推拉 + 转场�
     for i, nid in enumerate((2, 12, 13)):
         g.add(nid, "LoadImage", (60, 470 + i * 460), (400, 420), ["demo_product.png", "image"], title=f"① 图片 {i + 1}（最多接 8 张，可用 12/18 出的图）")
     g.add(6, "PrimitiveStringMultiline", (520, 60), (440, 200), ["夏日清凉，新鲜脆甜，限时三天，欢迎选购。"], title="② 配音文案（同时用于配音和字幕）")
-    g.add(3, "ProAliTTS", (520, 320), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", ""], title="配音")
+    g.add(3, "ProAliTTS", (520, 320), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", "", 1.0, 0.0, ""], title="配音")
     g.add(7, "ProSubtitles", (520, 800), (440, 260), ["（由文案框提供）", 12, 0.0, "subtitles/字幕"], title="字幕（按配音停顿对齐，同时存 .srt）")
     g.add(8, "ProSlideshow", (1020, 60), (420, 460), ["9:16", 720, 2.5, 0.5, 1.15, 24, "video/轮播"], title="③ 图片轮播（时长自动跟配音走）")
     g.add(4, "LoadAudio", (520, 1120), (440, 200), ["无背景音乐.wav", "", ""], title="④ 背景音乐（默认静音=不加；想加就上传自己的）")
@@ -656,3 +658,37 @@ def labels():         # 24：给图片叠加价格 / 活动语标签（真字体
 
 
 write("24-促销标签叠加.json", labels())
+
+
+def voice_design():   # 25：文字描述设计新音色 → 试听 + 用它配音；音色 id 存在阿里账号里，可粘进 16/19/20 配音节点的「自定义音色」
+    g = Graph()
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
+    g.add(2, "ProAliVoiceDesign", (520, 120), (460, 420),
+          ["沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍", "欢迎选购我们的新品，限时三天，满一百九十九减五十。", "myvoice", "zh"], title="① 描述你要的声音（试听文字用来生成试听音频）")
+    g.add(3, "ProAliTTS", (1040, 120), (440, 460), ["这是用新设计的音色配的音，夏日清凉节，欢迎选购。", "Cherry", "qwen3-tts-flash", "Chinese", "", 1.0, 0.0, ""], title="② 用新音色配音（自定义音色已连上，上面的音色/模型被忽略）")
+    g.add(4, "SaveAudioAdvanced", (520, 600), (340, 200), ["audio/音色试听", "mp3", "V0"], title="保存试听")
+    g.add(5, "SaveAudioAdvanced", (1540, 120), (340, 200), ["audio/自定义音色配音", "mp3", "V0"], title="保存配音")
+    g.add(6, "PreviewAny", (900, 600), (400, 120), title="音色 id（复制到其他工作流配音节点的「自定义音色」框里可反复使用）")
+    g.connect(31, "STRING", 2, "info"); g.connect(31, "STRING", 3, "info")
+    g.connect(2, "voice", 3, "custom_voice"); g.connect(2, "voice", 6, "source")
+    g.connect(2, "preview", 4, "audio"); g.connect(3, "audio", 5, "audio")
+    return g.build()
+
+
+write("25-音色设计.json", voice_design())
+
+
+def voice_clone():    # 26：上传一段样音克隆声音 → 用它配音（只克隆本人或已获授权的声音）
+    g = Graph()
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
+    g.add(4, "LoadAudio", (60, 470), (400, 300), ["无背景音乐.wav", "", ""], title="① 上传样音（10~60 秒清晰人声，只用本人或已获授权的声音；点上传按钮换掉默认的静音）")
+    g.add(2, "ProAliVoiceClone", (520, 120), (420, 200), ["myclone"], title="② 克隆音色")
+    g.add(3, "ProAliTTS", (1000, 120), (440, 460), ["这是用克隆出来的音色配的音，夏日清凉节，欢迎选购。", "Cherry", "qwen3-tts-flash", "Chinese", "", 1.0, 0.0, ""], title="③ 用克隆音色配音")
+    g.add(5, "SaveAudioAdvanced", (1500, 120), (340, 200), ["audio/克隆配音", "mp3", "V0"], title="保存配音")
+    g.add(6, "PreviewAny", (520, 400), (400, 120), title="音色 id（复制到其他工作流配音节点的「自定义音色」框里可反复使用）")
+    g.connect(31, "STRING", 2, "info"); g.connect(31, "STRING", 3, "info"); g.connect(4, "AUDIO", 2, "audio")
+    g.connect(2, "voice", 3, "custom_voice"); g.connect(2, "voice", 6, "source"); g.connect(3, "audio", 5, "audio")
+    return g.build()
+
+
+write("26-声音克隆.json", voice_clone())

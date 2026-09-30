@@ -14,7 +14,7 @@
                  部署时保持子目录铺进 ComfyUI，已存在的不覆盖；编号不变，文档里都按编号称呼
   custom-nodes/  本套件自带并自己维护的插件和节点（启动容器前铺进 data/custom_nodes，已存在的不覆盖）：
                  ComfyUI-relayapi（第三方插件的拷贝，含本地修改，见其 UPSTREAM.md）、pro-gemini-music、pro-poster、
-                 pro-ali（阿里生图/改图/配音/听写）、pro-video（视频配音合成/取音轨/字幕生成/烧字幕/图片轮播）、pro-image（促销标签叠加）
+                 pro-ali（阿里生图/改图/配音/听写/音色设计/声音克隆）、pro-video（视频配音合成/取音轨/字幕生成/烧字幕/图片轮播）、pro-image（促销标签叠加）
   assets/        随套件铺进 data/input 的素材（无背景音乐.wav：19/20/23 默认 BGM，静音占位）
   tools/         gen_workflows.py：workflows/*.json 的生成脚本（改模板改这里，再 python3 tools/gen_workflows.py）
                  batch_run.py：按 CSV 批量跑任意工作流（见「批量跑」）
@@ -134,7 +134,9 @@ r) 重启容器（docker restart，不删容器，约 1 秒）   R) 重建容器
 | 图片（阿里） | 14 高清出图 / 17 高清海报 | `qwen-image-2.0-pro`，**2K 出图（2048）**，中文文字准确；`qwen-image-3.0` 只用 1K（2K 会超时） | 31 |
 | 图片（阿里） | 15 商品改图 | `qwen-image-edit-max`：换背景时商品与原图几乎逐像素一致；改 prompt 可做去水印/换色/改字等局部修改 | 31 |
 | 文字 | 08 文案生成 / 09 看图写文案 | 阿里 `qwen3.8-flash` / `qwen3.8-omni-flash`（比 Gemini 稳，看图不编参数）；看图前必须先缩到最长边 768，否则大图传阿里超过 180 秒 | 31 |
-| 音频 | 16 配音 | `pro-ali` 节点，`qwen3-tts-flash`（50 个音色）/ `instruct`（可写语气指令），中/英/日/韩/德/法/西/意/葡/俄，几秒出 | 31 |
+| 音频 | 16 配音 | `pro-ali` 节点，`qwen3-tts-flash`（50 个音色）/ `instruct`（可写语气指令），中/英/日/韩/德/法/西/意/葡/俄，几秒出；**语速 0.5~2 倍（本地变速不变调）和音量 ±dB 在本地处理**——阿里接口本身没有语速/音调参数，情绪靠 instruct 的语气指令 | 31 |
+| 音频 | 25 音色设计 | 用文字描述设计新音色（如「活泼的年轻女声，像直播间主播」）→ 试听 + 用它配音；音色 id 存在阿里账号里可反复用，粘进 16/19/20 配音节点的「自定义音色」框即可（填了就忽略下拉的音色和模型） | 31 |
+| 音频 | 26 声音克隆 | 上传一段 10~60 秒清晰人声 → 克隆音色 → 配音；**只克隆本人或已获授权的声音** | 31 |
 | 音频 | 05 音乐 Suno / 07 音乐 Gemini | 05 只用假服务测过连线；07 走 geminiweb 的 gemini-music，约 1 分钟 MP3，成功率约一半 | 21 / 11 |
 | 视频 | 04 文生视频 | geminiweb 的 Veo；Pro 账号每天约 3 个额度，用尽约 30 秒报错；Google 侧会间歇性卡住（预热无响应/请求超时） | 11 |
 | 成片 | 19 成片合成 | 视频 + 配音 + 背景音乐（+ 字幕）→ 成片：一个文案框同时喂给配音和字幕；字幕按配音里的**停顿**对齐并另存 `.srt`（可导入剪映）；「不加字幕」时**直接复制画面流**（画面逐字节不变，几秒完成），「烧进画面」时逐帧重编码（10 秒 720p 约 12 秒） | 31 |
@@ -154,7 +156,7 @@ r) 重启容器（docker restart，不删容器，约 1 秒）   R) 重建容器
 
 **阿里未开通的产品**：MiniMax 配音（`MiniMax/speech-2.8-*`）在模型列表里能看到，但调用返回「产品未开通」，要在百炼控制台开通后才能用；`qwen-mt` 翻译需要另外的参数格式，用通用模型翻译已经够好。阿里听写（ASR）实测 6 秒音频从这台服务器约 20 秒（上传慢）。
 
-**已知限制**：gemini-image 实际只出约 1K（要大图用 14/17 或 06）；服务器只有 2 核，构建镜像时出图会 503 过载；官方「合作方」节点（走 Comfy 积分）填不了自己的 key，不可用；没有图生视频（Veo 通路没传参考图，阿里 key 里也没有视频模型）；没有抠图/透明底；23 的轮播只有缓慢推拉和淡入淡出两种效果。
+**已知限制**：gemini-image 实际只出约 1K（要大图用 14/17 或 06）；服务器只有 2 核，构建镜像时出图会 503 过载；官方「合作方」节点（走 Comfy 积分）填不了自己的 key，不可用；没有图生视频（Veo 通路没传参考图，阿里 key 里也没有视频模型）；没有抠图/透明底；自定义音色 id 存在阿里账号里，本套件不管理（删除要调阿里的 customization 接口 `action:delete`）；23 的轮播只有缓慢推拉和淡入淡出两种效果。
 
 **relayapi 由本仓库自己维护**：`custom-nodes/ComfyUI-relayapi/` 是上游（MIT）的拷贝，没有 `.git`，「更新插件」会跳过它；
 本地改了一处：插件前端脚本在节点刚加载时会把工作流里保存的比例改成 1:1 / auto（03 封面 16:9 在界面里打开就变 1:1），
@@ -178,6 +180,33 @@ base_url 填 New API **根地址，不要带 `/v1`**（节点自己拼路径）�
 - **APIimage 的 Grok / Gemini / Qwen / GLM 节点别用**：Grok 走 gRPC 直连 api.x.ai，base_url 不生效；Gemini 每次先拿令牌请求 Google 官方、失败才走 base_url；Qwen / GLM 是各家原生协议，New API 转发不了。
 - 给 ComfyUI 单独建一个限额 New API 令牌：节点里的 key 会写进工作流 JSON 和图片元数据；APIimage 的 Config Saver、relayapi 的 `relay_config.json` 会把 key 明文存在插件目录里。
 - **8188 没有鉴权**：能访问的人都能从 `/api/history`、`/api/object_info` 读到 key，或直接用 relayapi 存的 key 出图。别直接暴露公网——Docker `-p` 会绕过 ufw，用菜单 5 改成只走 Caddy 域名 + 密码，或在云安全组限 IP。
+
+## 让网页（如画布）跨域直连
+
+浏览器带 `Authorization` 头访问会先发预检 `OPTIONS`，而 `basic_auth` 会把它回 401；`basic_auth` 在 Caddy 里排在 `handle` 之前，所以要把认证和反代包进 `handle`，预检单独放行。站点片段（`<画布域名>` 换成实际来源，`/ws` 不要求认证）：
+
+```
+<ComfyUI 域名> {
+	@preflight method OPTIONS
+	handle @preflight {
+		header Access-Control-Allow-Origin "https://<画布域名>"
+		header Access-Control-Allow-Headers "Authorization, Content-Type"
+		header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+		header Access-Control-Max-Age 86400
+		respond 204
+	}
+	header Access-Control-Allow-Origin "https://<画布域名>"
+	handle {
+		@needauth not path /ws /ws/*
+		basic_auth @needauth {
+			<账号> <密码哈希>
+		}
+		reverse_proxy 127.0.0.1:8188
+	}
+}
+```
+
+改前先备份，`caddy validate` 通过再 `systemctl reload caddy`。自测：`curl -si -X OPTIONS https://<ComfyUI 域名>/prompt -H "Origin: https://<画布域名>" -H "Access-Control-Request-Method: POST"` 应返回 204 且带 `access-control-allow-origin`。
 
 ## HTTPS + 访问密码（共享机组特殊处理）
 

@@ -168,6 +168,9 @@
         "Cherry",
         "qwen3-tts-flash",
         "Chinese",
+        "",
+        1.0,
+        0.0,
         ""
       ],
       "title": "配音"

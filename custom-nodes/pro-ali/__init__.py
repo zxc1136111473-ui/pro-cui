@@ -19,6 +19,8 @@ from comfy_api_nodes.util import audio_bytes_to_audio_input  # type: ignore[repo
 
 DEFAULT_BASE = "https://dashscope.aliyuncs.com"
 GEN_API = "/api/v1/services/aigc/multimodal-generation/generation"
+VOICE_API = "/api/v1/services/audio/tts/customization"  # 音色设计 / 声音克隆（创建自定义音色）
+CUSTOM_VOICE_MODELS = {"qwen-tts-vd-": "qwen3-tts-vd-2026-01-26", "qwen-tts-vc-": "qwen3-tts-vc-2026-01-22"}  # 音色 id 前缀 → 合成模型
 IMAGE_TIMEOUT = 200   # qwen-image-3.0 实测约 66 秒，2048 大图约 40 秒
 TTS_TIMEOUT = 90      # 实测 2.5~6 秒
 ASR_TIMEOUT = 90      # 实测 6 秒音频约 4.5 秒
@@ -68,9 +70,9 @@ def _creds(info):
     return key, f"https://{host}"
 
 
-def _post(base, key, body, timeout, what):
+def _post(base, key, body, timeout, what, path=GEN_API):
     try:
-        r = requests.post(base + GEN_API, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+        r = requests.post(base + path, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
                           json=body, timeout=timeout)
     except requests.RequestException as e:
         raise RuntimeError(f"[阿里 {what}] 连不上：{type(e).__name__}")
@@ -177,6 +179,9 @@ class ProAliTTS:
             "model": (TTS_MODELS, {"default": "qwen3-tts-flash"}),
             "language": (LANGS, {"default": "Chinese"})},
             "optional": {"instructions": ("STRING", {"multiline": True, "default": "", "placeholder": "仅 instruct 模型有效，例如：语气热情洪亮，语速偏快，像直播间主播带货"}),
+                         "speed": ("FLOAT", {"default": 1.0, "min": 0.5, "max": 2.0, "step": 0.05, "tooltip": "语速倍数，本地变速不变调（阿里接口本身没有语速参数）"}),
+                         "volume_db": ("FLOAT", {"default": 0.0, "min": -20.0, "max": 12.0, "step": 0.5, "tooltip": "音量增减 dB，本地处理"}),
+                         "custom_voice": ("STRING", {"default": "", "tooltip": "自定义音色 id（音色设计 / 声音克隆节点输出）；填了就忽略上面的音色和模型"}),
                          "info": ("STRING", {"default": "", "forceInput": True})}}
 
     RETURN_TYPES = ("AUDIO", "STRING")
@@ -184,10 +189,16 @@ class ProAliTTS:
     FUNCTION = "run"
     CATEGORY = "pro/aliyun"
 
-    def run(self, text, voice, model, language, instructions="", info=""):
+    def run(self, text, voice, model, language, instructions="", speed=1.0, volume_db=0.0, custom_voice="", info=""):
         key, base = _creds(info)
         if not text.strip():
             raise RuntimeError("[阿里 配音] 文字是空的")
+        custom = custom_voice.strip()
+        if custom:
+            model = next((m for pre, m in CUSTOM_VOICE_MODELS.items() if custom.startswith(pre)), None)
+            if not model:
+                raise RuntimeError("[阿里 配音] 自定义音色 id 应以 qwen-tts-vd- 或 qwen-tts-vc- 开头")
+            voice = custom
         inp = {"text": text, "voice": voice, "language_type": language}
         if model == "qwen3-tts-instruct-flash" and instructions.strip():
             inp["instructions"] = instructions.strip()
@@ -197,25 +208,56 @@ class ProAliTTS:
             url = d["output"]["audio"]["url"]
         except Exception:
             raise RuntimeError("[阿里 配音] 返回里没有音频：" + json.dumps(d, ensure_ascii=False)[:300])
-        audio = audio_bytes_to_audio_input(_download(url, "配音"))
+        audio = _adjust(audio_bytes_to_audio_input(_download(url, "配音")), speed, volume_db)
         return (audio, json.dumps({"code": "success", "model": model, "voice": voice, "usage": d.get("usage")}, ensure_ascii=False))
 
 
-def _audio_to_wav16k(audio):
+def _adjust(audio, speed, volume_db):
+    """本地调语速（PyAV atempo，变速不变调）和音量；两项都是默认值时原样返回。"""
+    w = audio["waveform"]
+    sr = int(audio["sample_rate"])
+    if abs(speed - 1.0) > 1e-3:
+        import av
+        c = w.shape[1]
+        layout = "mono" if c == 1 else "stereo"
+        g = av.filter.Graph()
+        src = g.add_abuffer(format="fltp", sample_rate=sr, layout=layout, time_base=f"1/{sr}")
+        sink = g.add("abuffersink")
+        tempo = g.add("atempo", f"{speed}")
+        src.link_to(tempo)
+        tempo.link_to(sink)
+        g.configure()
+        frame = av.AudioFrame.from_ndarray(w[0].cpu().numpy().astype(np.float32), format="fltp", layout=layout)
+        frame.sample_rate, frame.pts = sr, 0
+        src.push(frame)
+        src.push(None)
+        parts = []
+        while True:
+            try:
+                parts.append(sink.pull().to_ndarray())
+            except (av.error.EOFError, av.error.BlockingIOError):
+                break
+        w = torch.from_numpy(np.concatenate(parts, axis=1))[None]
+    if abs(volume_db) > 1e-3:
+        w = (w * 10 ** (volume_db / 20)).clamp(-1, 1)
+    return {"waveform": w, "sample_rate": sr}
+
+
+def _audio_to_wav16k(audio, sr_out=16000):
     """ComfyUI AUDIO → 16kHz 单声道 16bit wav 字节（比原始音频小得多，传到阿里更快）"""
     w = audio["waveform"]
     w = (w[0] if w.dim() == 3 else w).float().mean(dim=0, keepdim=True)  # [1,T]
     sr = int(audio["sample_rate"])
-    if sr != 16000:
-        w = taf.resample(w, sr, 16000)
+    if sr != sr_out:
+        w = taf.resample(w, sr, sr_out)
     pcm = (w[0].cpu().numpy().clip(-1, 1) * 32767).astype(np.int16)
-    if len(pcm) > ASR_MAX_SECONDS * 16000:
+    if len(pcm) > ASR_MAX_SECONDS * sr_out:
         raise RuntimeError(f"[阿里 语音识别] 音频超过 {ASR_MAX_SECONDS} 秒，请先截短")
     buf = io.BytesIO()
     with wave.open(buf, "wb") as f:
         f.setnchannels(1)
         f.setsampwidth(2)
-        f.setframerate(16000)
+        f.setframerate(sr_out)
         f.writeframes(pcm.tobytes())
     return buf.getvalue()
 
@@ -257,6 +299,63 @@ class ProAliASR:
         return (text, json.dumps({"code": "success", "seconds": (d.get("usage") or {}).get("seconds")}, ensure_ascii=False))
 
 
-NODE_CLASS_MAPPINGS = {"ProAliImage": ProAliImage, "ProAliImageEdit": ProAliImageEdit, "ProAliTTS": ProAliTTS, "ProAliASR": ProAliASR}
+class ProAliVoiceDesign:
+    """用文字描述设计一个新音色（qwen3-tts-vd），输出音色 id 和试听音频；id 存在阿里账号里，可反复用。"""
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "voice_prompt": ("STRING", {"multiline": True, "default": "沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍"}),
+            "preview_text": ("STRING", {"multiline": True, "default": "欢迎选购我们的新品，限时三天，满一百九十九减五十。"}),
+            "name": ("STRING", {"default": "myvoice", "tooltip": "只能用字母/数字/下划线"}),
+            "language": (["zh", "en", "ja", "ko", "de", "fr", "es", "it", "pt", "ru"], {"default": "zh"})},
+            "optional": {"info": ("STRING", {"default": "", "forceInput": True})}}
+
+    RETURN_TYPES = ("STRING", "AUDIO")
+    RETURN_NAMES = ("voice", "preview")
+    FUNCTION = "run"
+    CATEGORY = "pro/aliyun"
+
+    def run(self, voice_prompt, preview_text, name, language, info=""):
+        key, base = _creds(info)
+        if not voice_prompt.strip() or not preview_text.strip():
+            raise RuntimeError("[阿里 音色设计] 音色描述和试听文字都不能为空")
+        d = _post(base, key, {"model": "qwen-voice-design", "input": {
+            "action": "create", "target_model": "qwen3-tts-vd-2026-01-26", "voice_prompt": voice_prompt.strip(),
+            "preview_text": preview_text.strip(), "preferred_name": name.strip() or "myvoice", "language": language},
+            "parameters": {"sample_rate": 24000, "response_format": "wav"}}, TTS_TIMEOUT, "音色设计", VOICE_API)
+        try:
+            o = d["output"]
+            return (o["voice"], audio_bytes_to_audio_input(base64.b64decode(o["preview_audio"]["data"])))
+        except Exception:
+            raise RuntimeError("[阿里 音色设计] 返回里没有音色：" + json.dumps(d, ensure_ascii=False)[:300])
+
+
+class ProAliVoiceClone:
+    """用一段样音克隆声音（qwen3-tts-vc），输出音色 id。只克隆你有权使用的声音（本人或已获授权）。"""
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"audio": ("AUDIO",), "name": ("STRING", {"default": "myclone", "tooltip": "只能用字母/数字/下划线"})},
+                "optional": {"info": ("STRING", {"default": "", "forceInput": True})}}
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("voice",)
+    FUNCTION = "run"
+    CATEGORY = "pro/aliyun"
+
+    def run(self, audio, name, info=""):
+        key, base = _creds(info)
+        wav = base64.b64encode(_audio_to_wav16k(audio, 24000)).decode()
+        d = _post(base, key, {"model": "qwen-voice-enrollment", "input": {
+            "action": "create", "target_model": "qwen3-tts-vc-2026-01-22", "preferred_name": name.strip() or "myclone",
+            "audio": {"data": "data:audio/wav;base64," + wav}}}, TTS_TIMEOUT, "声音克隆", VOICE_API)
+        try:
+            return (d["output"]["voice"],)
+        except Exception:
+            raise RuntimeError("[阿里 声音克隆] 返回里没有音色：" + json.dumps(d, ensure_ascii=False)[:300])
+
+
+NODE_CLASS_MAPPINGS = {"ProAliImage": ProAliImage, "ProAliImageEdit": ProAliImageEdit, "ProAliTTS": ProAliTTS, "ProAliASR": ProAliASR,
+                      "ProAliVoiceDesign": ProAliVoiceDesign, "ProAliVoiceClone": ProAliVoiceClone}
 NODE_DISPLAY_NAME_MAPPINGS = {"ProAliImage": "阿里 文生图（qwen-image，支持 2K）", "ProAliImageEdit": "阿里 改图（qwen-image-edit）",
-                              "ProAliTTS": "阿里 配音（qwen3-tts）", "ProAliASR": "阿里 语音识别（听写，qwen3-asr）"}
+                              "ProAliTTS": "阿里 配音（qwen3-tts）", "ProAliASR": "阿里 语音识别（听写，qwen3-asr）",
+                              "ProAliVoiceDesign": "阿里 音色设计（文字描述→新音色）", "ProAliVoiceClone": "阿里 声音克隆（样音→新音色）"}
