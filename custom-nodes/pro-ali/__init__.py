@@ -354,8 +354,49 @@ class ProAliVoiceClone:
             raise RuntimeError("[阿里 声音克隆] 返回里没有音色：" + json.dumps(d, ensure_ascii=False)[:300])
 
 
+class ProAliVoiceAdmin:
+    """列出 / 删除账号里的自定义音色（音色设计 vd 和声音克隆 vc）；输出 JSON 文本。"""
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"action": (["列出", "删除"], {"default": "列出"}),
+                             "voice": ("STRING", {"default": "", "tooltip": "删除时填要删的音色 id"})},
+                "optional": {"info": ("STRING", {"default": "", "forceInput": True})}}
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("result",)
+    FUNCTION = "run"
+    CATEGORY = "pro/aliyun"
+    OUTPUT_NODE = True
+
+    def run(self, action, voice="", info=""):
+        key, base = _creds(info)
+        ask = lambda model, inp: _post(base, key, {"model": model, "input": inp}, TTS_TIMEOUT, "音色管理", VOICE_API)["output"]
+        kinds = {"design": "qwen-voice-design", "clone": "qwen-voice-enrollment"}
+        if action == "删除":
+            vid = voice.strip()
+            kind = "design" if vid.startswith("qwen-tts-vd-") else "clone" if vid.startswith("qwen-tts-vc-") else None
+            if not kind:
+                raise RuntimeError("[阿里 音色管理] 要删的音色 id 应以 qwen-tts-vd- 或 qwen-tts-vc- 开头")
+            ask(kinds[kind], {"action": "delete", "voice": vid})
+            res = json.dumps({"deleted": vid}, ensure_ascii=False)
+            return {"ui": {"text": [res]}, "result": (res,)}
+        out = {}
+        for kind, model in kinds.items():
+            voices, page = [], 0
+            while True:
+                o = ask(model, {"action": "list", "page_size": 50, "page_index": page})
+                voices += o.get("voice_list") or []
+                page += 1
+                if len(voices) >= o.get("total_count", 0) or not o.get("voice_list"):
+                    break
+            out[kind] = voices
+        res = json.dumps(out, ensure_ascii=False)
+        return {"ui": {"text": [res]}, "result": (res,)}
+
+
 NODE_CLASS_MAPPINGS = {"ProAliImage": ProAliImage, "ProAliImageEdit": ProAliImageEdit, "ProAliTTS": ProAliTTS, "ProAliASR": ProAliASR,
-                      "ProAliVoiceDesign": ProAliVoiceDesign, "ProAliVoiceClone": ProAliVoiceClone}
+                      "ProAliVoiceDesign": ProAliVoiceDesign, "ProAliVoiceClone": ProAliVoiceClone, "ProAliVoiceAdmin": ProAliVoiceAdmin}
 NODE_DISPLAY_NAME_MAPPINGS = {"ProAliImage": "阿里 文生图（qwen-image，支持 2K）", "ProAliImageEdit": "阿里 改图（qwen-image-edit）",
                               "ProAliTTS": "阿里 配音（qwen3-tts）", "ProAliASR": "阿里 语音识别（听写，qwen3-asr）",
-                              "ProAliVoiceDesign": "阿里 音色设计（文字描述→新音色）", "ProAliVoiceClone": "阿里 声音克隆（样音→新音色）"}
+                              "ProAliVoiceDesign": "阿里 音色设计（文字描述→新音色）", "ProAliVoiceClone": "阿里 声音克隆（样音→新音色）",
+                              "ProAliVoiceAdmin": "阿里 音色管理（列出/删除）"}
