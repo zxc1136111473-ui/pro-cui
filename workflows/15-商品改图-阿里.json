@@ -1,6 +1,6 @@
 {
-  "last_node_id": 32,
-  "last_link_id": 3,
+  "last_node_id": 91,
+  "last_link_id": 4,
   "nodes": [
     {
       "id": 31,
@@ -37,23 +37,63 @@
         "https://www.runninghub.cn",
         "claude-opus-4-6",
         "",
-        "https://dashscope.aliyuncs.com/compatible-mode",
+        "https://dashscope.aliyuncs.com",
         "qwen3.8-flash"
       ]
     },
     {
+      "id": 4,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        470
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "① 上传商品图（图1）"
+    },
+    {
       "id": 2,
-      "type": "RelayTextGenerator",
+      "type": "ProAliImageEdit",
       "pos": [
         520,
         120
       ],
       "size": [
-        420,
-        300
+        440,
+        460
       ],
       "flags": {},
-      "order": 1,
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
@@ -67,7 +107,7 @@
         {
           "name": "image1",
           "type": "IMAGE",
-          "link": null
+          "link": 2
         },
         {
           "name": "image2",
@@ -78,39 +118,14 @@
           "name": "image3",
           "type": "IMAGE",
           "link": null
-        },
-        {
-          "name": "image4",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image5",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image6",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image7",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image8",
-          "type": "IMAGE",
-          "link": null
         }
       ],
       "outputs": [
         {
-          "name": "text",
-          "type": "STRING",
+          "name": "image",
+          "type": "IMAGE",
           "links": [
-            2
+            3
           ],
           "slot_index": 0
         },
@@ -118,53 +133,57 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            3
+            4
           ],
           "slot_index": 1
         }
       ],
       "properties": {
-        "Node name for S&R": "RelayTextGenerator"
+        "Node name for S&R": "ProAliImageEdit"
       },
       "widgets_values": [
-        "为一款便携榨汁杯写 3 条淘宝标题（每条不超过 30 字，含核心卖点），再写 5 条商品详情页卖点短句。",
+        "请编辑这张商品照片：把原来的背景完全去掉，换成干净、无缝的纯白色（#FFFFFF）影棚背景；商品本身保持原样（形状、细节、颜色、角度都不要改），在商品下方加柔和自然的接触阴影；专业电商产品图。",
+        "qwen-image-edit-max",
         1,
         "randomize"
-      ]
+      ],
+      "title": "阿里 改图（改 prompt 可做局部修改）"
     },
     {
-      "id": 3,
-      "type": "PreviewAny",
+      "id": 90,
+      "type": "SaveImage",
       "pos": [
-        1000,
+        1020,
         120
       ],
       "size": [
-        460,
+        340,
         320
       ],
       "flags": {},
-      "order": 2,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
-          "name": "source",
-          "type": "*",
-          "link": 2
+          "name": "images",
+          "type": "IMAGE",
+          "link": 3
         }
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAny"
+        "Node name for S&R": "SaveImage"
       },
-      "widgets_values": [],
-      "title": "生成的文案"
+      "widgets_values": [
+        "ali/商品改图"
+      ],
+      "title": "保存"
     },
     {
-      "id": 32,
+      "id": 91,
       "type": "PreviewAny",
       "pos": [
-        1000,
+        1020,
         500
       ],
       "size": [
@@ -172,13 +191,13 @@
         110
       ],
       "flags": {},
-      "order": 3,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 3
+          "link": 4
         }
       ],
       "outputs": [],
@@ -200,17 +219,25 @@
     ],
     [
       2,
+      4,
+      0,
       2,
-      0,
-      3,
-      0,
-      "STRING"
+      1,
+      "IMAGE"
     ],
     [
       3,
       2,
+      0,
+      90,
+      0,
+      "IMAGE"
+    ],
+    [
+      4,
+      2,
       1,
-      32,
+      91,
       0,
       "STRING"
     ]

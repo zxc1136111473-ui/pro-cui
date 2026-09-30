@@ -12,7 +12,9 @@
   .dockerignore  构建只带 requirements，不把 data/ backups/ 打进构建上下文（传服务器别漏了这个点文件）
   workflows/     内置 API 工作流（部署时铺进 ComfyUI，已存在同名的不覆盖）
   custom-nodes/  本套件自带并自己维护的插件和节点（启动容器前铺进 data/custom_nodes，已存在的不覆盖）：
-                 ComfyUI-relayapi（第三方插件的拷贝，含本地修改，见其 UPSTREAM.md）、pro-gemini-music、pro-poster
+                 ComfyUI-relayapi（第三方插件的拷贝，含本地修改，见其 UPSTREAM.md）、pro-gemini-music、pro-poster、
+                 pro-ali（阿里生图/改图/配音）、pro-video（视频配音合成）
+  tools/         gen_workflows.py：workflows/*.json 的生成脚本（改模板改这里，再 python3 tools/gen_workflows.py）
 ```
 
 ## 怎么用（在服务器上）
@@ -112,22 +114,34 @@ r) 重启容器（docker restart，不删容器，约 1 秒）   R) 重建容器
 
 ## 内置工作流、自带节点和补丁
 
-**工作流**（`workflows/`，无密钥；首次用在 Relay API Settings 节点的 apikey 填一次，之后记住）
+**Key 存哪**：模板里不带 Key。每个 Relay API Settings 节点按**节点 id** 在服务器 `relay_config.json` 里取 Key（首次也可以在节点的 apikey 填一次，之后记住）：
+`1` 网关（gemini-image 出图 / 文字）、`11` geminiweb（视频、Gemini 音乐）、`21` Suno、`31` 阿里百炼（DashScope，国内版 `dashscope.aliyuncs.com`）。
 
-| 工作流 | 用途 | Key |
-|---|---|---|
-| 01 文生图 / 03 封面横图 16:9 | 走网关 `gemini-image` 出图，约 20 秒，实际只出约 1K | 网关 Key（Settings 节点 id 1） |
-| 02 商品图换背景改图 | 传商品图换成纯白影棚背景（prompt 要写明确，含糊说法会原样返回原图） | 同上 |
-| 04 文生视频 | geminiweb 的 Veo；Pro 账号每天约 3 个，额度用尽时约 30 秒报错 | geminiweb 的 API Key（id 11） |
-| 05 音乐 Suno | Suno 渠道或任意 Suno 中转站 | 对应 Key（id 21） |
-| 06 图片放大 2 倍 | Lanczos + 轻度锐化，不用模型和 Key，1~2 秒 | 无 |
-| 07 音乐 Gemini | 自带节点 `pro-gemini-music`，走 geminiweb 的 gemini-music，约 1 分钟 MP3，成功率约一半 | 与 04 共用（id 11） |
-| 08 文案生成 / 09 看图写文案 | 网关的 gemini 文字模型，默认 `gemini-3.5-flash-lite`；文案会编参数、带 `[cite: N]`，要人工核对 | 网关 Key（id 1） |
-| 10 促销海报 / 11 商品海报 | 自带节点 `pro-poster` 拼提示词（标题 / 副标题 / 角标 / 风格预设 / 画面元素），11 带商品图做主体；中文文字实测准确 | 网关 Key（id 1） |
+| 类别 | 工作流 | 说明 | Key |
+|---|---|---|---|
+| 图片 | 01 文生图 / 03 封面横图 16:9 | 网关 `gemini-image`，约 20 秒，实际只出约 1K | 1 |
+| 图片 | 02 商品图换背景 | 传商品图换纯白影棚背景（prompt 要写明确，含糊说法会原样返回原图；珠宝类会被重画要核对） | 1 |
+| 图片 | 10 促销海报 / 11 商品海报 | `pro-poster` 节点拼提示词（标题/副标题/角标/风格预设/画面元素）；11 带商品图做主体；中文文字准确，角标文字偶尔重复 | 1 |
+| 图片 | 13 商品场景合成 | 商品图 + 场景图 → 商品自然放进场景 | 1 |
+| 图片 | 18 多尺寸套图 | 同一张商品图、同一段提示词，一次出 1:1 / 3:4 / 9:16 / 16:9 四个平台尺寸（约 75 秒；提示词已禁止模型自己加文字） | 1 |
+| 图片 | 12 商品一条龙 | 一张商品图 → 白底主图（放大到 2048）+ 场景图 + 标题/卖点文案，一次跑完（约 1 分钟） | 1、31 |
+| 图片 | 06 图片放大 2 倍 | Lanczos + 轻度锐化，不用模型和 Key，1~2 秒 | 无 |
+| 图片（阿里） | 14 高清出图 / 17 高清海报 | `qwen-image-2.0-pro`，**2K 出图（2048）**，中文文字准确；`qwen-image-3.0` 只用 1K（2K 会超时） | 31 |
+| 图片（阿里） | 15 商品改图 | `qwen-image-edit-max`：换背景时商品与原图几乎逐像素一致；改 prompt 可做去水印/换色/改字等局部修改 | 31 |
+| 文字 | 08 文案生成 / 09 看图写文案 | 阿里 `qwen3.8-flash` / `qwen3.8-omni-flash`（比 Gemini 稳，看图不编参数）；看图前必须先缩到最长边 768，否则大图传阿里超过 180 秒 | 31 |
+| 音频 | 16 配音 | `pro-ali` 节点，`qwen3-tts-flash`（50 个音色）/ `instruct`（可写语气指令），中/英/日/韩/德/法/西/意/葡/俄，几秒出 | 31 |
+| 音频 | 05 音乐 Suno / 07 音乐 Gemini | 05 只用假服务测过连线；07 走 geminiweb 的 gemini-music，约 1 分钟 MP3，成功率约一半 | 21 / 11 |
+| 视频 | 04 文生视频 | geminiweb 的 Veo；Pro 账号每天约 3 个额度，用尽约 30 秒报错；Google 侧会间歇性卡住（预热无响应/请求超时） | 11 |
+| 成片 | 19 成片合成 | 视频 + 配音 + 背景音乐 → 成片：`pro-video` 节点**直接复制画面流**（画面逐字节不变），配音从头放、BGM 循环并压低、末尾淡出，几秒完成 | 31 |
+| 成片 | 20 文生视频成片 | Veo 出片 → 阿里配音 → 合成，一条龙（连线已验证，但 Veo 那步测试时正好卡住，没用真实 Veo 输出跑通） | 11、31 |
 
-每个 relayapi 工作流都接了「结果 / 错误信息」预览：relayapi 节点出错时不抛异常（作者为批量流程这样设计），错误只在 `response` 输出里，不接出来就会显示「成功」却没有结果。
+每个 relayapi / 阿里工作流都接了「状态」预览：relayapi 节点出错时不抛异常（作者为批量流程这样设计），错误只在 `response` 输出里，不接出来就会显示「成功」却没有结果。
 
-**已知限制**：gemini-image 实际只出约 1K（选 2K/4K 无效，用 06 放大）；网关 / 服务器只有 2 核，构建镜像时出图会 503 过载；官方「合作方」节点（走 Comfy 积分）填不了自己的 key，不可用；没有配音（geminiweb 和网关都没有语音模型）。
+**内存与合成**：机器只有约 4GB 内存。ComfyUI 自带的 `GetVideoComponents` / `CreateVideo` 会把整段视频解码成浮点张量（10 秒 720p ≈ 2.6GB），实测**会被系统 OOM 杀掉**，所以视频合成一律用 `pro-video`（PyAV 复制画面包，内存几乎为零）。`LoadVideo` / `LoadAudio` 只能选 `data/input/` 里的文件：用节点上的上传按钮，或把 04/20 出的视频从 `data/output/` 拷到 `data/input/`。
+
+**阿里接口**：服务器在德国、阿里在北京，链路偶尔慢：大图（1MB 的 PNG）上传曾超过 180 秒，缩到 768 后约 10 秒。阿里节点的超时是 生图 200 秒 / 配音 90 秒 / 下载 60 秒，**不重试**（重试会重复计费）。key 只会发往 `*.aliyuncs.com`。按量计费，2K 大图和 `qwen-image-3.0` 较贵。
+
+**已知限制**：gemini-image 实际只出约 1K（要大图用 14/17 或 06）；服务器只有 2 核，构建镜像时出图会 503 过载；官方「合作方」节点（走 Comfy 积分）填不了自己的 key，不可用；没有图生视频（Veo 通路没传参考图，阿里 key 里也没有视频模型）；没有抠图/透明底。
 
 **relayapi 由本仓库自己维护**：`custom-nodes/ComfyUI-relayapi/` 是上游（MIT）的拷贝，没有 `.git`，「更新插件」会跳过它；
 本地改了一处：插件前端脚本在节点刚加载时会把工作流里保存的比例改成 1:1 / auto（03 封面 16:9 在界面里打开就变 1:1），

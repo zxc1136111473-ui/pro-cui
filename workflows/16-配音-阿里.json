@@ -37,20 +37,20 @@
         "https://www.runninghub.cn",
         "claude-opus-4-6",
         "",
-        "https://dashscope.aliyuncs.com/compatible-mode",
+        "https://dashscope.aliyuncs.com",
         "qwen3.8-flash"
       ]
     },
     {
       "id": 2,
-      "type": "RelayTextGenerator",
+      "type": "ProAliTTS",
       "pos": [
         520,
         120
       ],
       "size": [
-        420,
-        300
+        440,
+        420
       ],
       "flags": {},
       "order": 1,
@@ -63,52 +63,12 @@
           "widget": {
             "name": "info"
           }
-        },
-        {
-          "name": "image1",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image2",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image3",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image4",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image5",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image6",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image7",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image8",
-          "type": "IMAGE",
-          "link": null
         }
       ],
       "outputs": [
         {
-          "name": "text",
-          "type": "STRING",
+          "name": "audio",
+          "type": "AUDIO",
           "links": [
             2
           ],
@@ -124,48 +84,55 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "RelayTextGenerator"
+        "Node name for S&R": "ProAliTTS"
       },
       "widgets_values": [
-        "为一款便携榨汁杯写 3 条淘宝标题（每条不超过 30 字，含核心卖点），再写 5 条商品详情页卖点短句。",
-        1,
-        "randomize"
-      ]
+        "夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。",
+        "Cherry",
+        "qwen3-tts-flash",
+        "Chinese",
+        ""
+      ],
+      "title": "阿里 配音（instruct 模型可写语气指令）"
     },
     {
       "id": 3,
-      "type": "PreviewAny",
+      "type": "SaveAudioAdvanced",
       "pos": [
-        1000,
+        1020,
         120
       ],
       "size": [
-        460,
-        320
+        340,
+        200
       ],
       "flags": {},
       "order": 2,
       "mode": 0,
       "inputs": [
         {
-          "name": "source",
-          "type": "*",
+          "name": "audio",
+          "type": "AUDIO",
           "link": 2
         }
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAny"
+        "Node name for S&R": "SaveAudioAdvanced"
       },
-      "widgets_values": [],
-      "title": "生成的文案"
+      "widgets_values": [
+        "audio/配音",
+        "mp3",
+        "V0"
+      ],
+      "title": "保存配音"
     },
     {
       "id": 32,
       "type": "PreviewAny",
       "pos": [
-        1000,
-        500
+        1020,
+        380
       ],
       "size": [
         360,
@@ -204,7 +171,7 @@
       0,
       3,
       0,
-      "STRING"
+      "AUDIO"
     ],
     [
       3,

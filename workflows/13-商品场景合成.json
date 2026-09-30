@@ -1,13 +1,13 @@
 {
-  "last_node_id": 32,
+  "last_node_id": 6,
   "last_link_id": 5,
   "nodes": [
     {
-      "id": 31,
+      "id": 1,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        120
+        60
       ],
       "size": [
         400,
@@ -31,22 +31,22 @@
         "Node name for S&R": "RelayAPISettings"
       },
       "widgets_values": [
-        "text",
-        "OpenaiText",
+        "image",
+        "banana-2",
         "v1/chat/completions",
         "https://www.runninghub.cn",
-        "claude-opus-4-6",
+        "grok-video-3",
         "",
-        "https://dashscope.aliyuncs.com/compatible-mode",
-        "qwen3.8-omni-flash"
+        "http://airelay-newapi:3000",
+        "gemini-image"
       ]
     },
     {
-      "id": 4,
+      "id": 2,
       "type": "LoadImage",
       "pos": [
         60,
-        470
+        420
       ],
       "size": [
         400,
@@ -79,29 +79,23 @@
         "demo_product.png",
         "image"
       ],
-      "title": "上传商品图"
+      "title": "① 商品图（图1）"
     },
     {
-      "id": 5,
-      "type": "ImageScaleToMaxDimension",
+      "id": 3,
+      "type": "LoadImage",
       "pos": [
-        520,
-        520
+        60,
+        900
       ],
       "size": [
-        320,
-        90
+        400,
+        420
       ],
       "flags": {},
       "order": 2,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 2
-        }
-      ],
+      "inputs": [],
       "outputs": [
         {
           "name": "IMAGE",
@@ -110,27 +104,33 @@
             3
           ],
           "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
         }
       ],
       "properties": {
-        "Node name for S&R": "ImageScaleToMaxDimension"
+        "Node name for S&R": "LoadImage"
       },
       "widgets_values": [
-        "lanczos",
-        768
+        "demo_product.png",
+        "image"
       ],
-      "title": "缩到最长边 768（别删）"
+      "title": "② 场景图（图2，换成你的场景）"
     },
     {
-      "id": 2,
-      "type": "RelayTextGenerator",
+      "id": 4,
+      "type": "RelayImageGenerator",
       "pos": [
-        900,
-        120
+        540,
+        60
       ],
       "size": [
-        420,
-        300
+        400,
+        420
       ],
       "flags": {},
       "order": 3,
@@ -147,12 +147,12 @@
         {
           "name": "image1",
           "type": "IMAGE",
-          "link": 3
+          "link": 2
         },
         {
           "name": "image2",
           "type": "IMAGE",
-          "link": null
+          "link": 3
         },
         {
           "name": "image3",
@@ -183,12 +183,52 @@
           "name": "image8",
           "type": "IMAGE",
           "link": null
+        },
+        {
+          "name": "image9",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image10",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image11",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image12",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image13",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image14",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image15",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image16",
+          "type": "IMAGE",
+          "link": null
         }
       ],
       "outputs": [
         {
-          "name": "text",
-          "type": "STRING",
+          "name": "image",
+          "type": "IMAGE",
           "links": [
             4
           ],
@@ -201,51 +241,65 @@
             5
           ],
           "slot_index": 1
+        },
+        {
+          "name": "image_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2
         }
       ],
       "properties": {
-        "Node name for S&R": "RelayTextGenerator"
+        "Node name for S&R": "RelayImageGenerator"
       },
       "widgets_values": [
-        "看这张商品图，写 1 个电商标题（30 字内）和 3 条卖点（每条 15 字内），中文，不要写图里看不出来的参数。",
-        1,
+        "请把图1里的商品自然地放进图2的场景里，生成一张全新的合成图（不要直接返回其中任何一张原图）：商品的形状、颜色、包装上的文字都保持原样不要改动；光影、透视、比例与图2的场景一致，商品放在画面里合理的位置；专业商品摄影。",
+        "4:3",
+        "1K",
+        "medium",
+        "jpeg",
+        "low",
+        42,
         "randomize"
-      ]
+      ],
+      "title": "合成"
     },
     {
-      "id": 3,
-      "type": "PreviewAny",
+      "id": 5,
+      "type": "SaveImage",
       "pos": [
-        1380,
-        120
+        1000,
+        60
       ],
       "size": [
-        460,
-        320
+        340,
+        300
       ],
       "flags": {},
       "order": 4,
       "mode": 0,
       "inputs": [
         {
-          "name": "source",
-          "type": "*",
+          "name": "images",
+          "type": "IMAGE",
           "link": 4
         }
       ],
       "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAny"
+        "Node name for S&R": "SaveImage"
       },
-      "widgets_values": [],
-      "title": "生成的文案"
+      "widgets_values": [
+        "compose/商品场景合成"
+      ],
+      "title": "保存"
     },
     {
-      "id": 32,
+      "id": 6,
       "type": "PreviewAny",
       "pos": [
-        1380,
-        500
+        1000,
+        420
       ],
       "size": [
         360,
@@ -272,14 +326,30 @@
   "links": [
     [
       1,
-      31,
+      1,
       0,
-      2,
+      4,
       0,
       "STRING"
     ],
     [
       2,
+      2,
+      0,
+      4,
+      1,
+      "IMAGE"
+    ],
+    [
+      3,
+      3,
+      0,
+      4,
+      2,
+      "IMAGE"
+    ],
+    [
+      4,
       4,
       0,
       5,
@@ -287,26 +357,10 @@
       "IMAGE"
     ],
     [
-      3,
       5,
-      0,
-      2,
-      1,
-      "IMAGE"
-    ],
-    [
       4,
-      2,
-      0,
-      3,
-      0,
-      "STRING"
-    ],
-    [
-      5,
-      2,
       1,
-      32,
+      6,
       0,
       "STRING"
     ]

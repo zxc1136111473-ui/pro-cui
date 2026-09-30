@@ -1,0 +1,1129 @@
+{
+  "last_node_id": 33,
+  "last_link_id": 20,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        60
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1,
+            6,
+            11,
+            16
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "image",
+        "banana-2",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "grok-video-3",
+        "",
+        "http://airelay-newapi:3000",
+        "gemini-image"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        420
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            2,
+            7,
+            12,
+            17
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "① 上传商品图"
+    },
+    {
+      "id": 3,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        60,
+        900
+      ],
+      "size": [
+        400,
+        220
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            3,
+            8,
+            13,
+            18
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "请以图1的商品照片为素材，创作一张全新的电商宣传图（不要直接返回原图）：干净明亮的浅色背景，商品居中突出，柔和自然的光影和阴影；商品的形状、颜色、包装上的文字都保持原样不要改动；专业电商摄影，构图适配当前画幅；画面里不要添加任何文字、标签、水印或小牌子。"
+      ],
+      "title": "② 统一提示词（4 个尺寸共用）"
+    },
+    {
+      "id": 10,
+      "type": "RelayImageGenerator",
+      "pos": [
+        540,
+        60
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 2
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image8",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image9",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image10",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image11",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image12",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image13",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image14",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image15",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image16",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 3,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            5
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "image_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayImageGenerator"
+      },
+      "widgets_values": [
+        "（由「统一提示词」节点提供）",
+        "1:1",
+        "1K",
+        "medium",
+        "jpeg",
+        "low",
+        100,
+        "randomize"
+      ],
+      "title": "主图 1:1（淘宝/拼多多）"
+    },
+    {
+      "id": 20,
+      "type": "SaveImage",
+      "pos": [
+        1000,
+        60
+      ],
+      "size": [
+        340,
+        300
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 4
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "sizes/主图1x1"
+      ],
+      "title": "保存：主图 1:1（淘宝/拼多多）"
+    },
+    {
+      "id": 30,
+      "type": "PreviewAny",
+      "pos": [
+        1000,
+        400
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 5
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "状态：主图 1:1（淘宝/拼多多）"
+    },
+    {
+      "id": 11,
+      "type": "RelayImageGenerator",
+      "pos": [
+        540,
+        660
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 6,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 7
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image8",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image9",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image10",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image11",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image12",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image13",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image14",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image15",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image16",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 8,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            10
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "image_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayImageGenerator"
+      },
+      "widgets_values": [
+        "（由「统一提示词」节点提供）",
+        "3:4",
+        "1K",
+        "medium",
+        "jpeg",
+        "low",
+        101,
+        "randomize"
+      ],
+      "title": "小红书 3:4"
+    },
+    {
+      "id": 21,
+      "type": "SaveImage",
+      "pos": [
+        1000,
+        660
+      ],
+      "size": [
+        340,
+        300
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 9
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "sizes/小红书3x4"
+      ],
+      "title": "保存：小红书 3:4"
+    },
+    {
+      "id": 31,
+      "type": "PreviewAny",
+      "pos": [
+        1000,
+        1000
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 10
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "状态：小红书 3:4"
+    },
+    {
+      "id": 12,
+      "type": "RelayImageGenerator",
+      "pos": [
+        540,
+        1260
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 11,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 12
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image8",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image9",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image10",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image11",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image12",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image13",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image14",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image15",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image16",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 13,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            15
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "image_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayImageGenerator"
+      },
+      "widgets_values": [
+        "（由「统一提示词」节点提供）",
+        "9:16",
+        "1K",
+        "medium",
+        "jpeg",
+        "low",
+        102,
+        "randomize"
+      ],
+      "title": "抖音 / 视频号 9:16"
+    },
+    {
+      "id": 22,
+      "type": "SaveImage",
+      "pos": [
+        1000,
+        1260
+      ],
+      "size": [
+        340,
+        300
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 14
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "sizes/抖音9x16"
+      ],
+      "title": "保存：抖音 / 视频号 9:16"
+    },
+    {
+      "id": 32,
+      "type": "PreviewAny",
+      "pos": [
+        1000,
+        1600
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 15
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "状态：抖音 / 视频号 9:16"
+    },
+    {
+      "id": 13,
+      "type": "RelayImageGenerator",
+      "pos": [
+        540,
+        1860
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 16,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 17
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image8",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image9",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image10",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image11",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image12",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image13",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image14",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image15",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image16",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 18,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            19
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            20
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "image_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayImageGenerator"
+      },
+      "widgets_values": [
+        "（由「统一提示词」节点提供）",
+        "16:9",
+        "1K",
+        "medium",
+        "jpeg",
+        "low",
+        103,
+        "randomize"
+      ],
+      "title": "封面 16:9"
+    },
+    {
+      "id": 23,
+      "type": "SaveImage",
+      "pos": [
+        1000,
+        1860
+      ],
+      "size": [
+        340,
+        300
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 19
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "sizes/封面16x9"
+      ],
+      "title": "保存：封面 16:9"
+    },
+    {
+      "id": 33,
+      "type": "PreviewAny",
+      "pos": [
+        1000,
+        2200
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 20
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "状态：封面 16:9"
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      10,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      2,
+      0,
+      10,
+      1,
+      "IMAGE"
+    ],
+    [
+      3,
+      3,
+      0,
+      10,
+      17,
+      "STRING"
+    ],
+    [
+      4,
+      10,
+      0,
+      20,
+      0,
+      "IMAGE"
+    ],
+    [
+      5,
+      10,
+      1,
+      30,
+      0,
+      "STRING"
+    ],
+    [
+      6,
+      1,
+      0,
+      11,
+      0,
+      "STRING"
+    ],
+    [
+      7,
+      2,
+      0,
+      11,
+      1,
+      "IMAGE"
+    ],
+    [
+      8,
+      3,
+      0,
+      11,
+      17,
+      "STRING"
+    ],
+    [
+      9,
+      11,
+      0,
+      21,
+      0,
+      "IMAGE"
+    ],
+    [
+      10,
+      11,
+      1,
+      31,
+      0,
+      "STRING"
+    ],
+    [
+      11,
+      1,
+      0,
+      12,
+      0,
+      "STRING"
+    ],
+    [
+      12,
+      2,
+      0,
+      12,
+      1,
+      "IMAGE"
+    ],
+    [
+      13,
+      3,
+      0,
+      12,
+      17,
+      "STRING"
+    ],
+    [
+      14,
+      12,
+      0,
+      22,
+      0,
+      "IMAGE"
+    ],
+    [
+      15,
+      12,
+      1,
+      32,
+      0,
+      "STRING"
+    ],
+    [
+      16,
+      1,
+      0,
+      13,
+      0,
+      "STRING"
+    ],
+    [
+      17,
+      2,
+      0,
+      13,
+      1,
+      "IMAGE"
+    ],
+    [
+      18,
+      3,
+      0,
+      13,
+      17,
+      "STRING"
+    ],
+    [
+      19,
+      13,
+      0,
+      23,
+      0,
+      "IMAGE"
+    ],
+    [
+      20,
+      13,
+      1,
+      33,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
