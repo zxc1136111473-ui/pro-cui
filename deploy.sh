@@ -289,7 +289,6 @@ run_container() {
 
   # 自带自定义节点必须在容器启动前铺好，首次部署就能加载
   seed_custom_nodes
-  apply_plugin_patches
 
   # ★ 数据目录都挂到 app/ 下：ComfyUI 按源码目录找 models/custom_nodes/output/input/user
   #   （user/ 里是网页保存的工作流、界面设置、Manager 配置、comfyui.db）
@@ -365,25 +364,6 @@ seed_workflows() {
   [ "$n" -gt 0 ] && say "  已铺入 $n 个内置 API 工作流（首次用请在 Relay API Settings 的 apikey 填一次：图片用网关 Key，04 文生视频用 geminiweb 的 API Key）" || true
 }
 
-# 给第三方插件打本套件自带的最小补丁（patches/<插件目录名>/*.patch）。
-# 已打过的跳过（git apply --reverse --check 能通过就说明已经在了）；打不上（上游改了这段）只提示、不中断。
-apply_plugin_patches() {
-  local pdir="$APP_DIR/patches" d name p n=0 pd
-  [ -d "$pdir" ] || return 0
-  for d in "$pdir"/*/; do
-    [ -d "$d" ] || continue
-    name="$(basename "$d")"; pd="$APP_DIR/data/custom_nodes/$name"
-    [ -d "$pd/.git" ] || continue
-    for p in "$d"*.patch; do
-      [ -e "$p" ] || continue
-      git -C "$pd" apply --reverse --check "$p" >/dev/null 2>&1 && continue
-      if git -C "$pd" apply "$p" >/dev/null 2>&1; then n=$((n + 1))
-      else warn "  补丁 $name/$(basename "$p") 打不上（插件上游改了这段？），已跳过"; fi
-    done
-  done
-  [ "$n" -gt 0 ] && say "  已给插件打上 $n 个补丁（如 relayapi 保留工作流里的比例）" || true
-}
-
 # 铺入本套件自带的自定义节点（custom-nodes/<名字>/ → data/custom_nodes/<名字>/）。已存在的不覆盖。
 seed_custom_nodes() {
   local srcdir="$APP_DIR/custom-nodes" dstdir="$APP_DIR/data/custom_nodes"
@@ -396,7 +376,7 @@ seed_custom_nodes() {
     [ -e "$dstdir/$name" ] && continue
     cp -R "$d" "$dstdir/$name" && n=$((n + 1))
   done
-  [ "$n" -gt 0 ] && say "  已铺入 $n 个自带节点（Gemini 音乐）" || true
+  [ "$n" -gt 0 ] && say "  已铺入 $n 个自带插件/节点（relayapi、Gemini 音乐、海报）" || true
 }
 
 # 把容器接到额外的 docker 网络（跨栈访问网关用）。没配或网络不存在都静默跳过。
@@ -408,7 +388,7 @@ attach_extra_network() {
     return 0
   fi
   $DOCKER network connect "$net" "$CONTAINER" >/dev/null 2>&1 \
-    && say "  已接入网络 $net（API 出图节点可用 http://airelay-newapi:3000 走网关）" || true
+    && say "  已接入网络 ${net}（API 出图节点可用 http://airelay-newapi:3000 走网关）" || true
 }
 
 # 重启：docker restart，不删容器（现场装的包还在）；容器不在或起不来再重建
@@ -448,10 +428,16 @@ plugin_install() {
     say "  插件 $name 已装，跳过"
     return 0
   fi
+  # 本套件自带（自己维护）的插件优先用本地拷贝，不从上游 clone（见 custom-nodes/<名字>/UPSTREAM.md）
+  if [ -d "$APP_DIR/custom-nodes/$name" ]; then
+    mkdir -p "$APP_DIR/data/custom_nodes"
+    cp -R "$APP_DIR/custom-nodes/$name" "$APP_DIR/data/custom_nodes/$name" \
+      && say "  安装插件 ${name}（本套件自带版本）" || warn "  插件 $name 安装失败"
+    return 0
+  fi
   say "  安装插件 $name …"
   git clone --depth 1 "$url" "$APP_DIR/data/custom_nodes/$name" 2>/dev/null \
     || warn "  插件 $name 安装失败（网络？）"
-  apply_plugin_patches
 }
 
 # 已装插件目录名，一行一个
@@ -789,7 +775,6 @@ do_update() {
       printf '%s\n' "$out" | tail -1
     fi
   done
-  apply_plugin_patches  # 上游版本覆盖后补丁可能丢了，重新打上
   # 有仓库真的变了才换回退点（只留最近一次）；没拉到新东西的更新不冲掉上一次的回退点
   for i in "${!UPD_DIRS[@]}"; do
     [ "$(git -C "${UPD_DIRS[$i]}" rev-parse HEAD 2>/dev/null || true)" = "${UPD_HEADS[$i]}" ] || changed=1

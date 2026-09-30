@@ -1,0 +1,413 @@
+import os
+import json
+from aiohttp import web
+
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'relay_config.json')
+
+DEFAULT_API_BASES = [
+    "https://www.runninghub.cn",
+    "https://llm.runninghub.ai",
+    "https://yunwu.ai",
+    "https://ai.t8star.cn",
+    "https://api.bltcy.ai",
+]
+
+TASK_TYPES = ["image", "video", "sound", "text"]
+
+DEFAULT_MODELS = {
+    # video
+    "Grok": ["grok-video-3", "grok-videos"],
+    "Veo": ["veo3.1", "veo3.1-fast", "veo_3_1-lite", "veo_3_1-lite-4K", "veo_3_1-fast-4K"],
+    # image — 通用 fallback
+    "banana-pro": ["nano-banana-pro"],
+    "banana-2": ["gemini-3.1-flash-image-preview"],
+    "gpt-image2": ["gpt-image-2"],
+    "Suno": ["suno_music"],
+    "GeminiText": ["gemini-3.1-flash-lite-preview", "gemini-3-flash-preview", "gemini-3.1-pro-preview"],
+    "OpenaiText": ["claude-opus-4-6", "grok-4.1"],
+}
+
+RH_TEXT_MODELS = [
+    "anthropic/claude-opus-4.6", "openai/gpt-5.5",
+    "google/gemini-3.1-pro-preview", "google/gemini-3-flash-preview",
+    "google/gemini-3.1-flash-lite-preview",
+]
+
+FORMAT_MODELS = {
+    "Grok": {
+        "runninghub-/openapi/v2": ["rhart-video-g"],
+    },
+    "Veo": {
+        "v1/video": ["veo3.1", "veo3.1-fast", "veo_3_1-lite", "veo_3_1-lite-4K", "veo_3_1-fast-4K"],
+        "v1/videos": ["veo3.1", "veo3.1-fast", "veo_3_1-lite", "veo_3_1-lite-4K", "veo_3_1-fast-4K"],
+        "v2/videos": ["veo3.1", "veo3.1-fast", "veo_3_1-lite", "veo_3_1-lite-4K", "veo_3_1-fast-4K"],
+        "runninghub-/openapi/v2": ["rhart-video-v3.1-fast"],
+    },
+    "banana-pro": {
+        "v1beta/models": ["gemini-3-pro-image-preview"],
+        "v1/images": ["nano-banana-pro"],
+        "v1/chat/completions": ["gemini-3-pro-image-preview"],
+        "runninghub-/openapi/v2": ["rhart-image-n-pro", "rhart-image-n-pro-official"],
+    },
+    "banana-2": {
+        "v1beta/models": ["gemini-3.1-flash-image-preview"],
+        "v1/chat/completions": ["gemini-3.1-flash-image-preview"],
+        "runninghub-/openapi/v2": ["rhart-image-n-g31-flash", "rhart-image-n-g31-flash-official"],
+    },
+    "gpt-image2": {
+        "v1/images": ["gpt-image-2"],
+        "runninghub-/openapi/v2": ["rhart-image-g-2", "rhart-image-g-2-official"],
+    },
+    "Suno": {
+        "suno/submit": ["suno_music"],
+        "runninghub-/openapi/v2": ["rhart-audio-suno-v5.5"],
+    },
+    "GeminiText": {
+        "v1beta/models": ["gemini-3.1-flash-lite-preview", "gemini-3-flash-preview", "gemini-3.1-pro-preview"],
+        "v1/chat/completions": ["gemini-3.1-flash-lite-preview", "gemini-3-flash-preview", "gemini-3.1-pro-preview"],
+        "runninghub-/v1": RH_TEXT_MODELS,
+    },
+    "OpenaiText": {
+        "v1/chat/completions": ["claude-opus-4-6", "grok-4.1"],
+        "runninghub-/v1": RH_TEXT_MODELS,
+    },
+}
+
+TASK_PLATFORMS = {
+    "video": ["Grok", "Veo"],
+    "image": ["banana-pro", "banana-2", "gpt-image2"],
+    "sound": ["Suno"],
+    "text": ["GeminiText", "OpenaiText"],
+    "other": [],
+}
+
+PLATFORMS = list(DEFAULT_MODELS.keys())
+
+VIDEO_API_FORMATS = ["runninghub-/openapi/v2", "v1/video", "v1/videos", "v2/videos"]
+IMAGE_API_FORMATS = ["runninghub-/openapi/v2", "v1beta/models", "v1/images", "v1/chat/completions"]
+SOUND_API_FORMATS = ["runninghub-/openapi/v2", "suno/submit"]
+TEXT_API_FORMATS = ["runninghub-/v1", "v1beta/models", "v1/chat/completions"]
+
+API_FORMATS_BY_TASK = {
+    "video": VIDEO_API_FORMATS,
+    "image": IMAGE_API_FORMATS,
+    "sound": SOUND_API_FORMATS,
+    "text": TEXT_API_FORMATS,
+}
+
+ALL_API_FORMATS = list(
+    dict.fromkeys(
+        fmt
+        for task_formats in API_FORMATS_BY_TASK.values()
+        for fmt in task_formats
+    )
+)
+
+API_PATHS = {
+    "video_v1/video": {
+        "grok_create": "/v1/video/create",
+        "grok_query": "/v1/video/query?id={task_id}",
+        "veo_create": "/v1/video/create",
+        "veo_query": "/v1/video/query?id={task_id}",
+    },
+    "video_v1/videos": {
+        "grok_create": "/v1/videos",
+        "grok_query": "/v1/videos/{task_id}",
+        "grok_content": "/v1/videos/{task_id}/content",
+        "veo_create": "/v1/videos",
+        "veo_query": "/v1/videos/{task_id}",
+        "veo_content": "/v1/videos/{task_id}/content",
+    },
+    "video_v2/videos": {
+        "grok_create": "/v2/videos/generations",
+        "grok_query": "/v2/videos/generations/{task_id}",
+        "veo_create": "/v2/videos/generations",
+        "veo_query": "/v2/videos/generations/{task_id}",
+    },
+    "image_v1beta/models": {
+        "generate": "/v1beta/models/{model}:generateContent",
+        "edit": "/v1beta/models/{model}:generateContent",
+    },
+    "image_v1/chat/completions": {
+        "chat": "/v1/chat/completions",
+    },
+    "image_v1/images": {
+        "generate": "/v1/images/generations",
+        "edit": "/v1/images/edits",
+        "gpt_image2_generate": "/v1/images/generations",
+        "gpt_image2_edit": "/v1/images/edits",
+    },
+    "sound_suno/submit": {
+        "suno_create": "/suno/submit/music",
+        "suno_query": "/suno/fetch/{task_id}",
+    },
+    "text_v1beta/models": {
+        "generate": "/v1beta/models/{model}:generateContent",
+    },
+    "text_v1/chat/completions": {
+        "chat": "/v1/chat/completions",
+    },
+    "image_runninghub-/openapi/v2": {
+        "create": "/openapi/v2/{model}/text-to-image",
+        "edit": "/openapi/v2/{model}/image-to-image",
+        "upload": "/openapi/v2/upload",
+        "query": "/openapi/v2/query",
+    },
+    "video_runninghub-/openapi/v2": {
+        "text_to_video": "/openapi/v2/{model}/text-to-video",
+        "image_to_video": "/openapi/v2/{model}/image-to-video",
+        "upload": "/openapi/v2/upload",
+        "query": "/openapi/v2/query",
+    },
+    "sound_runninghub-/openapi/v2": {
+        "single": "/openapi/v2/rhart-audio/suno-v5.5/single",
+        "custom": "/openapi/v2/rhart-audio/suno-v5.5/custom",
+        "query": "/openapi/v2/query",
+    },
+    "text_runninghub-/v1": {
+        "chat": "/v1/chat/completions",
+    },
+}
+
+
+def get_config():
+    try:
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_config(config):
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=4, ensure_ascii=False)
+
+
+def _normalize_node_id(node_id):
+    if node_id is None:
+        return ""
+    return str(node_id).strip()
+
+
+def get_node_settings(node_id):
+    normalized = _normalize_node_id(node_id)
+    if not normalized:
+        return {}
+    config = get_config()
+    node_settings = config.get("node_settings", {})
+    settings = node_settings.get(normalized, {})
+    return settings if isinstance(settings, dict) else {}
+
+
+def save_node_settings(node_id, **updates):
+    normalized = _normalize_node_id(node_id)
+    if not normalized:
+        return
+
+    config = get_config()
+    node_settings = config.get("node_settings", {})
+    current = node_settings.get(normalized, {})
+    if not isinstance(current, dict):
+        current = {}
+
+    for key, value in updates.items():
+        if value is None:
+            current.pop(key, None)
+        else:
+            current[key] = value
+
+    if current:
+        node_settings[normalized] = current
+    else:
+        node_settings.pop(normalized, None)
+
+    config["node_settings"] = node_settings
+    save_config(config)
+
+
+def get_node_api_key(node_id):
+    settings = get_node_settings(node_id)
+    api_key = settings.get("api_key", "")
+    if isinstance(api_key, str) and api_key.strip():
+        return api_key
+    return ""
+
+
+def get_api_base_list():
+    config = get_config()
+    custom_bases = config.get('custom_api_bases', [])
+    removed_defaults = config.get('removed_defaults', [])
+    all_bases = [b for b in DEFAULT_API_BASES if b not in removed_defaults]
+    for base in custom_bases:
+        base = base.strip().rstrip('/')
+        if base and base not in all_bases:
+            all_bases.append(base)
+    if not all_bases:
+        all_bases = list(DEFAULT_API_BASES)
+    return all_bases
+
+
+def add_custom_api_base(url):
+    url = url.strip().rstrip('/')
+    if not url:
+        return
+    config = get_config()
+    custom_bases = config.get('custom_api_bases', [])
+    removed_defaults = config.get('removed_defaults', [])
+    if url in removed_defaults:
+        removed_defaults.remove(url)
+        config['removed_defaults'] = removed_defaults
+    if url not in custom_bases and url not in DEFAULT_API_BASES:
+        custom_bases.append(url)
+        config['custom_api_bases'] = custom_bases
+    save_config(config)
+
+
+def get_model_list(platform, api_format=None):
+    config = get_config()
+    custom_models = config.get('custom_models', {}).get(platform, [])
+    removed_models = config.get('removed_models', {}).get(platform, [])
+
+    if api_format and platform in FORMAT_MODELS and api_format in FORMAT_MODELS[platform]:
+        defaults = FORMAT_MODELS[platform][api_format]
+    else:
+        defaults = DEFAULT_MODELS.get(platform, [])
+
+    all_models = [m for m in defaults if m not in removed_models]
+    if isinstance(custom_models, dict):
+        merged = []
+        for fmt_models in custom_models.values():
+            if isinstance(fmt_models, list):
+                merged.extend(fmt_models)
+        custom_models = merged
+    for m in custom_models:
+        m = m.strip()
+        if m and m not in all_models:
+            all_models.append(m)
+    if not all_models:
+        all_models = list(defaults)
+    return all_models
+
+
+def add_custom_model(platform, model):
+    model = model.strip()
+    if not model:
+        return
+    if platform == "Suno":
+        return
+    config = get_config()
+    custom_models = config.get('custom_models', {})
+    removed_models = config.get('removed_models', {})
+    if platform not in custom_models or not isinstance(custom_models[platform], list):
+        custom_models[platform] = []
+    if platform in removed_models and model in removed_models[platform]:
+        removed_models[platform].remove(model)
+        config['removed_models'] = removed_models
+    defaults = DEFAULT_MODELS.get(platform, [])
+    if model not in custom_models[platform] and model not in defaults:
+        custom_models[platform].append(model)
+    config['custom_models'] = custom_models
+    save_config(config)
+
+
+def remove_model(platform, model):
+    model = model.strip()
+    if not model:
+        return
+    if platform == "Suno":
+        return
+    config = get_config()
+    custom_models = config.get('custom_models', {})
+    removed_models = config.get('removed_models', {})
+    if platform in custom_models and isinstance(custom_models[platform], list) and model in custom_models[platform]:
+        custom_models[platform].remove(model)
+        config['custom_models'] = custom_models
+    defaults = DEFAULT_MODELS.get(platform, [])
+    if model in defaults:
+        if platform not in removed_models:
+            removed_models[platform] = []
+        if model not in removed_models[platform]:
+            removed_models[platform].append(model)
+        config['removed_models'] = removed_models
+    save_config(config)
+
+
+def get_current_base_url():
+    config = get_config()
+    return config.get('base_url', DEFAULT_API_BASES[0])
+
+
+def set_current_base_url(url):
+    config = get_config()
+    config['base_url'] = url
+    save_config(config)
+
+
+def register_routes():
+    try:
+        from server import PromptServer
+        if not hasattr(PromptServer, 'instance') or PromptServer.instance is None:
+            print("[RelayAPI] PromptServer not ready, skipping route registration")
+            return
+    except ImportError:
+        print("[RelayAPI] Cannot import PromptServer, skipping route registration")
+        return
+
+    @PromptServer.instance.routes.get("/relayapi/api_bases")
+    async def get_api_bases(request):
+        return web.json_response(get_api_base_list())
+
+    @PromptServer.instance.routes.post("/relayapi/api_bases/add")
+    async def api_base_add(request):
+        data = await request.json()
+        url = data.get("url", "")
+        if url.strip():
+            add_custom_api_base(url)
+            return web.json_response({"success": True, "list": get_api_base_list()})
+        return web.json_response({"success": False, "message": "URL is empty"}, status=400)
+
+    @PromptServer.instance.routes.post("/relayapi/api_bases/remove")
+    async def api_base_remove(request):
+        data = await request.json()
+        url = data.get("url", "").strip().rstrip('/')
+        if not url:
+            return web.json_response({"success": False, "message": "URL is empty"}, status=400)
+        config = get_config()
+        custom_bases = config.get('custom_api_bases', [])
+        removed_defaults = config.get('removed_defaults', [])
+        if url in custom_bases:
+            custom_bases.remove(url)
+            config['custom_api_bases'] = custom_bases
+        if url in DEFAULT_API_BASES and url not in removed_defaults:
+            removed_defaults.append(url)
+            config['removed_defaults'] = removed_defaults
+        save_config(config)
+        return web.json_response({"success": True, "list": get_api_base_list()})
+
+    @PromptServer.instance.routes.get("/relayapi/models")
+    async def get_models(request):
+        platform = request.rel_url.query.get("platform", "Grok")
+        api_format = request.rel_url.query.get("api_format", "")
+        return web.json_response(get_model_list(platform, api_format or None))
+
+    @PromptServer.instance.routes.post("/relayapi/models/add")
+    async def model_add(request):
+        data = await request.json()
+        platform = data.get("platform", "Grok")
+        api_format = data.get("api_format", "")
+        model = data.get("model", "")
+        if model.strip():
+            add_custom_model(platform, model)
+            return web.json_response({"success": True, "list": get_model_list(platform, api_format or None)})
+        return web.json_response({"success": False, "message": "Model is empty"}, status=400)
+
+    @PromptServer.instance.routes.post("/relayapi/models/remove")
+    async def model_remove(request):
+        data = await request.json()
+        platform = data.get("platform", "Grok")
+        api_format = data.get("api_format", "")
+        model = data.get("model", "")
+        if model.strip():
+            remove_model(platform, model)
+            return web.json_response({"success": True, "list": get_model_list(platform, api_format or None)})
+        return web.json_response({"success": False, "message": "Model is empty"}, status=400)
