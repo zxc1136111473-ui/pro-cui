@@ -354,14 +354,15 @@ seed_workflows() {
   local srcdir="$APP_DIR/workflows" dstdir="$APP_DIR/data/user/default/workflows"
   [ -d "$srcdir" ] || return 0
   mkdir -p "$dstdir"
-  local n=0 f base
-  for f in "$srcdir"/*.json; do
-    [ -e "$f" ] || continue
-    base="$(basename "$f")"
-    [ -e "$dstdir/$base" ] && continue
-    cp "$f" "$dstdir/$base" && n=$((n + 1))
-  done
-  [ "$n" -gt 0 ] && say "  已铺入 $n 个内置 API 工作流（首次用请在 Relay API Settings 的 apikey 填一次：图片用网关 Key，04 文生视频用 geminiweb 的 API Key）" || true
+  # 工作流按类别放在子目录里（workflows/<类别>/*.json），铺进去时保持子目录，侧栏里显示成文件夹树
+  local n=0 f rel
+  while IFS= read -r -d '' f; do
+    rel="${f#"$srcdir"/}"
+    [ -e "$dstdir/$rel" ] && continue
+    mkdir -p "$(dirname "$dstdir/$rel")"
+    cp "$f" "$dstdir/$rel" && n=$((n + 1))
+  done < <(find "$srcdir" -name '*.json' -print0)
+  [ "$n" -gt 0 ] && say "  已铺入 $n 个内置工作流（Key 见 README：网关 id 1、geminiweb id 11、Suno id 21、阿里 id 31）" || true
 }
 
 # 铺入本套件自带的自定义节点（custom-nodes/<名字>/ → data/custom_nodes/<名字>/）。已存在的不覆盖。

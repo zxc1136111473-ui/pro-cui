@@ -85,8 +85,17 @@ def with_status(obj, gen_id, resp_slot):
     obj["last_node_id"], obj["last_link_id"] = nid, lid
     return obj
 
+# 类别文件夹（编号不变：文档和对话里都按编号称呼；侧栏里会显示成树）
+FOLDERS = {"1-一条龙": ("12", "20"), "2-图片生成": ("01", "03", "10", "14", "17", "18"),
+           "3-改图与合成": ("02", "06", "11", "13", "15"), "4-文案": ("08", "09"),
+           "5-配音与音乐": ("05", "07", "16"), "6-视频": ("04", "19")}
+
+
 def write(name, obj):
-    p = os.path.join(OUT, name)
+    folder = next((d for d, nums in FOLDERS.items() if name[:2] in nums), None)
+    assert folder, f"{name} 没有归到任何类别文件夹（改 FOLDERS）"
+    p = os.path.join(OUT, folder, name)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print("写出:", p)

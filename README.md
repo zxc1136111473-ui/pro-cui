@@ -10,7 +10,8 @@
   deploy.sh    一键部署脚本（交互菜单 + 非交互参数）
   Dockerfile   CPU 版 PyTorch 镜像（无 CUDA，省 ~4GB）
   .dockerignore  构建只带 requirements，不把 data/ backups/ 打进构建上下文（传服务器别漏了这个点文件）
-  workflows/     内置 API 工作流（部署时铺进 ComfyUI，已存在同名的不覆盖）
+  workflows/     内置工作流，按类别放在子目录里（1-一条龙 / 2-图片生成 / 3-改图与合成 / 4-文案 / 5-配音与音乐 / 6-视频），
+                 部署时保持子目录铺进 ComfyUI，已存在的不覆盖；编号不变，文档里都按编号称呼
   custom-nodes/  本套件自带并自己维护的插件和节点（启动容器前铺进 data/custom_nodes，已存在的不覆盖）：
                  ComfyUI-relayapi（第三方插件的拷贝，含本地修改，见其 UPSTREAM.md）、pro-gemini-music、pro-poster、
                  pro-ali（阿里生图/改图/配音）、pro-video（视频配音合成）
@@ -116,6 +117,8 @@ r) 重启容器（docker restart，不删容器，约 1 秒）   R) 重建容器
 
 **Key 存哪**：模板里不带 Key。每个 Relay API Settings 节点按**节点 id** 在服务器 `relay_config.json` 里取 Key（首次也可以在节点的 apikey 填一次，之后记住）：
 `1` 网关（gemini-image 出图 / 文字）、`11` geminiweb（视频、Gemini 音乐）、`21` Suno、`31` 阿里百炼（DashScope，国内版 `dashscope.aliyuncs.com`）。
+
+**老安装升级**：以前铺进去的是平铺文件（`data/user/default/workflows/*.json`），新版铺的是子目录，两份会并存；把根下的旧平铺文件删掉即可（在网页里改过的先另存）。
 
 | 类别 | 工作流 | 说明 | Key |
 |---|---|---|---|
