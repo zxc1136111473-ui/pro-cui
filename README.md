@@ -10,6 +10,9 @@ comfyui-deploy/
   deploy.sh    一键部署脚本（交互菜单 + 非交互参数）
   Dockerfile   CPU 版 PyTorch 镜像（无 CUDA，省 ~4GB）
   .dockerignore  构建只带 requirements，不把 data/ backups/ 打进构建上下文（传服务器别漏了这个点文件）
+  workflows/     内置 API 工作流（部署时铺进 ComfyUI，已存在同名的不覆盖）
+  custom-nodes/  本套件自带的自定义节点（启动容器前铺进 data/custom_nodes，已存在的不覆盖）
+  patches/       给第三方插件打的最小补丁（patches/<插件目录名>/*.patch，幂等）
 ```
 
 ## 怎么用（在服务器上）
@@ -107,6 +110,27 @@ r) 重启容器（docker restart，不删容器，约 1 秒）   R) 重建容器
      只记最近一次真正拉到新代码的更新（`.last-update`，构建前就写好，Ctrl+C 中断也能退）。回退时如果构建失败，
      仓库会恢复到回退前（和还在跑的容器一致），网络好了再选 12。新版如果升级过数据库，旧版日志里可能报 DB 错误，
      工作流不受影响；回退前会把 `comfyui.db.bkp` 另存为 `data/user/comfyui.db.pre-update`（旧版启动时会覆盖并删掉 .bkp）。
+
+## 内置工作流、自带节点和补丁
+
+**工作流**（`workflows/`，无密钥；首次用在 Relay API Settings 节点的 apikey 填一次，之后记住）
+
+| 工作流 | 用途 | Key |
+|---|---|---|
+| 01 文生图 / 03 封面横图 16:9 | 走网关 `gemini-image` 出图，约 20 秒，实际只出约 1K | 网关 Key（Settings 节点 id 1） |
+| 02 商品图换背景改图 | 传商品图换成纯白影棚背景（prompt 要写明确，含糊说法会原样返回原图） | 同上 |
+| 04 文生视频 | geminiweb 的 Veo；Pro 账号每天约 3 个，额度用尽时约 30 秒报错 | geminiweb 的 API Key（id 11） |
+| 05 音乐 Suno | Suno 渠道或任意 Suno 中转站 | 对应 Key（id 21） |
+| 06 图片放大 2 倍 | Lanczos + 轻度锐化，不用模型和 Key，1~2 秒 | 无 |
+| 07 音乐 Gemini | 自带节点 `pro-gemini-music`，走 geminiweb 的 gemini-music，约 1 分钟 MP3，成功率约一半 | 与 04 共用（id 11） |
+| 08 文案生成 / 09 看图写文案 | 网关的 gemini 文字模型，默认 `gemini-3.5-flash-lite`；文案会编参数、带 `[cite: N]`，要人工核对 | 网关 Key（id 1） |
+| 10 促销海报 / 11 商品海报 | 自带节点 `pro-poster` 拼提示词（标题 / 副标题 / 角标 / 风格预设 / 画面元素），11 带商品图做主体；中文文字实测准确 | 网关 Key（id 1） |
+
+每个 relayapi 工作流都接了「结果 / 错误信息」预览：relayapi 节点出错时不抛异常（作者为批量流程这样设计），错误只在 `response` 输出里，不接出来就会显示「成功」却没有结果。
+
+**已知限制**：gemini-image 实际只出约 1K（选 2K/4K 无效，用 06 放大）；网关 / 服务器只有 2 核，构建镜像时出图会 503 过载；官方「合作方」节点（走 Comfy 积分）填不了自己的 key，不可用；没有配音（geminiweb 和网关都没有语音模型）。
+
+**补丁机制**：`apply_plugin_patches` 在启动容器前、装插件后、更新插件后自动运行，已打过的跳过，打不上（上游改了）只提示。现有一个：`patches/ComfyUI-relayapi/keep-ratio.patch`——插件前端脚本在节点刚加载时会把工作流里保存的比例改成 1:1 / auto（03 封面 16:9 在界面里打开就变 1:1），补丁只让「用户之后接上/拆掉参考图」才自动切换。
 
 ## 接反代 API
 
