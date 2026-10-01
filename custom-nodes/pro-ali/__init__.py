@@ -27,7 +27,7 @@ ASR_TIMEOUT = 90      # 实测 6 秒音频约 4.5 秒
 ASR_MAX_SECONDS = 300  # 阿里 qwen3-asr-flash 单次上限约 5 分钟
 DOWNLOAD_TIMEOUT = 60
 
-# 只放实测过可用的：音色逐个用 1 个字合成验证过（50 个全部可用）
+# 只放实测过可用的：音色逐个用 1 个字合成验证过（49 个全部可用）
 VOICES = ["Cherry", "Serena", "Ethan", "Chelsie", "Momo", "Vivian", "Moon", "Maia", "Kai", "Nofish", "Bella", "Jennifer",
           "Ryan", "Katerina", "Aiden", "Eldric Sage", "Mia", "Mochi", "Bellona", "Vincent", "Bunny", "Neil", "Elias",
           "Arthur", "Nini", "Ebona", "Seren", "Pip", "Stella", "Bodega", "Sonrisa", "Alek", "Dolce", "Sohee", "Ono Anna",
