@@ -1,6 +1,6 @@
 {
-  "last_node_id": 41,
-  "last_link_id": 11,
+  "last_node_id": 75,
+  "last_link_id": 18,
   "nodes": [
     {
       "id": 11,
@@ -62,7 +62,8 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            2
+            2,
+            12
           ],
           "slot_index": 0
         }
@@ -77,10 +78,10 @@
         "https://www.runninghub.cn",
         "claude-opus-4-6",
         "",
-        "https://dashscope.aliyuncs.com",
+        "https://dashscope.aliyuncs.com/compatible-mode",
         "qwen3.8-flash"
       ],
-      "title": "Relay API Settings（阿里配音）"
+      "title": "Relay API Settings（阿里：扩写 + 配音）"
     },
     {
       "id": 12,
@@ -139,6 +140,14 @@
           "name": "image7",
           "type": "IMAGE",
           "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 17,
+          "widget": {
+            "name": "prompt"
+          }
         }
       ],
       "outputs": [
@@ -175,7 +184,7 @@
         "Node name for S&R": "RelayVideoGenerator"
       },
       "widgets_values": [
-        "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍",
+        "（由 AI 扩写节点提供）",
         "16:9",
         "720P",
         "8",
@@ -485,6 +494,281 @@
       },
       "widgets_values": [],
       "title": "状态：配音"
+    },
+    {
+      "id": 70,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        1500,
+        60
+      ],
+      "size": [
+        460,
+        200
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍"
+      ],
+      "title": "★ 一句话需求（只填这里）"
+    },
+    {
+      "id": 71,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        1500,
+        300
+      ],
+      "size": [
+        460,
+        240
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "你是文生视频提示词写手。把下面的一句话需求扩写成一段中文视频提示词（60~120 字）：写清主体、动作、场景、镜头运动（如跟拍/推近/环绕）、光线和风格；只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。只输出提示词本身，不要解释，不要加引号或标题。\n需求："
+      ],
+      "title": "扩写指令（一般不用改）"
+    },
+    {
+      "id": 72,
+      "type": "StringConcatenate",
+      "pos": [
+        2020,
+        60
+      ],
+      "size": [
+        340,
+        140
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "link": 13,
+          "widget": {
+            "name": "string_a"
+          }
+        },
+        {
+          "name": "string_b",
+          "type": "STRING",
+          "link": 14,
+          "widget": {
+            "name": "string_b"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            15
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "\n"
+      ],
+      "title": "拼成完整指令"
+    },
+    {
+      "id": 73,
+      "type": "RelayTextGenerator",
+      "pos": [
+        2020,
+        240
+      ],
+      "size": [
+        420,
+        300
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 12,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image8",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 15,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            16,
+            17
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            18
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayTextGenerator"
+      },
+      "widgets_values": [
+        "（由「拼成完整指令」提供）",
+        1,
+        "randomize"
+      ],
+      "title": "AI 扩写提示词"
+    },
+    {
+      "id": 74,
+      "type": "PreviewAny",
+      "pos": [
+        2500,
+        240
+      ],
+      "size": [
+        460,
+        240
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 16
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 扩写出的提示词（想看模型写了什么）"
+    },
+    {
+      "id": 75,
+      "type": "PreviewAny",
+      "pos": [
+        2500,
+        520
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 18
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "状态：扩写"
     }
   ],
   "links": [
@@ -573,6 +857,62 @@
       3,
       1,
       41,
+      0,
+      "STRING"
+    ],
+    [
+      12,
+      31,
+      0,
+      73,
+      0,
+      "STRING"
+    ],
+    [
+      13,
+      71,
+      0,
+      72,
+      0,
+      "STRING"
+    ],
+    [
+      14,
+      70,
+      0,
+      72,
+      1,
+      "STRING"
+    ],
+    [
+      15,
+      72,
+      0,
+      73,
+      9,
+      "STRING"
+    ],
+    [
+      16,
+      73,
+      0,
+      74,
+      0,
+      "STRING"
+    ],
+    [
+      17,
+      73,
+      0,
+      12,
+      8,
+      "STRING"
+    ],
+    [
+      18,
+      73,
+      1,
+      75,
       0,
       "STRING"
     ]

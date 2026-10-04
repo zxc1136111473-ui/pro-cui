@@ -100,13 +100,6 @@ def write(name, obj):
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print("写出:", p)
 
-# 01 文生图
-write("01-文生图.json", with_status(wf(
-    [settings_node(),
-     generator_node("一只橘猫坐在窗台上，阳光，写实风格", "1:1"),
-     save_node("txt2img")],
-    [[1, 1, 0, 2, 0, "STRING"], [2, 2, 0, 3, 0, "IMAGE"]], 3, 2), 2, 1))
-
 # 02 商品图-换背景改图（LoadImage -> image1）
 write("02-商品图-换背景改图.json", with_status(wf(
     [settings_node(),
@@ -114,13 +107,6 @@ write("02-商品图-换背景改图.json", with_status(wf(
      save_node("product"),
      load_image_node("demo_product.png")],
     [[1, 1, 0, 2, 0, "STRING"], [2, 2, 0, 3, 0, "IMAGE"], [3, 4, 0, 2, 1, "IMAGE"]], 4, 3), 2, 1))
-
-# 03 封面横图 16:9（直播/流媒体封面）
-write("03-封面横图-16x9.json", with_status(wf(
-    [settings_node(),
-     generator_node("科技感直播封面，蓝紫色渐变背景，中间留白用于放标题，高质量", "16:9"),
-     save_node("cover")],
-    [[1, 1, 0, 2, 0, "STRING"], [2, 2, 0, 3, 0, "IMAGE"]], 3, 2), 2, 1))
 
 print("完成，共 3 个工作流")
 
@@ -162,11 +148,6 @@ def save_video_node():
         "widgets_values": ["video/文生视频", "auto", "auto"],
     }
 
-write("04-文生视频.json", with_status(wf(
-    [video_settings_node(),
-     video_generator_node("一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍"),
-     save_video_node()],
-    [[1, 11, 0, 12, 0, "STRING"], [2, 12, 0, 13, 0, "VIDEO"]], 13, 2), 12, 2))
 
 # 05 音乐（Suno，经 New API 网关的 Suno 渠道；也可改成任意 Suno 中转站地址）
 # Settings 节点 id=21（图片 id=1 存网关 key，视频 id=11 存 geminiweb key，音乐单独一个 id）
@@ -315,6 +296,7 @@ SPEC = {
     "ProAliVoiceClone": ([("audio", "AUDIO", False), ("info", "STRING", True)], [("voice", "STRING")], []),
     "SaveAudioAdvanced": ([("audio", "AUDIO", False)], [], []),
     "LoadVideo": ([], [("VIDEO", "VIDEO")], []),
+    "SaveVideo": ([("video", "VIDEO", False)], [], []),
     "LoadAudio": ([], [("AUDIO", "AUDIO")], []),
     "ProVideoDub": ([("video", "VIDEO", False), ("voice", "AUDIO", False), ("bgm", "AUDIO", False), ("subtitles", "STRING", False)], [("video", "VIDEO")], []),
     "ProSubtitles": ([("voice", "AUDIO", False)], [("srt", "STRING")], ["text"]),
@@ -381,6 +363,64 @@ def status(g, gen, out="response", pos=(0, 0), title="状态（出错时这里�
     g.add(nid, "PreviewAny", pos, (360, 110), title=title)
     g.connect(gen, out, nid, "source")
     return nid
+
+
+# ── AI 扩写提示词：一句话需求 → 阿里文字模型扩写 → 接到生图 / 生视频节点的 prompt ──────────────────
+# 用阿里 Settings 节点 id=31（和其他阿里工作流共用一个 Key）。扩写结果用 PreviewAny 展示，方便看模型写了什么。
+EXPAND = {
+    "image": "你是生图提示词写手。把下面的一句话需求扩写成一段中文生图提示词（80~150 字）：写清主体、场景、光线、构图、风格和画质；"
+             "忠于原意，不要添加需求里没有的主体；画面里不要出现任何文字、水印、标志。只输出提示词本身，不要解释，不要加引号或标题。\n需求：",
+    "video": "你是文生视频提示词写手。把下面的一句话需求扩写成一段中文视频提示词（60~120 字）：写清主体、动作、场景、镜头运动（如跟拍/推近/环绕）、光线和风格；"
+             "只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。只输出提示词本身，不要解释，不要加引号或标题。\n需求：",
+}
+
+
+def ai_prompt(g, gen, kind, idea, pos=(60, 600), settings_id=31):
+    """给生成节点 gen 的 prompt 前面接上「一句话需求 → AI 扩写」。节点编号用 70~75，Settings 节点已有则复用。"""
+    x, y = pos
+    if not any(n["id"] == settings_id for n in g.nodes):
+        g.add(settings_id, "RelayAPISettings", (x, y), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里文字）")
+        y += 340
+    g.add(70, "PrimitiveStringMultiline", (x, y), (460, 200), [idea], title="★ 一句话需求（只填这里）")
+    g.add(71, "PrimitiveStringMultiline", (x, y + 240), (460, 240), [EXPAND[kind]], title="扩写指令（一般不用改）")
+    g.add(72, "StringConcatenate", (x + 520, y), (340, 140), ["", "", "\n"], title="拼成完整指令")
+    g.add(73, "RelayTextGenerator", (x + 520, y + 180), (420, 300), ["（由「拼成完整指令」提供）", 1, "randomize"], title="AI 扩写提示词")
+    g.add(74, "PreviewAny", (x + 1000, y + 180), (460, 240), title="AI 扩写出的提示词（想看模型写了什么）")
+    g.connect(settings_id, "STRING", 73, "info")
+    g.connect(71, "STRING", 72, "string_a"); g.connect(70, "STRING", 72, "string_b")
+    g.connect(72, "STRING", 73, "prompt"); g.connect(73, "text", 74, "source")
+    g.connect(73, "text", gen, "prompt")
+    status(g, 73, pos=(x + 1000, y + 460), title="状态：扩写")
+
+
+def text_to_image(idea, ratio, prefix, cover_hint=""):
+    g = Graph()
+    g.add(1, "RelayAPISettings", (60, 120), (400, 300), IMG_SET)
+    g.add(2, "RelayImageGenerator", (520, 120), (380, 420), ["（由 AI 扩写节点提供）", ratio, "1K", "medium", "jpeg", "low", 42, "randomize"])
+    g.add(3, "SaveImage", (960, 120), (340, 320), [prefix])
+    g.connect(1, "STRING", 2, "info"); g.connect(2, "image", 3, "images")
+    status(g, 2, pos=(960, 500), title="结果 / 错误信息（出错时这里显示原因）")
+    ai_prompt(g, 2, "image", idea, pos=(60, 640))
+    return g.build()
+
+
+# 01 文生图 / 03 封面横图 16:9 / 04 文生视频：都是「一句话 → AI 扩写 → 生成」
+write("01-文生图.json", text_to_image("一只橘猫坐在窗台上，阳光，写实风格", "1:1", "txt2img"))
+write("03-封面横图-16x9.json", text_to_image("科技感直播封面，蓝紫色渐变背景，中间留白用于放标题", "16:9", "cover"))
+
+
+def text_to_video():
+    g = Graph()
+    g.add(11, "RelayAPISettings", (60, 120), (400, 300), ["video", "Veo", "v1/videos", "https://www.runninghub.cn", "veo3.1", "", "http://airelay-geminiweb:8083", "gemini-video"])
+    g.add(12, "RelayVideoGenerator", (520, 120), (380, 420), ["（由 AI 扩写节点提供）", "16:9", "720P", "8", 1, "fixed", "false", "false"])
+    g.add(13, "SaveVideo", (960, 120), (340, 360), ["video/文生视频", "auto", "auto"])
+    g.connect(11, "STRING", 12, "info"); g.connect(12, "video", 13, "video")
+    status(g, 12, out="response", pos=(960, 540), title="结果 / 错误信息（出错时这里显示原因）")
+    ai_prompt(g, 12, "video", "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍", pos=(60, 640))
+    return g.build()
+
+
+write("04-文生视频.json", text_to_video())
 
 
 # 12 商品一条龙：一张商品图 → 白底主图(放大 2 倍) + 场景图 + 标题/卖点文案，一次跑完
@@ -480,9 +520,10 @@ def ali_out(g, gen, prefix, pos_save=(900, 120)):
 
 def ali_image():      # 14 高清出图（阿里）
     g = Graph()
-    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
-    g.add(2, "ProAliImage", (520, 120), (420, 420), ["一杯冰美式咖啡放在木桌上，自然光，产品摄影，细节丰富", "qwen-image-2.0-pro", "3:4", "2K", 1, "randomize"], title="阿里 文生图（2K）")
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"))
+    g.add(2, "ProAliImage", (520, 120), (420, 420), ["（由 AI 扩写节点提供）", "qwen-image-2.0-pro", "3:4", "2K", 1, "randomize"], title="阿里 文生图（2K）")
     g.connect(31, "STRING", 2, "info"); ali_out(g, 2, "ali/高清出图")
+    ai_prompt(g, 2, "image", "一杯冰美式咖啡放在木桌上，自然光，产品摄影，细节丰富", pos=(60, 600))
     return g.build()
 
 
@@ -602,8 +643,8 @@ def translate():      # 21：多语言文案（阿里通用文字模型，实测
 def video_pipeline():  # 20：文生视频（Veo，每天约 3 个额度）→ 配音 + 字幕 → 成片，一条龙
     g = Graph()
     g.add(11, "RelayAPISettings", (60, 60), (400, 300), ["video", "Veo", "v1/videos", "https://www.runninghub.cn", "veo3.1", "", "http://airelay-geminiweb:8083", "gemini-video"], title="Relay API Settings（geminiweb 视频）")
-    g.add(31, "RelayAPISettings", (60, 420), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里配音）")
-    g.add(12, "RelayVideoGenerator", (520, 60), (420, 420), ["一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍", "16:9", "720P", "8", 1, "fixed", "false", "false"], title="① 文生视频（Veo）")
+    g.add(31, "RelayAPISettings", (60, 420), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里：扩写 + 配音）")
+    g.add(12, "RelayVideoGenerator", (520, 60), (420, 420), ["（由 AI 扩写节点提供）", "16:9", "720P", "8", 1, "fixed", "false", "false"], title="① 文生视频（Veo）")
     g.add(6, "PrimitiveStringMultiline", (520, 560), (440, 200), ["快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！"], title="② 配音文案（同时用于配音和字幕）")
     g.add(3, "ProAliTTS", (520, 820), (440, 420), ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", "", 1.0, 0.0, ""], title="配音")
     g.add(7, "ProSubtitles", (520, 1300), (440, 260), ["（由文案框提供）", 16, 0.0, "subtitles/字幕"], title="字幕（按配音停顿对齐）")
@@ -613,6 +654,7 @@ def video_pipeline():  # 20：文生视频（Veo，每天约 3 个额度）→ �
     g.connect(3, "audio", 7, "voice"); g.connect(12, "video", 5, "video"); g.connect(3, "audio", 5, "voice"); g.connect(4, "AUDIO", 5, "bgm")
     g.connect(7, "srt", 5, "subtitles")
     status(g, 12, pos=(1020, 620), title="状态：视频", nid=40); status(g, 3, pos=(1020, 780), title="状态：配音", nid=41)
+    ai_prompt(g, 12, "video", "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍", pos=(1500, 60))
     return g.build()
 
 
