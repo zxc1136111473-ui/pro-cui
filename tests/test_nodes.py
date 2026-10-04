@@ -106,6 +106,13 @@ class PromptWriter(unittest.TestCase):
         self.assertEqual(kw["json"]["messages"], [{"role": "system", "content": "写提示词"}, {"role": "user", "content": "一个红苹果"}])
         self.assertIs(kw["json"]["enable_thinking"], False)
 
+    def test_image_goes_into_user_message(self):
+        post = mock.Mock(return_value=self.resp(body={"choices": [{"message": {"content": "好"}}]}))
+        with mock.patch.object(ali, "_to_data_url", return_value="data:image/jpeg;base64,AAAA"), mock.patch.object(ali.requests, "post", post):
+            ali.ProAliPromptWriter().run("补充信息", "写文案", "qwen3.8-omni-flash", 0, self.INFO, image=object())
+        user = post.call_args[1]["json"]["messages"][1]["content"]
+        self.assertEqual(user, [{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AAAA"}}, {"type": "text", "text": "补充信息"}])
+
     def test_connection_error_retried_once(self):
         ok = self.resp(body={"choices": [{"message": {"content": "好"}}]})
         post = mock.Mock(side_effect=[ali.requests.ConnectionError("reset"), ok])

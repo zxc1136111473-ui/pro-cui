@@ -1,13 +1,13 @@
 {
-  "last_node_id": 74,
-  "last_link_id": 14,
+  "last_node_id": 78,
+  "last_link_id": 20,
   "nodes": [
     {
       "id": 11,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        740
+        1320
       ],
       "size": [
         400,
@@ -22,7 +22,7 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            1
+            3
           ],
           "slot_index": 0
         }
@@ -40,68 +40,27 @@
         "http://airelay-geminiweb:8083",
         "gemini-video"
       ],
-      "title": "Relay API Settings（geminiweb 视频）"
-    },
-    {
-      "id": 31,
-      "type": "RelayAPISettings",
-      "pos": [
-        60,
-        1100
-      ],
-      "size": [
-        400,
-        300
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            2,
-            12
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "RelayAPISettings"
-      },
-      "widgets_values": [
-        "text",
-        "OpenaiText",
-        "v1/chat/completions",
-        "https://www.runninghub.cn",
-        "claude-opus-4-6",
-        "",
-        "https://dashscope.aliyuncs.com/compatible-mode",
-        "qwen3.8-flash"
-      ],
-      "title": "Relay API Settings（阿里：扩写 + 配音）"
+      "title": "Relay API Settings（geminiweb 视频 Key）"
     },
     {
       "id": 12,
       "type": "RelayVideoGenerator",
       "pos": [
         520,
-        740
+        1320
       ],
       "size": [
         420,
         420
       ],
       "flags": {},
-      "order": 2,
+      "order": 1,
       "mode": 0,
       "inputs": [
         {
           "name": "info",
           "type": "STRING",
-          "link": 1,
+          "link": 3,
           "widget": {
             "name": "info"
           }
@@ -144,7 +103,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 14,
+          "link": 4,
           "widget": {
             "name": "prompt"
           }
@@ -155,7 +114,7 @@
           "name": "video",
           "type": "VIDEO",
           "links": [
-            6
+            9
           ],
           "slot_index": 0
         },
@@ -169,7 +128,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            10
+            20
           ],
           "slot_index": 2
         },
@@ -200,14 +159,14 @@
       "type": "PrimitiveStringMultiline",
       "pos": [
         520,
-        1240
+        1900
       ],
       "size": [
         440,
         200
       ],
       "flags": {},
-      "order": 3,
+      "order": 2,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -215,8 +174,8 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            3,
-            4
+            6,
+            7
           ],
           "slot_index": 0
         }
@@ -227,27 +186,27 @@
       "widgets_values": [
         "快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！"
       ],
-      "title": "② 配音文案（同时用于配音和字幕）"
+      "title": "② 配音文案（只在「出视频，再配音」模式用；同时用于配音和字幕）"
     },
     {
       "id": 3,
       "type": "ProAliTTS",
       "pos": [
         520,
-        1500
+        2160
       ],
       "size": [
         440,
-        420
+        460
       ],
       "flags": {},
-      "order": 4,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
           "name": "info",
           "type": "STRING",
-          "link": 2,
+          "link": 5,
           "widget": {
             "name": "info"
           }
@@ -255,7 +214,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 3,
+          "link": 6,
           "widget": {
             "name": "text"
           }
@@ -266,17 +225,15 @@
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            5,
-            7
+            8,
+            12
           ],
           "slot_index": 0
         },
         {
           "name": "response",
           "type": "STRING",
-          "links": [
-            11
-          ],
+          "links": null,
           "slot_index": 1
         }
       ],
@@ -300,25 +257,25 @@
       "type": "ProSubtitles",
       "pos": [
         520,
-        1980
+        2680
       ],
       "size": [
         440,
         260
       ],
       "flags": {},
-      "order": 5,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {
           "name": "voice",
           "type": "AUDIO",
-          "link": 5
+          "link": 8
         },
         {
           "name": "text",
           "type": "STRING",
-          "link": 4,
+          "link": 7,
           "widget": {
             "name": "text"
           }
@@ -329,7 +286,7 @@
           "name": "srt",
           "type": "STRING",
           "links": [
-            9
+            18
           ],
           "slot_index": 0
         }
@@ -343,21 +300,21 @@
         0.0,
         "subtitles/字幕"
       ],
-      "title": "字幕（按配音停顿对齐）"
+      "title": "字幕（按配音停顿对齐，同时存 .srt）"
     },
     {
       "id": 4,
       "type": "LoadAudio",
       "pos": [
         60,
-        1460
+        1680
       ],
       "size": [
         440,
         200
       ],
       "flags": {},
-      "order": 6,
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -365,7 +322,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            8
+            15
           ],
           "slot_index": 0
         }
@@ -378,42 +335,50 @@
         "",
         ""
       ],
-      "title": "③ 背景音乐（默认是静音文件=不加；想加就上传自己的）"
+      "title": "③ 背景音乐（配音模式用，默认静音=不加）"
     },
     {
       "id": 5,
       "type": "ProVideoDub",
       "pos": [
-        1020,
-        740
+        1100,
+        1320
       ],
       "size": [
         420,
         480
       ],
       "flags": {},
-      "order": 7,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 6
+          "link": 9
         },
         {
           "name": "voice",
           "type": "AUDIO",
-          "link": 7
+          "link": 13
         },
         {
           "name": "bgm",
           "type": "AUDIO",
-          "link": 8
+          "link": 16
         },
         {
           "name": "subtitles",
           "type": "STRING",
-          "link": 9
+          "link": 19
+        },
+        {
+          "name": "keep_original_audio",
+          "type": "BOOLEAN",
+          "link": 10,
+          "widget": {
+            "name": "keep_original_audio"
+          }
         }
       ],
       "outputs": [
@@ -437,86 +402,119 @@
         46,
         70
       ],
-      "title": "④ 合成成片（替换 Veo 自带声音）"
+      "title": "④ 合成成片（保留原声 / 替换成配音，跟模式走）"
     },
     {
-      "id": 40,
-      "type": "PreviewAny",
-      "pos": [
-        1020,
-        1300
-      ],
-      "size": [
-        360,
-        110
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 10
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [],
-      "title": "状态：视频"
-    },
-    {
-      "id": 41,
-      "type": "PreviewAny",
-      "pos": [
-        1020,
-        1460
-      ],
-      "size": [
-        360,
-        110
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 11
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [],
-      "title": "状态：配音"
-    },
-    {
-      "id": 70,
-      "type": "ProAliPromptWriter",
+      "id": 77,
+      "type": "ProModeTextVideo",
       "pos": [
         60,
         60
       ],
       "size": [
         520,
+        110
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "dub",
+          "type": "BOOLEAN",
+          "links": [
+            11,
+            14,
+            17
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "keep_original",
+          "type": "BOOLEAN",
+          "links": [
+            10
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeTextVideo"
+      },
+      "widgets_values": [
+        "只出视频（保留 Veo 自带声音）"
+      ],
+      "title": "★ 先选模式"
+    },
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        870
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1,
+            5
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-flash"
+      ],
+      "title": "Relay API Settings（阿里文字）"
+    },
+    {
+      "id": 70,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        240
+      ],
+      "size": [
+        520,
         560
       ],
       "flags": {},
-      "order": 10,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "name": "info",
           "type": "STRING",
-          "link": 12,
+          "link": 1,
           "widget": {
             "name": "info"
           }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
         }
       ],
       "outputs": [
@@ -524,8 +522,8 @@
           "name": "text",
           "type": "STRING",
           "links": [
-            13,
-            14
+            2,
+            4
           ],
           "slot_index": 0
         },
@@ -553,20 +551,20 @@
       "type": "PreviewAny",
       "pos": [
         620,
-        60
+        240
       ],
       "size": [
         460,
         300
       ],
       "flags": {},
-      "order": 11,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 13
+          "link": 2
         }
       ],
       "outputs": [],
@@ -575,99 +573,180 @@
       },
       "widgets_values": [],
       "title": "AI 扩写出的结果（想看模型写了什么）"
+    },
+    {
+      "id": 21,
+      "type": "ProGate",
+      "pos": [
+        1100,
+        1900
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 12
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 11,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "配音开关（跟模式走）"
+    },
+    {
+      "id": 22,
+      "type": "ProGate",
+      "pos": [
+        1100,
+        2040
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 15
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 14,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            16
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "背景音乐开关（跟模式走）"
+    },
+    {
+      "id": 23,
+      "type": "ProGate",
+      "pos": [
+        1100,
+        2180
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 18
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 17,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            19
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "字幕开关（跟模式走）"
+    },
+    {
+      "id": 78,
+      "type": "PreviewAny",
+      "pos": [
+        1100,
+        2340
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 20
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "状态：视频（Veo）"
     }
   ],
   "links": [
     [
       1,
-      11,
-      0,
-      12,
-      0,
-      "STRING"
-    ],
-    [
-      2,
-      31,
-      0,
-      3,
-      0,
-      "STRING"
-    ],
-    [
-      3,
-      6,
-      0,
-      3,
-      1,
-      "STRING"
-    ],
-    [
-      4,
-      6,
-      0,
-      7,
-      1,
-      "STRING"
-    ],
-    [
-      5,
-      3,
-      0,
-      7,
-      0,
-      "AUDIO"
-    ],
-    [
-      6,
-      12,
-      0,
-      5,
-      0,
-      "VIDEO"
-    ],
-    [
-      7,
-      3,
-      0,
-      5,
-      1,
-      "AUDIO"
-    ],
-    [
-      8,
-      4,
-      0,
-      5,
-      2,
-      "AUDIO"
-    ],
-    [
-      9,
-      7,
-      0,
-      5,
-      3,
-      "STRING"
-    ],
-    [
-      10,
-      12,
-      2,
-      40,
-      0,
-      "STRING"
-    ],
-    [
-      11,
-      3,
-      1,
-      41,
-      0,
-      "STRING"
-    ],
-    [
-      12,
       31,
       0,
       70,
@@ -675,7 +754,7 @@
       "STRING"
     ],
     [
-      13,
+      2,
       70,
       0,
       74,
@@ -683,11 +762,147 @@
       "STRING"
     ],
     [
-      14,
+      3,
+      11,
+      0,
+      12,
+      0,
+      "STRING"
+    ],
+    [
+      4,
       70,
       0,
       12,
       8,
+      "STRING"
+    ],
+    [
+      5,
+      31,
+      0,
+      3,
+      0,
+      "STRING"
+    ],
+    [
+      6,
+      6,
+      0,
+      3,
+      1,
+      "STRING"
+    ],
+    [
+      7,
+      6,
+      0,
+      7,
+      1,
+      "STRING"
+    ],
+    [
+      8,
+      3,
+      0,
+      7,
+      0,
+      "AUDIO"
+    ],
+    [
+      9,
+      12,
+      0,
+      5,
+      0,
+      "VIDEO"
+    ],
+    [
+      10,
+      77,
+      1,
+      5,
+      4,
+      "BOOLEAN"
+    ],
+    [
+      11,
+      77,
+      0,
+      21,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      12,
+      3,
+      0,
+      21,
+      0,
+      "AUDIO"
+    ],
+    [
+      13,
+      21,
+      0,
+      5,
+      1,
+      "*"
+    ],
+    [
+      14,
+      77,
+      0,
+      22,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      15,
+      4,
+      0,
+      22,
+      0,
+      "AUDIO"
+    ],
+    [
+      16,
+      22,
+      0,
+      5,
+      2,
+      "*"
+    ],
+    [
+      17,
+      77,
+      0,
+      23,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      18,
+      7,
+      0,
+      23,
+      0,
+      "STRING"
+    ],
+    [
+      19,
+      23,
+      0,
+      5,
+      3,
+      "*"
+    ],
+    [
+      20,
+      12,
+      2,
+      78,
+      0,
       "STRING"
     ]
   ],

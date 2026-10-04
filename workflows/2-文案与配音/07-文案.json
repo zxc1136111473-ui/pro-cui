@@ -1,0 +1,369 @@
+{
+  "last_node_id": 77,
+  "last_link_id": 7,
+  "nodes": [
+    {
+      "id": 3,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        1360
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "商品图（只在「看图写文案」模式用）"
+    },
+    {
+      "id": 5,
+      "type": "ImageScaleToMaxDimension",
+      "pos": [
+        520,
+        1410
+      ],
+      "size": [
+        320,
+        90
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            5
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScaleToMaxDimension"
+      },
+      "widgets_values": [
+        "lanczos",
+        768
+      ],
+      "title": "缩到最长边 768（别删）"
+    },
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1010
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-omni-flash"
+      ],
+      "title": "Relay API Settings（阿里文字）"
+    },
+    {
+      "id": 77,
+      "type": "ProModeCopy",
+      "pos": [
+        60,
+        60
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "instruction",
+          "type": "STRING",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "use_image",
+          "type": "BOOLEAN",
+          "links": [
+            4
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeCopy"
+      },
+      "widgets_values": [
+        "文字写文案（按商品信息）"
+      ],
+      "title": "★ 先选模式"
+    },
+    {
+      "id": 70,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        240
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 7
+        },
+        {
+          "name": "instruction",
+          "type": "STRING",
+          "link": 2,
+          "widget": {
+            "name": "instruction"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            3
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "新鲜红苹果：果形圆润，脆甜多汁，带果梗鲜叶，产地直发",
+        "（由模式节点提供）",
+        "qwen3.8-omni-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：商品信息（翻译模式：贴上要翻译的中文文案）"
+    },
+    {
+      "id": 74,
+      "type": "PreviewAny",
+      "pos": [
+        620,
+        240
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 3
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "生成的文案"
+    },
+    {
+      "id": 6,
+      "type": "ProGate",
+      "pos": [
+        900,
+        1410
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 5
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 4,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "商品图开关（跟模式走）"
+    }
+  ],
+  "links": [
+    [
+      1,
+      31,
+      0,
+      70,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      77,
+      0,
+      70,
+      2,
+      "STRING"
+    ],
+    [
+      3,
+      70,
+      0,
+      74,
+      0,
+      "STRING"
+    ],
+    [
+      4,
+      77,
+      1,
+      6,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      5,
+      5,
+      0,
+      6,
+      0,
+      "IMAGE"
+    ],
+    [
+      6,
+      3,
+      0,
+      5,
+      0,
+      "IMAGE"
+    ],
+    [
+      7,
+      6,
+      0,
+      70,
+      1,
+      "*"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

@@ -7,7 +7,7 @@
       "type": "RelayAPISettings",
       "pos": [
         60,
-        740
+        770
       ],
       "size": [
         400,
@@ -47,7 +47,7 @@
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1920
+        1950
       ],
       "size": [
         400,
@@ -88,7 +88,7 @@
       "type": "LoadImage",
       "pos": [
         60,
-        1100
+        1130
       ],
       "size": [
         400,
@@ -130,7 +130,7 @@
       "type": "RelayImageGenerator",
       "pos": [
         540,
-        740
+        770
       ],
       "size": [
         400,
@@ -273,7 +273,7 @@
       "type": "ImageScaleBy",
       "pos": [
         1000,
-        740
+        770
       ],
       "size": [
         300,
@@ -313,7 +313,7 @@
       "type": "ImageSharpen",
       "pos": [
         1000,
-        880
+        910
       ],
       "size": [
         300,
@@ -353,7 +353,7 @@
       "type": "SaveImage",
       "pos": [
         1360,
-        740
+        770
       ],
       "size": [
         340,
@@ -383,7 +383,7 @@
       "type": "RelayImageGenerator",
       "pos": [
         540,
-        1420
+        1450
       ],
       "size": [
         400,
@@ -534,7 +534,7 @@
       "type": "SaveImage",
       "pos": [
         1000,
-        1420
+        1450
       ],
       "size": [
         340,
@@ -564,7 +564,7 @@
       "type": "RelayTextGenerator",
       "pos": [
         540,
-        2120
+        2150
       ],
       "size": [
         420,
@@ -656,7 +656,7 @@
       "type": "PreviewAny",
       "pos": [
         1000,
-        2120
+        2150
       ],
       "size": [
         460,
@@ -684,7 +684,7 @@
       "type": "ImageScaleToMaxDimension",
       "pos": [
         540,
-        2460
+        2490
       ],
       "size": [
         320,
@@ -724,7 +724,7 @@
       "type": "PreviewAny",
       "pos": [
         1000,
-        1060
+        1090
       ],
       "size": [
         360,
@@ -752,7 +752,7 @@
       "type": "PreviewAny",
       "pos": [
         1000,
-        1760
+        1790
       ],
       "size": [
         360,
@@ -780,7 +780,7 @@
       "type": "PreviewAny",
       "pos": [
         1000,
-        2420
+        2450
       ],
       "size": [
         360,
@@ -825,6 +825,11 @@
           "widget": {
             "name": "info"
           }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
         }
       ],
       "outputs": [

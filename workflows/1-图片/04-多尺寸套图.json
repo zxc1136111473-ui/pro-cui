@@ -7,7 +7,7 @@
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1080
+        1140
       ],
       "size": [
         400,
@@ -49,7 +49,7 @@
       "type": "LoadImage",
       "pos": [
         60,
-        1440
+        1500
       ],
       "size": [
         400,
@@ -92,7 +92,7 @@
       "type": "RelayImageGenerator",
       "pos": [
         540,
-        1080
+        1140
       ],
       "size": [
         400,
@@ -243,7 +243,7 @@
       "type": "SaveImage",
       "pos": [
         1000,
-        1080
+        1140
       ],
       "size": [
         340,
@@ -273,7 +273,7 @@
       "type": "PreviewAny",
       "pos": [
         1000,
-        1420
+        1480
       ],
       "size": [
         360,
@@ -301,7 +301,7 @@
       "type": "RelayImageGenerator",
       "pos": [
         540,
-        1760
+        1820
       ],
       "size": [
         400,
@@ -452,7 +452,7 @@
       "type": "SaveImage",
       "pos": [
         1000,
-        1760
+        1820
       ],
       "size": [
         340,
@@ -482,7 +482,7 @@
       "type": "PreviewAny",
       "pos": [
         1000,
-        2100
+        2160
       ],
       "size": [
         360,
@@ -510,7 +510,7 @@
       "type": "RelayImageGenerator",
       "pos": [
         540,
-        2440
+        2500
       ],
       "size": [
         400,
@@ -661,7 +661,7 @@
       "type": "SaveImage",
       "pos": [
         1000,
-        2440
+        2500
       ],
       "size": [
         340,
@@ -691,7 +691,7 @@
       "type": "PreviewAny",
       "pos": [
         1000,
-        2780
+        2840
       ],
       "size": [
         360,
@@ -719,7 +719,7 @@
       "type": "RelayImageGenerator",
       "pos": [
         540,
-        3120
+        3180
       ],
       "size": [
         400,
@@ -870,7 +870,7 @@
       "type": "SaveImage",
       "pos": [
         1000,
-        3120
+        3180
       ],
       "size": [
         340,
@@ -900,7 +900,7 @@
       "type": "PreviewAny",
       "pos": [
         1000,
-        3460
+        3520
       ],
       "size": [
         360,
@@ -928,7 +928,7 @@
       "type": "RelayAPISettings",
       "pos": [
         60,
-        660
+        690
       ],
       "size": [
         400,
@@ -985,6 +985,11 @@
           "widget": {
             "name": "info"
           }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
         }
       ],
       "outputs": [

@@ -1,3 +1,3 @@
-2:image,3:text1,3:text2,out
-/path/to/商品1.png,限时三天,满199减50,batch/商品1
-/path/to/商品2.png,新品首发,买一送一,batch/商品2
+2:image,6:text1,6:text2,77:mode,out
+/path/to/商品1.png,限时三天,满199减50,贴促销标签,batch/商品1
+/path/to/商品2.png,新品首发,买一送一,贴促销标签,batch/商品2

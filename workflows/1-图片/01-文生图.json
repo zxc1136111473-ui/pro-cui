@@ -1,13 +1,13 @@
 {
-  "last_node_id": 75,
-  "last_link_id": 11,
+  "last_node_id": 77,
+  "last_link_id": 14,
   "nodes": [
     {
       "id": 1,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1140
+        1380
       ],
       "size": [
         400,
@@ -22,7 +22,7 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            1
+            3
           ],
           "slot_index": 0
         }
@@ -39,14 +39,15 @@
         "",
         "http://airelay-newapi:3000",
         "gemini-image"
-      ]
+      ],
+      "title": "Relay API Settings（网关 Key）"
     },
     {
       "id": 2,
       "type": "RelayImageGenerator",
       "pos": [
         520,
-        1140
+        1380
       ],
       "size": [
         380,
@@ -59,7 +60,7 @@
         {
           "name": "info",
           "type": "STRING",
-          "link": 1,
+          "link": 3,
           "widget": {
             "name": "info"
           }
@@ -147,7 +148,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 2,
+          "link": 5,
           "widget": {
             "name": "prompt"
           }
@@ -158,7 +159,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            3
+            8
           ],
           "slot_index": 0
         },
@@ -166,7 +167,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            4
+            11
           ],
           "slot_index": 1
         },
@@ -181,35 +182,99 @@
         "Node name for S&R": "RelayImageGenerator"
       },
       "widgets_values": [
-        "（由左下「海报提示词」节点生成）",
-        "3:4",
+        "（由 AI 扩写节点提供）",
+        "1:1",
         "1K",
         "medium",
         "jpeg",
         "low",
         42,
         "randomize"
-      ]
+      ],
+      "title": "引擎 ① 网关 Gemini（比例在这里选，16:9 就是封面横图）"
     },
     {
       "id": 3,
-      "type": "SaveImage",
+      "type": "ProAliImage",
       "pos": [
         960,
-        1140
+        1380
       ],
       "size": [
-        340,
-        320
+        440,
+        420
       ],
       "flags": {},
       "order": 2,
       "mode": 0,
       "inputs": [
         {
+          "name": "info",
+          "type": "STRING",
+          "link": 4,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 6,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            12
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliImage"
+      },
+      "widgets_values": [
+        "（由 AI 扩写节点提供）",
+        "qwen-image-2.0-pro",
+        "1:1",
+        "2K",
+        1,
+        "randomize"
+      ],
+      "title": "引擎 ② 阿里 qwen-image（比例、清晰度在这里选）"
+    },
+    {
+      "id": 4,
+      "type": "SaveImage",
+      "pos": [
+        1820,
+        1380
+      ],
+      "size": [
+        340,
+        320
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
           "name": "images",
           "type": "IMAGE",
-          "link": 3
+          "link": 13
         }
       ],
       "outputs": [],
@@ -217,115 +282,49 @@
         "Node name for S&R": "SaveImage"
       },
       "widgets_values": [
-        "poster"
+        "txt2img"
       ]
     },
     {
-      "id": 5,
-      "type": "ProPosterPrompt",
+      "id": 77,
+      "type": "ProModeImage",
       "pos": [
         60,
-        1490
+        60
       ],
       "size": [
-        400,
-        430
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "title",
-          "type": "STRING",
-          "link": 8,
-          "widget": {
-            "name": "title"
-          }
-        },
-        {
-          "name": "subtitle",
-          "type": "STRING",
-          "link": 9,
-          "widget": {
-            "name": "subtitle"
-          }
-        },
-        {
-          "name": "badge",
-          "type": "STRING",
-          "link": 10,
-          "widget": {
-            "name": "badge"
-          }
-        },
-        {
-          "name": "elements",
-          "type": "STRING",
-          "link": 11,
-          "widget": {
-            "name": "elements"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "prompt",
-          "type": "STRING",
-          "links": [
-            2
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ProPosterPrompt"
-      },
-      "widgets_values": [
-        "夏日清凉节",
-        "全场满199减50",
-        "限时三天",
-        "清爽夏日（蓝白）",
-        "冰饮、柠檬片、水花、椰树叶、遮阳草帽",
-        false,
-        ""
-      ],
-      "title": "海报提示词（风格在这里选；文字由 AI 填）"
-    },
-    {
-      "id": 6,
-      "type": "PreviewAny",
-      "pos": [
-        960,
-        1520
-      ],
-      "size": [
-        360,
+        520,
         110
       ],
       "flags": {},
       "order": 4,
       "mode": 0,
-      "inputs": [
+      "inputs": [],
+      "outputs": [
         {
-          "name": "source",
-          "type": "*",
-          "link": 4
+          "name": "branch",
+          "type": "INT",
+          "links": [
+            7,
+            10
+          ],
+          "slot_index": 0
         }
       ],
-      "outputs": [],
       "properties": {
-        "Node name for S&R": "PreviewAny"
+        "Node name for S&R": "ProModeImage"
       },
-      "widgets_values": [],
-      "title": "结果 / 错误信息（出错时这里显示原因）"
+      "widgets_values": [
+        "网关 Gemini（自然、约 1K）"
+      ],
+      "title": "★ 先选模式"
     },
     {
       "id": 31,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        660
+        870
       ],
       "size": [
         400,
@@ -340,7 +339,8 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            5
+            1,
+            4
           ],
           "slot_index": 0
         }
@@ -365,7 +365,7 @@
       "type": "ProAliPromptWriter",
       "pos": [
         60,
-        60
+        240
       ],
       "size": [
         520,
@@ -378,10 +378,15 @@
         {
           "name": "info",
           "type": "STRING",
-          "link": 5,
+          "link": 1,
           "widget": {
             "name": "info"
           }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
         }
       ],
       "outputs": [
@@ -389,8 +394,9 @@
           "name": "text",
           "type": "STRING",
           "links": [
-            6,
-            7
+            2,
+            5,
+            6
           ],
           "slot_index": 0
         },
@@ -405,8 +411,8 @@
         "Node name for S&R": "ProAliPromptWriter"
       },
       "widgets_values": [
-        "夏日清凉节促销，全场满199减50，限时三天，清爽冰饮风格",
-        "你是电商促销海报文案策划。根据下面的一句话需求，严格按下面 4 行格式输出，不要输出任何其他内容：\n标题：（4~8 个字，醒目）\n副标题：（8~16 个字，写核心卖点或优惠）\n角标：（2~6 个字，如「限时三天」，没有合适的就留空）\n画面元素：（5~8 个具体的视觉元素，用顿号分隔，不要写文字）\n要求：全部用中文；价格、折扣、日期、数字一律照搬需求里的写法（需求写 199 就写 199，不要改成汉字），需求里没有就不要编造；标题、副标题、角标里不要用英文和特殊符号。",
+        "一只橘猫坐在窗台上，阳光，写实风格",
+        "你是生图提示词写手。把下面的一句话需求扩写成一段中文生图提示词（80~150 字）：写清主体、场景、光线、构图、风格和画质；忠于原意，不要添加需求里没有的主体；画面里不要出现任何文字、水印、标志。只输出提示词本身，不要解释，不要加引号或标题。",
         "qwen3.8-flash",
         1,
         "randomize"
@@ -418,7 +424,7 @@
       "type": "PreviewAny",
       "pos": [
         620,
-        60
+        240
       ],
       "size": [
         460,
@@ -431,7 +437,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 6
+          "link": 2
         }
       ],
       "outputs": [],
@@ -442,102 +448,141 @@
       "title": "AI 扩写出的结果（想看模型写了什么）"
     },
     {
-      "id": 75,
-      "type": "ProPosterFields",
+      "id": 10,
+      "type": "ProPick2x1",
       "pos": [
-        1120,
-        60
+        1460,
+        1380
       ],
       "size": [
         300,
-        140
+        150
       ],
       "flags": {},
       "order": 8,
       "mode": 0,
       "inputs": [
         {
-          "name": "text",
-          "type": "STRING",
-          "link": 7
+          "name": "in0_0",
+          "type": "*",
+          "link": 8
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 9
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 7,
+          "widget": {
+            "name": "branch"
+          }
         }
       ],
       "outputs": [
         {
-          "name": "title",
-          "type": "STRING",
+          "name": "out0",
+          "type": "*",
           "links": [
-            8
+            13
           ],
           "slot_index": 0
-        },
-        {
-          "name": "subtitle",
-          "type": "STRING",
-          "links": [
-            9
-          ],
-          "slot_index": 1
-        },
-        {
-          "name": "badge",
-          "type": "STRING",
-          "links": [
-            10
-          ],
-          "slot_index": 2
-        },
-        {
-          "name": "elements",
-          "type": "STRING",
-          "links": [
-            11
-          ],
-          "slot_index": 3
         }
       ],
       "properties": {
-        "Node name for S&R": "ProPosterFields"
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "按模式取图（没选中的引擎不会运行）"
+    },
+    {
+      "id": 12,
+      "type": "ProPick2x1",
+      "pos": [
+        1460,
+        1590
+      ],
+      "size": [
+        300,
+        150
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 11
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 12
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 10,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "按模式取状态（单独一个，失败时才看得到错误）"
+    },
+    {
+      "id": 11,
+      "type": "PreviewAny",
+      "pos": [
+        1820,
+        1760
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 14
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "拆成标题 / 副标题 / 角标 / 画面元素"
+      "title": "结果 / 错误信息（出错时这里显示原因）"
     }
   ],
   "links": [
     [
       1,
-      1,
-      0,
-      2,
-      0,
-      "STRING"
-    ],
-    [
-      2,
-      5,
-      0,
-      2,
-      17,
-      "STRING"
-    ],
-    [
-      3,
-      2,
-      0,
-      3,
-      0,
-      "IMAGE"
-    ],
-    [
-      4,
-      2,
-      1,
-      6,
-      0,
-      "STRING"
-    ],
-    [
-      5,
       31,
       0,
       70,
@@ -545,7 +590,7 @@
       "STRING"
     ],
     [
-      6,
+      2,
       70,
       0,
       74,
@@ -553,44 +598,100 @@
       "STRING"
     ],
     [
-      7,
-      70,
+      3,
+      1,
       0,
-      75,
+      2,
       0,
       "STRING"
+    ],
+    [
+      4,
+      31,
+      0,
+      3,
+      0,
+      "STRING"
+    ],
+    [
+      5,
+      70,
+      0,
+      2,
+      17,
+      "STRING"
+    ],
+    [
+      6,
+      70,
+      0,
+      3,
+      1,
+      "STRING"
+    ],
+    [
+      7,
+      77,
+      0,
+      10,
+      2,
+      "INT"
     ],
     [
       8,
-      75,
+      2,
       0,
-      5,
+      10,
       0,
-      "STRING"
+      "IMAGE"
     ],
     [
       9,
-      75,
+      3,
+      0,
+      10,
       1,
-      5,
-      1,
-      "STRING"
+      "IMAGE"
     ],
     [
       10,
-      75,
+      77,
+      0,
+      12,
       2,
-      5,
-      2,
-      "STRING"
+      "INT"
     ],
     [
       11,
-      75,
-      3,
-      5,
-      3,
+      2,
+      1,
+      12,
+      0,
       "STRING"
+    ],
+    [
+      12,
+      3,
+      1,
+      12,
+      1,
+      "STRING"
+    ],
+    [
+      13,
+      10,
+      0,
+      4,
+      0,
+      "*"
+    ],
+    [
+      14,
+      12,
+      0,
+      11,
+      0,
+      "*"
     ]
   ],
   "groups": [],

@@ -1,0 +1,676 @@
+{
+  "last_node_id": 77,
+  "last_link_id": 14,
+  "nodes": [
+    {
+      "id": 11,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1380
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            3
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "video",
+        "Veo",
+        "v1/videos",
+        "https://www.runninghub.cn",
+        "veo3.1",
+        "",
+        "http://airelay-geminiweb:8083",
+        "gemini-video"
+      ],
+      "title": "Relay API Settings（geminiweb Key，Gemini 音乐用）"
+    },
+    {
+      "id": 21,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1730
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "sound",
+        "Suno",
+        "suno/submit",
+        "https://www.runninghub.cn",
+        "suno_music",
+        "",
+        "http://airelay-newapi:3000",
+        "suno_music"
+      ],
+      "title": "Relay API Settings（Suno Key）"
+    },
+    {
+      "id": 12,
+      "type": "ProGeminiMusic",
+      "pos": [
+        520,
+        1380
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 3,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 5,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            8
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            11
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGeminiMusic"
+      },
+      "widgets_values": [
+        "（由 AI 扩写节点提供）",
+        "gemini-music",
+        1,
+        "randomize"
+      ],
+      "title": "引擎 ① Gemini Lyria（经 geminiweb）"
+    },
+    {
+      "id": 22,
+      "type": "RelaySoundGenerator",
+      "pos": [
+        520,
+        1740
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 4,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 6,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "clip_id",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        },
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            12
+          ],
+          "slot_index": 3
+        },
+        {
+          "name": "audio_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 4
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelaySoundGenerator"
+      },
+      "widgets_values": [
+        "描述模式",
+        "",
+        "pop, electronic",
+        "（由 AI 扩写节点提供）",
+        true,
+        "V4.5",
+        1,
+        "randomize",
+        "",
+        false,
+        "",
+        0
+      ],
+      "title": "引擎 ② Suno（经网关的 Suno 渠道）"
+    },
+    {
+      "id": 5,
+      "type": "SaveAudioAdvanced",
+      "pos": [
+        1380,
+        1380
+      ],
+      "size": [
+        340,
+        200
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 13
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveAudioAdvanced"
+      },
+      "widgets_values": [
+        "audio/音乐",
+        "mp3",
+        "V0"
+      ]
+    },
+    {
+      "id": 77,
+      "type": "ProModeMusic",
+      "pos": [
+        60,
+        60
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "branch",
+          "type": "INT",
+          "links": [
+            7,
+            10
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeMusic"
+      },
+      "widgets_values": [
+        "Gemini Lyria（约 1 分钟，成功率约一半）"
+      ],
+      "title": "★ 先选模式"
+    },
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        870
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-flash"
+      ],
+      "title": "Relay API Settings（阿里文字）"
+    },
+    {
+      "id": 70,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        240
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            2,
+            5,
+            6
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "舒缓钢琴加弦乐纯音乐，温暖治愈，适合产品视频配乐",
+        "你是配乐提示词写手。把下面的一句话需求扩写成一段中文音乐创作提示词（50~100 字）：写清风格、情绪、主要乐器、节奏速度和用途；纯音乐，不要歌词；时长约 30 秒。只输出提示词本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话需求"
+    },
+    {
+      "id": 74,
+      "type": "PreviewAny",
+      "pos": [
+        620,
+        240
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 2
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 扩写出的结果（想看模型写了什么）"
+    },
+    {
+      "id": 10,
+      "type": "ProPick2x1",
+      "pos": [
+        1000,
+        1380
+      ],
+      "size": [
+        300,
+        150
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 8
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 9
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 7,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "按模式取音频（没选中的引擎不会运行）"
+    },
+    {
+      "id": 13,
+      "type": "ProPick2x1",
+      "pos": [
+        1000,
+        1590
+      ],
+      "size": [
+        300,
+        150
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 11
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 12
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 10,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "按模式取状态（单独一个，失败时才看得到错误）"
+    },
+    {
+      "id": 6,
+      "type": "PreviewAny",
+      "pos": [
+        1380,
+        1640
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 14
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "结果 / 错误信息（出错时这里显示原因）"
+    }
+  ],
+  "links": [
+    [
+      1,
+      31,
+      0,
+      70,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      70,
+      0,
+      74,
+      0,
+      "STRING"
+    ],
+    [
+      3,
+      11,
+      0,
+      12,
+      0,
+      "STRING"
+    ],
+    [
+      4,
+      21,
+      0,
+      22,
+      0,
+      "STRING"
+    ],
+    [
+      5,
+      70,
+      0,
+      12,
+      1,
+      "STRING"
+    ],
+    [
+      6,
+      70,
+      0,
+      22,
+      1,
+      "STRING"
+    ],
+    [
+      7,
+      77,
+      0,
+      10,
+      2,
+      "INT"
+    ],
+    [
+      8,
+      12,
+      0,
+      10,
+      0,
+      "AUDIO"
+    ],
+    [
+      9,
+      22,
+      0,
+      10,
+      1,
+      "AUDIO"
+    ],
+    [
+      10,
+      77,
+      0,
+      13,
+      2,
+      "INT"
+    ],
+    [
+      11,
+      12,
+      1,
+      13,
+      0,
+      "STRING"
+    ],
+    [
+      12,
+      22,
+      3,
+      13,
+      1,
+      "STRING"
+    ],
+    [
+      13,
+      10,
+      0,
+      5,
+      0,
+      "*"
+    ],
+    [
+      14,
+      13,
+      0,
+      6,
+      0,
+      "*"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

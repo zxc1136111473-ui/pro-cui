@@ -1,0 +1,441 @@
+{
+  "last_node_id": 77,
+  "last_link_id": 10,
+  "nodes": [
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        380
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1,
+            4
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "① 上传图片（可接 01~04 出的图）"
+    },
+    {
+      "id": 3,
+      "type": "ImageScaleBy",
+      "pos": [
+        520,
+        380
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScaleBy"
+      },
+      "widgets_values": [
+        "lanczos",
+        2.0
+      ],
+      "title": "放大 2 倍"
+    },
+    {
+      "id": 4,
+      "type": "ImageSharpen",
+      "pos": [
+        520,
+        520
+      ],
+      "size": [
+        300,
+        120
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            5
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageSharpen"
+      },
+      "widgets_values": [
+        1,
+        1.0,
+        0.5
+      ],
+      "title": "轻度锐化"
+    },
+    {
+      "id": 6,
+      "type": "ProLabels",
+      "pos": [
+        1260,
+        380
+      ],
+      "size": [
+        460,
+        700
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProLabels"
+      },
+      "widgets_values": [
+        "圆角矩形",
+        3.0,
+        "限时三天",
+        "左上",
+        "红底白字",
+        5.0,
+        "满199减50",
+        "右下",
+        "黄底黑字",
+        6.0,
+        "新品首发",
+        "左下",
+        "黑底金字",
+        4.5
+      ],
+      "title": "促销标签（3 个，文字留空=不加；样式/位置/大小按图片宽度的百分比）"
+    },
+    {
+      "id": 8,
+      "type": "SaveImage",
+      "pos": [
+        2140,
+        380
+      ],
+      "size": [
+        340,
+        320
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 10
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "post/处理后"
+      ]
+    },
+    {
+      "id": 77,
+      "type": "ProModeProcess",
+      "pos": [
+        60,
+        60
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "upscale",
+          "type": "INT",
+          "links": [
+            3
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "labels",
+          "type": "INT",
+          "links": [
+            7
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeProcess"
+      },
+      "widgets_values": [
+        "放大 2 倍"
+      ],
+      "title": "★ 先选模式"
+    },
+    {
+      "id": 5,
+      "type": "ProPick2x1",
+      "pos": [
+        900,
+        380
+      ],
+      "size": [
+        300,
+        150
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 4
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 5
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 3,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            6,
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "要不要放大"
+    },
+    {
+      "id": 7,
+      "type": "ProPick2x1",
+      "pos": [
+        1780,
+        380
+      ],
+      "size": [
+        300,
+        150
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 8
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 9
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 7,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            10
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "要不要贴标签"
+    }
+  ],
+  "links": [
+    [
+      1,
+      2,
+      0,
+      3,
+      0,
+      "IMAGE"
+    ],
+    [
+      2,
+      3,
+      0,
+      4,
+      0,
+      "IMAGE"
+    ],
+    [
+      3,
+      77,
+      0,
+      5,
+      2,
+      "INT"
+    ],
+    [
+      4,
+      2,
+      0,
+      5,
+      0,
+      "IMAGE"
+    ],
+    [
+      5,
+      4,
+      0,
+      5,
+      1,
+      "IMAGE"
+    ],
+    [
+      6,
+      5,
+      0,
+      6,
+      0,
+      "*"
+    ],
+    [
+      7,
+      77,
+      1,
+      7,
+      2,
+      "INT"
+    ],
+    [
+      8,
+      5,
+      0,
+      7,
+      0,
+      "*"
+    ],
+    [
+      9,
+      6,
+      0,
+      7,
+      1,
+      "IMAGE"
+    ],
+    [
+      10,
+      7,
+      0,
+      8,
+      0,
+      "*"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

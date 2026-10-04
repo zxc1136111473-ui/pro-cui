@@ -167,8 +167,7 @@ class ProSubtitles:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("srt",)
     FUNCTION = "run"
-    OUTPUT_NODE = True
-    CATEGORY = "pro/video"
+    CATEGORY = "pro/video"   # 不是输出节点：srt 在 run() 里写盘；输出节点会无视「选择分支」被强制执行
 
     def run(self, text, voice, max_chars, offset_s, filename_prefix):
         cues = _split_cues(text, max_chars)
@@ -271,7 +270,7 @@ class ProVideoDub:
 
     def run(self, video, bgm_volume_db, voice_volume_db, bgm_fade_out_s, keep_original_audio, filename_prefix,
             subtitle_mode, subtitle_font_size, subtitle_bottom_margin, voice=None, bgm=None, subtitles=""):
-        burn = subtitle_mode == "烧进画面"
+        burn = subtitle_mode == "烧进画面" and subtitles is not None   # None = 开关门关着，这次不加字幕
         cues = _parse_srt(subtitles) if burn else []
         if burn and not cues:
             raise RuntimeError("[视频合成] 选了烧字幕，但没有接入有效的字幕（SRT）")
@@ -401,8 +400,7 @@ class ProSlideshow:
     RETURN_TYPES = ("VIDEO",)
     RETURN_NAMES = ("video",)
     FUNCTION = "run"
-    OUTPUT_NODE = True
-    CATEGORY = "pro/video"
+    CATEGORY = "pro/video"   # 不是输出节点：视频在 run() 里写盘；输出节点会无视「选择分支」被强制执行
 
     def run(self, ratio, short_side, seconds_per_image, transition_s, zoom, fps, filename_prefix, fit_audio=None, **imgs):
         pil = []

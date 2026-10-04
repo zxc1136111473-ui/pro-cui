@@ -1,0 +1,690 @@
+{
+  "last_node_id": 77,
+  "last_link_id": 17,
+  "nodes": [
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1010
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-flash"
+      ],
+      "title": "Relay API Settings（阿里文字）"
+    },
+    {
+      "id": 3,
+      "type": "ProAliTTS",
+      "pos": [
+        520,
+        1010
+      ],
+      "size": [
+        440,
+        460
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 2,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "custom_voice",
+          "type": "STRING",
+          "link": 14,
+          "widget": {
+            "name": "custom_voice"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            15
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliTTS"
+      },
+      "widgets_values": [
+        "夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。",
+        "Cherry",
+        "qwen3-tts-flash",
+        "Chinese",
+        "",
+        1.0,
+        0.0,
+        ""
+      ],
+      "title": "配音（要念的文字在这里写；instruct 模型可写语气指令）"
+    },
+    {
+      "id": 4,
+      "type": "SaveAudioAdvanced",
+      "pos": [
+        1020,
+        1010
+      ],
+      "size": [
+        340,
+        200
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 15
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveAudioAdvanced"
+      },
+      "widgets_values": [
+        "audio/配音",
+        "mp3",
+        "V0"
+      ],
+      "title": "保存配音"
+    },
+    {
+      "id": 2,
+      "type": "ProAliVoiceDesign",
+      "pos": [
+        520,
+        1590
+      ],
+      "size": [
+        460,
+        420
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 3,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "voice_prompt",
+          "type": "STRING",
+          "link": 5,
+          "widget": {
+            "name": "voice_prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "voice",
+          "type": "STRING",
+          "links": [
+            10
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "preview",
+          "type": "AUDIO",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliVoiceDesign"
+      },
+      "widgets_values": [
+        "（由 AI 扩写节点提供）",
+        "欢迎选购我们的新品，限时三天，满一百九十九减五十。",
+        "myvoice",
+        "zh"
+      ],
+      "title": "设计新音色（只在该模式用；试听文字用来生成试听音频）"
+    },
+    {
+      "id": 6,
+      "type": "LoadAudio",
+      "pos": [
+        60,
+        1360
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "无背景音乐.wav",
+        "",
+        ""
+      ],
+      "title": "上传样音（克隆模式用，10~60 秒人声）"
+    },
+    {
+      "id": 7,
+      "type": "ProAliVoiceClone",
+      "pos": [
+        1040,
+        1590
+      ],
+      "size": [
+        420,
+        200
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 6
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 4,
+          "widget": {
+            "name": "info"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "voice",
+          "type": "STRING",
+          "links": [
+            12
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliVoiceClone"
+      },
+      "widgets_values": [
+        "myclone"
+      ],
+      "title": "克隆音色（只克隆本人或已获授权的声音）"
+    },
+    {
+      "id": 8,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        520,
+        2070
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            8,
+            9,
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "（空：预置音色时用它占位）"
+    },
+    {
+      "id": 77,
+      "type": "ProModeVoice",
+      "pos": [
+        60,
+        60
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "branch",
+          "type": "INT",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeVoice"
+      },
+      "widgets_values": [
+        "预置音色（在配音节点里选）"
+      ],
+      "title": "★ 先选模式"
+    },
+    {
+      "id": 70,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        240
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            5,
+            11
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍",
+        "你是配音音色描述写手。把下面的一句话需求扩写成一段中文音色描述（40~80 字）：写清性别和年龄感、音色质感、语速、情绪语气和适用场景；只描述声音，不要写台词。只输出描述本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话描述想要的声音（只在「设计新音色」模式用）"
+    },
+    {
+      "id": 10,
+      "type": "ProPick3x2",
+      "pos": [
+        1520,
+        1010
+      ],
+      "size": [
+        300,
+        180
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 8
+        },
+        {
+          "name": "in0_1",
+          "type": "*",
+          "link": 9
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 10
+        },
+        {
+          "name": "in1_1",
+          "type": "*",
+          "link": 11
+        },
+        {
+          "name": "in2_0",
+          "type": "*",
+          "link": 12
+        },
+        {
+          "name": "in2_1",
+          "type": "*",
+          "link": 13
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 7,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            14,
+            16
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "out1",
+          "type": "*",
+          "links": [
+            17
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick3x2"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "按模式取结果（没选中的那一路不会运行）"
+    },
+    {
+      "id": 11,
+      "type": "PreviewAny",
+      "pos": [
+        1520,
+        1290
+      ],
+      "size": [
+        400,
+        120
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 16
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "音色 id（复制到别的配音节点的「自定义音色」框里可反复使用）"
+    },
+    {
+      "id": 12,
+      "type": "PreviewAny",
+      "pos": [
+        1520,
+        1470
+      ],
+      "size": [
+        460,
+        200
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 17
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 写的音色描述（只有「设计新音色」模式有）"
+    }
+  ],
+  "links": [
+    [
+      1,
+      31,
+      0,
+      70,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      31,
+      0,
+      3,
+      0,
+      "STRING"
+    ],
+    [
+      3,
+      31,
+      0,
+      2,
+      0,
+      "STRING"
+    ],
+    [
+      4,
+      31,
+      0,
+      7,
+      1,
+      "STRING"
+    ],
+    [
+      5,
+      70,
+      0,
+      2,
+      1,
+      "STRING"
+    ],
+    [
+      6,
+      6,
+      0,
+      7,
+      0,
+      "AUDIO"
+    ],
+    [
+      7,
+      77,
+      0,
+      10,
+      6,
+      "INT"
+    ],
+    [
+      8,
+      8,
+      0,
+      10,
+      0,
+      "STRING"
+    ],
+    [
+      9,
+      8,
+      0,
+      10,
+      1,
+      "STRING"
+    ],
+    [
+      10,
+      2,
+      0,
+      10,
+      2,
+      "STRING"
+    ],
+    [
+      11,
+      70,
+      0,
+      10,
+      3,
+      "STRING"
+    ],
+    [
+      12,
+      7,
+      0,
+      10,
+      4,
+      "STRING"
+    ],
+    [
+      13,
+      8,
+      0,
+      10,
+      5,
+      "STRING"
+    ],
+    [
+      14,
+      10,
+      0,
+      3,
+      1,
+      "*"
+    ],
+    [
+      15,
+      3,
+      0,
+      4,
+      0,
+      "AUDIO"
+    ],
+    [
+      16,
+      10,
+      0,
+      11,
+      0,
+      "*"
+    ],
+    [
+      17,
+      10,
+      1,
+      12,
+      0,
+      "*"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

@@ -322,8 +322,9 @@ def _chat(base, key, body, timeout, what):
 
 
 class ProAliPromptWriter:
-    """一句话需求 → 文字模型按「扩写指令」写成完整提示词（生图 / 视频 / 改图 / 配乐 / 音色描述…，指令不同而已）。
-    和 relayapi 的文字节点不同：出错直接抛出（红色节点 + 原因），不会让下游拿着空提示词白白出图。"""
+    """一句话需求 → 文字模型按「扩写指令」写成完整提示词（生图 / 视频 / 改图 / 配乐 / 音色描述 / 写文案 / 翻译…，指令不同而已）。
+    和 relayapi 的文字节点不同：出错直接抛出（红色节点 + 原因），不会让下游拿着空提示词白白出图。
+    接了图片就是看图说话（要用 omni 模型；图先缩到最长边 768，大图传阿里很慢）。"""
     @classmethod
     def INPUT_TYPES(cls):
         return {"required": {
@@ -333,22 +334,23 @@ class ProAliPromptWriter:
             "model": ("STRING", {"default": WRITER_MODEL, "display_name": "模型"}),
             # seed 不参与请求：只是让每次运行都重新扩写（ComfyUI 输入没变就直接用上次的结果）
             "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "display_name": "随机数（变一下就重新扩写）"})},
-            "optional": {"info": ("STRING", {"default": "", "forceInput": True})}}
+            "optional": {"info": ("STRING", {"default": "", "forceInput": True}), "image": ("IMAGE",)}}
 
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("text", "response")
     FUNCTION = "run"
     CATEGORY = "pro/aliyun"
 
-    def run(self, idea, instruction, model, seed, info=""):
+    def run(self, idea, instruction, model, seed, info="", image=None):
         key, base = _creds(info)
         if not idea.strip():
             raise RuntimeError("[阿里 写提示词] 一句话需求是空的")
         if not instruction.strip():
             raise RuntimeError("[阿里 写提示词] 扩写指令是空的")
         model = model.strip() or WRITER_MODEL
+        user = idea.strip() if image is None else [{"type": "image_url", "image_url": {"url": _to_data_url(image)}}, {"type": "text", "text": idea.strip()}]
         body = {"model": model, "stream": False, "enable_thinking": False,
-                "messages": [{"role": "system", "content": instruction.strip()}, {"role": "user", "content": idea.strip()}]}
+                "messages": [{"role": "system", "content": instruction.strip()}, {"role": "user", "content": user}]}
         d = _chat(base, key, body, WRITER_TIMEOUT, "写提示词")
         try:
             text = d["choices"][0]["message"]["content"].strip()
