@@ -59,8 +59,8 @@ class Sandbox:
         p = os.path.join(self.app, rel)
         return sorted(os.listdir(p)) if os.path.isdir(p) else []
 
-    def run(self, bash, body, stubs=""):
-        script = HEAD + 'APP_DIR="%s"\n' % self.app + stubs + FUNCS + "\n" + body
+    def run(self, bash, body, stubs="", funcs=None):
+        script = HEAD + 'APP_DIR="%s"\n' % self.app + stubs + (funcs or FUNCS) + "\n" + body
         # 容错解码：bash 3.2 在报错时可能把多字节中文截断，不能让解码错误盖住真正的失败原因
         p = subprocess.run([bash, "-c", script], capture_output=True)
         return p.returncode, (p.stdout + p.stderr).decode("utf-8", errors="replace")
@@ -280,6 +280,57 @@ restart_container() { echo "RESTARTED"; }
         self.assertEqual(rc, 0, out)
         self.assertEqual(sb.r("data/input/请上传视频.mp4"), "PLACEHOLDER")
         self.assertEqual(sb.r("data/input/无背景音乐.wav"), "USER-WAV")
+
+
+ACCESS_FUNCS = "\n".join(fn(n) for n in ("probe_host", "bind_scope", "do_check"))
+ACCESS_STUBS = '''YLW=""; RST=""; BLD=""; CADDY_GW="172.18.0.1"; CONTAINER=comfyui
+docker_ok() { return 0; }
+DOCKER=dockerstub
+dockerstub() { :; }
+state_read() { case "$1" in bind) printf '%s' "${TEST_BIND-}" ;; port) printf '8188' ;; *) printf '%s' "${2:-}" ;; esac; }
+hostname() { echo 10.0.0.5; }
+plugin_list() { echo; }
+'''
+
+
+class AccessMessage(unittest.TestCase):
+    """端口开放范围：probe_host 对「bind 为空」和「绑 127.0.0.1」都返回 127.0.0.1（它只管探活连哪），
+    体检拿它判断就把「只绑本机」误报成「所有网卡开放，无鉴权」；现在用 bind_scope 判断。"""
+
+    @each_bash
+    def test_bind_scope_mapping(self, sb, bash):
+        for bind, want in (("", "open"), ("0.0.0.0", "open"), ("127.0.0.1", "loopback"), ("localhost", "loopback"),
+                           ("::1", "loopback"), ("172.18.0.1", "addr"), ("10.0.0.5", "addr")):
+            rc, out = sb.run(bash, 'TEST_BIND="%s"; printf "[%%s]" "$(bind_scope)"' % bind, ACCESS_STUBS, ACCESS_FUNCS)
+            self.assertEqual(out.strip(), f"[{want}]", f"bind={bind!r}")
+
+    def check(self, sb, bash, bind):
+        rc, out = sb.run(bash, 'TEST_BIND="%s"; do_check || true' % bind, ACCESS_STUBS, ACCESS_FUNCS)
+        return out
+
+    @each_bash
+    def test_open_to_all_interfaces_is_warned_about(self, sb, bash):
+        for bind in ("", "0.0.0.0"):
+            out = self.check(sb, bash, bind)
+            self.assertIn("所有网卡开放，无鉴权", out, f"bind={bind!r}")
+            self.assertIn("http://10.0.0.5:8188/", out)
+
+    @each_bash
+    def test_loopback_only_is_not_reported_as_open(self, sb, bash):
+        for bind in ("127.0.0.1", "localhost", "::1"):
+            out = self.check(sb, bash, bind)
+            self.assertNotIn("所有网卡开放", out, f"bind={bind!r}")
+            self.assertNotIn("无鉴权", out)
+            self.assertIn(f"只绑本机 {bind}:8188（外网直连不通）", out)
+
+    @each_bash
+    def test_specific_address_keeps_the_caddy_message(self, sb, bash):
+        out = self.check(sb, bash, "172.18.0.1")
+        self.assertNotIn("所有网卡开放", out)
+        self.assertIn("只对 172.18.0.1:8188 开放 —— 走 Caddy 配的域名访问", out)
+
+    def test_probe_host_is_not_used_to_decide_exposure_anywhere(self):
+        self.assertNotIn('[ "$(probe_host)" = "127.0.0.1" ]', SRC)
 
 
 class WiringInDeploySh(unittest.TestCase):

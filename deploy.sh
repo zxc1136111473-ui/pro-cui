@@ -206,6 +206,16 @@ probe_host() {
   local b; b="$(state_read bind '')"
   case "$b" in ""|0.0.0.0) printf '127.0.0.1' ;; *) printf '%s' "$b" ;; esac
 }
+# 端口开放范围：open = 所有网卡（bind 为空或 0.0.0.0，IP:端口直连、没有鉴权）；loopback = 只绑本机（外网直连不通，要走本机反代）；
+# addr = 绑了某个具体地址（比如 Caddy 网关）。probe_host 只管「探活连哪个地址」：bind 为空和 127.0.0.1 它都返回 127.0.0.1，
+# 分不出开放还是只绑本机，所以不能拿它判断开放范围。
+bind_scope() {
+  case "$(state_read bind '')" in
+    ""|0.0.0.0) printf 'open' ;;
+    127.0.0.1|localhost|::1) printf 'loopback' ;;
+    *) printf 'addr' ;;
+  esac
+}
 
 # 重启 / 重建前看有没有任务在跑：已发给 New API 的请求照样计费，重启会丢掉排队的任务。
 # 只打印个数（队列内容里有 prompt 和明文 key）；-y、容器没跑、查不到都放行；一次运行只问一次
@@ -1240,11 +1250,11 @@ do_check() {
   local ips=""
   ips="$(hostname -I 2>/dev/null | awk '{print $1}')"
   [ -z "$ips" ] && ips="$(ip -4 addr show 2>/dev/null | grep -oE 'inet [0-9.]+' | awk '{print $2}' | grep -v '^127\.' | head -1)"
-  if [ "$(probe_host)" = "127.0.0.1" ]; then
-    say "    http://${ips:-<本机IP>}:$port/   ${YLW}（所有网卡开放，无鉴权；菜单 5 可改成只走 Caddy 域名 + 密码）${RST}"
-  else
-    say "    只对 $(probe_host):$port 开放 —— 走 Caddy 配的域名访问（菜单 5）"
-  fi
+  case "$(bind_scope)" in
+    open)     say "    http://${ips:-<本机IP>}:$port/   ${YLW}（所有网卡开放，无鉴权；菜单 5 可改成只走 Caddy 域名 + 密码）${RST}" ;;
+    loopback) say "    只绑本机 $(probe_host):${port}（外网直连不通）—— 走本机反代访问，比如 Caddy 域名 + 密码（菜单 5）" ;;
+    *)        say "    只对 $(probe_host):$port 开放 —— 走 Caddy 配的域名访问（菜单 5）" ;;
+  esac
   say ""
   if [ -n "$running" ]; then
     if curl -fsS -o /dev/null --max-time 5 "http://$(probe_host):$port/" 2>/dev/null; then
@@ -1469,7 +1479,7 @@ say "  确认一下："
 say "    目录：$APP_DIR"
 say "    端口：$PORT"
 say "    源码：${GAURL:-官方 https://github.com/comfyanonymous/ComfyUI.git}"
-if [ "$(probe_host)" = "127.0.0.1" ]; then say "    访问：所有网卡（IP:端口 直连）"; else say "    访问：公网只走 Caddy 域名（端口绑 $(probe_host)）"; fi
+if [ "$(bind_scope)" = "open" ]; then say "    访问：所有网卡（IP:端口 直连）"; else say "    访问：公网只走 Caddy 域名（端口绑 $(probe_host)）"; fi
 askyn "开始部署？" "y" || { say "取消"; exit 1; }
 busy_guard || { say "已取消，容器没动"; exit 0; }
 
@@ -1486,7 +1496,7 @@ fi
 ZFC_REBUILD=1 run_container
 
 say ""
-if [ "$(probe_host)" = "127.0.0.1" ]; then
+if [ "$(bind_scope)" = "open" ]; then
   ok "完事。访问地址：http://<这台机器的IP>:$PORT/"
 else
   ok "完事。端口绑在 $(probe_host):${PORT}，走 Caddy 域名访问（换过端口记得同步 Caddyfile）"
