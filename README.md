@@ -62,6 +62,15 @@ r) 重启容器（docker restart，不删容器，约 1 秒）   R) 重建容器
 所以有风险的更新、有任务时的重启、卸载都会自动取消（日志里能看到「没有终端，按默认」）；要强制执行加 `-y`。
 没有终端时也进不了菜单，要用参数指定动作（`--update` / `--check` / `--backup` …）。
 
+## 自检
+
+```bash
+python3 -m unittest discover -s tests    # 工作流与生成脚本是否一致、连线是否完整、字幕等纯函数
+bash -n deploy.sh && shellcheck -S warning deploy.sh
+```
+
+改了 `tools/gen_workflows.py` 要先 `python3 tools/gen_workflows.py` 重新生成再提交，否则第一项会报。
+
 ## 核心设计（为什么这么做）
 
 1. **官方主仓库，不拉分支。** 源码 git clone 到 `app/` 并挂载进容器——

@@ -113,7 +113,7 @@ def _time_cues(cues, voice_mono, offset=0.0):
     s, e, gaps = _speech_layout(voice_mono)
     n = len(cues)
     if n == 0 or e <= s:
-        return []
+        return [], None
     if n > 1 and len(gaps) >= n - 1:
         cut = sorted(sorted(gaps, key=lambda g: g[1] - g[0], reverse=True)[: n - 1])
         starts = [s] + [g[1] for g in cut]
