@@ -1,13 +1,13 @@
 {
   "last_node_id": 91,
-  "last_link_id": 4,
+  "last_link_id": 7,
   "nodes": [
     {
       "id": 31,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        120
+        800
       ],
       "size": [
         400,
@@ -22,7 +22,8 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            1
+            1,
+            5
           ],
           "slot_index": 0
         }
@@ -37,7 +38,7 @@
         "https://www.runninghub.cn",
         "claude-opus-4-6",
         "",
-        "https://dashscope.aliyuncs.com",
+        "https://dashscope.aliyuncs.com/compatible-mode",
         "qwen3.8-flash"
       ]
     },
@@ -46,7 +47,7 @@
       "type": "LoadImage",
       "pos": [
         60,
-        470
+        1150
       ],
       "size": [
         400,
@@ -86,7 +87,7 @@
       "type": "ProAliImageEdit",
       "pos": [
         520,
-        120
+        800
       ],
       "size": [
         440,
@@ -118,6 +119,14 @@
           "name": "image3",
           "type": "IMAGE",
           "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 7,
+          "widget": {
+            "name": "prompt"
+          }
         }
       ],
       "outputs": [
@@ -142,19 +151,19 @@
         "Node name for S&R": "ProAliImageEdit"
       },
       "widgets_values": [
-        "请编辑这张商品照片：把原来的背景完全去掉，换成干净、无缝的纯白色（#FFFFFF）影棚背景；商品本身保持原样（形状、细节、颜色、角度都不要改），在商品下方加柔和自然的接触阴影；专业电商产品图。",
+        "（由 AI 扩写节点提供）",
         "qwen-image-edit-max",
         1,
         "randomize"
       ],
-      "title": "阿里 改图（改 prompt 可做局部修改）"
+      "title": "阿里 改图（一句话需求可做局部修改）"
     },
     {
       "id": 90,
       "type": "SaveImage",
       "pos": [
         1020,
-        120
+        800
       ],
       "size": [
         340,
@@ -184,7 +193,7 @@
       "type": "PreviewAny",
       "pos": [
         1020,
-        500
+        1180
       ],
       "size": [
         360,
@@ -206,6 +215,87 @@
       },
       "widgets_values": [],
       "title": "状态（出错时这里显示原因）"
+    },
+    {
+      "id": 70,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        60
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 5,
+          "widget": {
+            "name": "info"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            6,
+            7
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "把背景换成干净的纯白色影棚背景，商品保持原样，下方加柔和的接触阴影",
+        "你是商品图编辑指令写手。用户会用一句话说明想怎么修改商品照片，请写成一条清楚的中文改图指令（60~120 字）：开头写「请编辑这张商品照片：」；明确写出要改什么（例如把背景换成什么材质、什么光线，或去掉什么、改成什么颜色）；用户没有要求改的部分（商品的形状、细节、颜色、包装上的文字、角度）一律写明保持原样不要改；换背景时要写明在商品下方加柔和自然的接触阴影；不要添加任何文字、标签、水印；末尾写「专业电商产品图。」只输出指令本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话需求"
+    },
+    {
+      "id": 74,
+      "type": "PreviewAny",
+      "pos": [
+        620,
+        60
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 6
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 扩写出的结果（想看模型写了什么）"
     }
   ],
   "links": [
@@ -239,6 +329,30 @@
       1,
       91,
       0,
+      "STRING"
+    ],
+    [
+      5,
+      31,
+      0,
+      70,
+      0,
+      "STRING"
+    ],
+    [
+      6,
+      70,
+      0,
+      74,
+      0,
+      "STRING"
+    ],
+    [
+      7,
+      70,
+      0,
+      2,
+      4,
       "STRING"
     ]
   ],

@@ -1,4 +1,6 @@
+import json
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -7,6 +9,7 @@ from _load import load
 video = load("pro-video")
 ali = load("pro-ali")
 image = load("pro-image")
+poster = load("pro-poster")
 
 
 def tone(sec, sr=video.SR, amp=0.5):
@@ -80,6 +83,60 @@ class AliSize(unittest.TestCase):
             self.assertEqual((w % 16, h % 16), (0, 0), r)
 
 
+class PromptWriter(unittest.TestCase):
+    INFO = json.dumps({"apikey": "k", "custom_api_base": "https://dashscope.aliyuncs.com/compatible-mode"})
+
+    @staticmethod
+    def resp(status=200, body=None):
+        r = mock.Mock(status_code=status, text=json.dumps(body))
+        r.json.return_value = body
+        return r
+
+    def run_node(self, post, idea="一个红苹果", instruction="写提示词"):
+        with mock.patch.object(ali.requests, "post", post):
+            return ali.ProAliPromptWriter().run(idea, instruction, "", 0, self.INFO)
+
+    def test_success_and_request_shape(self):
+        post = mock.Mock(return_value=self.resp(body={"choices": [{"message": {"content": "  完整提示词 \n"}}], "usage": {"total_tokens": 9}}))
+        text, status = self.run_node(post)
+        self.assertEqual(text, "完整提示词")
+        self.assertEqual(json.loads(status)["code"], "success")
+        url, kw = post.call_args[0][0], post.call_args[1]
+        self.assertEqual(url, "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")
+        self.assertEqual(kw["json"]["messages"], [{"role": "system", "content": "写提示词"}, {"role": "user", "content": "一个红苹果"}])
+        self.assertIs(kw["json"]["enable_thinking"], False)
+
+    def test_connection_error_retried_once(self):
+        ok = self.resp(body={"choices": [{"message": {"content": "好"}}]})
+        post = mock.Mock(side_effect=[ali.requests.ConnectionError("reset"), ok])
+        self.assertEqual(self.run_node(post)[0], "好")
+        self.assertEqual(post.call_count, 2)
+
+    def test_connection_error_twice_raises(self):
+        post = mock.Mock(side_effect=ali.requests.ConnectionError("reset"))
+        with self.assertRaisesRegex(RuntimeError, "连不上"):
+            self.run_node(post)
+        self.assertEqual(post.call_count, 2)
+
+    def test_http_error_not_retried_and_shows_reason(self):
+        post = mock.Mock(return_value=self.resp(400, {"error": {"code": "invalid_parameter", "message": "bad model"}}))
+        with self.assertRaisesRegex(RuntimeError, "invalid_parameter.*bad model"):
+            self.run_node(post)
+        self.assertEqual(post.call_count, 1)
+
+    def test_empty_reply_raises(self):
+        post = mock.Mock(return_value=self.resp(body={"choices": [{"message": {"content": "  "}}]}))
+        with self.assertRaisesRegex(RuntimeError, "没有文字"):
+            self.run_node(post)
+
+    def test_empty_inputs_raise_without_request(self):
+        post = mock.Mock()
+        for idea, ins in (("  ", "x"), ("x", " ")):
+            with self.assertRaises(RuntimeError):
+                self.run_node(post, idea, ins)
+        post.assert_not_called()
+
+
 class LabelPlace(unittest.TestCase):
     def test_corners(self):
         self.assertEqual(image.place((1000, 800), (100, 50), "左上", 10), (10, 10))
@@ -88,6 +145,27 @@ class LabelPlace(unittest.TestCase):
     def test_centered(self):
         self.assertEqual(image.place((1000, 800), (100, 50), "上中", 10), (450, 10))
         self.assertEqual(image.place((1000, 800), (100, 50), "正中", 10), (450, 375))
+
+
+class PosterFields(unittest.TestCase):
+    def test_plain(self):
+        self.assertEqual(poster.parse_fields("标题：夏日清凉节\n副标题：全场满199减50\n角标：限时三天\n画面元素：冰饮、柠檬片、水花"),
+                         ("夏日清凉节", "全场满199减50", "限时三天", "冰饮、柠檬片、水花"))
+
+    def test_markdown_quotes_and_empty_badge(self):
+        out = poster.parse_fields("- **标题**：「鲜果季」\n- **副标题**: 脆甜多汁\n- 角标：无\n- 画面元素：树叶、木托盘")
+        self.assertEqual(out, ("鲜果季", "脆甜多汁", "", "树叶、木托盘"))
+
+    def test_subtitle_not_mistaken_for_title(self):
+        t, s, _, _ = poster.parse_fields("副标题：只有副标题")
+        self.assertEqual((t, s), ("", "只有副标题"))
+
+    def test_elements_continuation_line(self):
+        self.assertEqual(poster.parse_fields("标题：甲\n画面元素：树叶\n水珠、晨光")[3], "树叶、水珠、晨光")
+
+    def test_no_fields_raises(self):
+        with self.assertRaises(RuntimeError):
+            poster.parse_fields("这是一张很好看的海报")
 
 
 if __name__ == "__main__":

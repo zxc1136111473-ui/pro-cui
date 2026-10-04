@@ -1,13 +1,13 @@
 {
-  "last_node_id": 31,
-  "last_link_id": 6,
+  "last_node_id": 74,
+  "last_link_id": 9,
   "nodes": [
     {
       "id": 31,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        120
+        800
       ],
       "size": [
         400,
@@ -23,7 +23,8 @@
           "type": "STRING",
           "links": [
             1,
-            2
+            2,
+            7
           ],
           "slot_index": 0
         }
@@ -38,7 +39,7 @@
         "https://www.runninghub.cn",
         "claude-opus-4-6",
         "",
-        "https://dashscope.aliyuncs.com",
+        "https://dashscope.aliyuncs.com/compatible-mode",
         "qwen3.8-flash"
       ]
     },
@@ -47,7 +48,7 @@
       "type": "ProAliVoiceDesign",
       "pos": [
         520,
-        120
+        800
       ],
       "size": [
         460,
@@ -63,6 +64,14 @@
           "link": 1,
           "widget": {
             "name": "info"
+          }
+        },
+        {
+          "name": "voice_prompt",
+          "type": "STRING",
+          "link": 9,
+          "widget": {
+            "name": "voice_prompt"
           }
         }
       ],
@@ -89,7 +98,7 @@
         "Node name for S&R": "ProAliVoiceDesign"
       },
       "widgets_values": [
-        "沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍",
+        "（由 AI 扩写节点提供）",
         "欢迎选购我们的新品，限时三天，满一百九十九减五十。",
         "myvoice",
         "zh"
@@ -101,7 +110,7 @@
       "type": "ProAliTTS",
       "pos": [
         1040,
-        120
+        800
       ],
       "size": [
         440,
@@ -164,7 +173,7 @@
       "type": "SaveAudioAdvanced",
       "pos": [
         520,
-        600
+        1280
       ],
       "size": [
         340,
@@ -196,7 +205,7 @@
       "type": "SaveAudioAdvanced",
       "pos": [
         1540,
-        120
+        800
       ],
       "size": [
         340,
@@ -228,7 +237,7 @@
       "type": "PreviewAny",
       "pos": [
         900,
-        600
+        1380
       ],
       "size": [
         400,
@@ -250,6 +259,87 @@
       },
       "widgets_values": [],
       "title": "音色 id（复制到其他工作流配音节点的「自定义音色」框里可反复使用）"
+    },
+    {
+      "id": 70,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        60
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 7,
+          "widget": {
+            "name": "info"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            8,
+            9
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍",
+        "你是配音音色描述写手。把下面的一句话需求扩写成一段中文音色描述（40~80 字）：写清性别和年龄感、音色质感、语速、情绪语气和适用场景；只描述声音，不要写台词。只输出描述本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话需求"
+    },
+    {
+      "id": 74,
+      "type": "PreviewAny",
+      "pos": [
+        620,
+        60
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 8
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 扩写出的结果（想看模型写了什么）"
     }
   ],
   "links": [
@@ -300,6 +390,30 @@
       5,
       0,
       "AUDIO"
+    ],
+    [
+      7,
+      31,
+      0,
+      70,
+      0,
+      "STRING"
+    ],
+    [
+      8,
+      70,
+      0,
+      74,
+      0,
+      "STRING"
+    ],
+    [
+      9,
+      70,
+      0,
+      2,
+      1,
+      "STRING"
     ]
   ],
   "groups": [],

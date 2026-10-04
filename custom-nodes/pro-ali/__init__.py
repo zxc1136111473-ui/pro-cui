@@ -1,8 +1,8 @@
-"""阿里云百炼（DashScope）节点：生图 / 改图 / 配音。
+"""阿里云百炼（DashScope）节点：生图 / 改图 / 配音 / 听写 / 写提示词。
 
 Key 与地址取自 Relay API Settings 节点的 info 输出（存在服务器 relay_config.json 的 node_settings[节点 id]，不进 git）。
 只允许把 Key 发往 *.aliyuncs.com，Settings 里地址配错时宁可报错也不外发。
-错误直接抛出（红色节点 + 阿里返回的原因），不重试：重试会重复计费。
+错误直接抛出（红色节点 + 阿里返回的原因），不重试：重试会重复计费（写提示词的文字请求几乎不花钱，只对「连不上」重试一次）。
 """
 import base64
 import io
@@ -24,6 +24,9 @@ CUSTOM_VOICE_MODELS = {"qwen-tts-vd-": "qwen3-tts-vd-2026-01-26", "qwen-tts-vc-"
 IMAGE_TIMEOUT = 200   # qwen-image-3.0 实测约 66 秒，2048 大图约 40 秒
 TTS_TIMEOUT = 90      # 实测 2.5~6 秒
 ASR_TIMEOUT = 90      # 实测 6 秒音频约 4.5 秒
+WRITER_TIMEOUT = 60   # 关掉思考后实测约 3 秒（开着约 12~20 秒）
+WRITER_MODEL = "qwen3.8-flash"
+CHAT_API = "/compatible-mode/v1/chat/completions"
 ASR_MAX_SECONDS = 300  # 阿里 qwen3-asr-flash 单次上限约 5 分钟
 DOWNLOAD_TIMEOUT = 60
 
@@ -299,6 +302,63 @@ class ProAliASR:
         return (text, json.dumps({"code": "success", "seconds": (d.get("usage") or {}).get("seconds")}, ensure_ascii=False))
 
 
+def _chat(base, key, body, timeout, what):
+    """OpenAI 兼容的 chat/completions。连不上（含超时）重试一次，HTTP 错误不重试；返回解析后的 JSON。"""
+    for attempt in (1, 2):
+        try:
+            r = requests.post(base + CHAT_API, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"}, json=body, timeout=timeout)
+            break
+        except requests.RequestException as e:
+            if attempt == 2:
+                raise RuntimeError(f"[阿里 {what}] 连不上：{type(e).__name__}")
+    try:
+        d = r.json()
+    except Exception:
+        raise RuntimeError(f"[阿里 {what}] HTTP {r.status_code}，返回不是 JSON：{r.text[:200]}")
+    if r.status_code != 200:
+        err = d.get("error", d)
+        raise RuntimeError(f"[阿里 {what}] HTTP {r.status_code} {err.get('code', '')}：{str(err.get('message', ''))[:300]}")
+    return d
+
+
+class ProAliPromptWriter:
+    """一句话需求 → 文字模型按「扩写指令」写成完整提示词（生图 / 视频 / 改图 / 配乐 / 音色描述…，指令不同而已）。
+    和 relayapi 的文字节点不同：出错直接抛出（红色节点 + 原因），不会让下游拿着空提示词白白出图。"""
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            # display_name：前端用它当控件的显示名
+            "idea": ("STRING", {"multiline": True, "default": "", "display_name": "一句话需求", "tooltip": "想要什么，一句话说清楚；模型会按下面的「扩写指令」写成完整提示词"}),
+            "instruction": ("STRING", {"multiline": True, "default": "", "display_name": "扩写指令（一般不用改）", "tooltip": "告诉模型怎么写、写成什么样；各工作流已经按用途写好"}),
+            "model": ("STRING", {"default": WRITER_MODEL, "display_name": "模型"}),
+            # seed 不参与请求：只是让每次运行都重新扩写（ComfyUI 输入没变就直接用上次的结果）
+            "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "display_name": "随机数（变一下就重新扩写）"})},
+            "optional": {"info": ("STRING", {"default": "", "forceInput": True})}}
+
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("text", "response")
+    FUNCTION = "run"
+    CATEGORY = "pro/aliyun"
+
+    def run(self, idea, instruction, model, seed, info=""):
+        key, base = _creds(info)
+        if not idea.strip():
+            raise RuntimeError("[阿里 写提示词] 一句话需求是空的")
+        if not instruction.strip():
+            raise RuntimeError("[阿里 写提示词] 扩写指令是空的")
+        model = model.strip() or WRITER_MODEL
+        body = {"model": model, "stream": False, "enable_thinking": False,
+                "messages": [{"role": "system", "content": instruction.strip()}, {"role": "user", "content": idea.strip()}]}
+        d = _chat(base, key, body, WRITER_TIMEOUT, "写提示词")
+        try:
+            text = d["choices"][0]["message"]["content"].strip()
+        except Exception:
+            text = ""
+        if not text:
+            raise RuntimeError("[阿里 写提示词] 返回里没有文字：" + json.dumps(d, ensure_ascii=False)[:300])
+        return (text, json.dumps({"code": "success", "model": model, "usage": d.get("usage")}, ensure_ascii=False))
+
+
 class ProAliVoiceDesign:
     """用文字描述设计一个新音色（qwen3-tts-vd），输出音色 id 和试听音频；id 存在阿里账号里，可反复用。"""
     @classmethod
@@ -395,8 +455,10 @@ class ProAliVoiceAdmin:
 
 
 NODE_CLASS_MAPPINGS = {"ProAliImage": ProAliImage, "ProAliImageEdit": ProAliImageEdit, "ProAliTTS": ProAliTTS, "ProAliASR": ProAliASR,
-                      "ProAliVoiceDesign": ProAliVoiceDesign, "ProAliVoiceClone": ProAliVoiceClone, "ProAliVoiceAdmin": ProAliVoiceAdmin}
+                      "ProAliVoiceDesign": ProAliVoiceDesign, "ProAliVoiceClone": ProAliVoiceClone, "ProAliVoiceAdmin": ProAliVoiceAdmin,
+                      "ProAliPromptWriter": ProAliPromptWriter}
 NODE_DISPLAY_NAME_MAPPINGS = {"ProAliImage": "阿里 文生图（qwen-image，支持 2K）", "ProAliImageEdit": "阿里 改图（qwen-image-edit）",
                               "ProAliTTS": "阿里 配音（qwen3-tts）", "ProAliASR": "阿里 语音识别（听写，qwen3-asr）",
+                              "ProAliPromptWriter": "阿里 写提示词（一句话需求→完整提示词）",
                               "ProAliVoiceDesign": "阿里 音色设计（文字描述→新音色）", "ProAliVoiceClone": "阿里 声音克隆（样音→新音色）",
                               "ProAliVoiceAdmin": "阿里 音色管理（列出/删除）"}

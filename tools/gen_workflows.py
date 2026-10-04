@@ -6,84 +6,9 @@ import json, os
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "workflows")
 os.makedirs(OUT, exist_ok=True)
 
-IMG_INPUTS = lambda link1=None: (
-    [{"name": "info", "type": "STRING", "link": 1, "widget": {"name": "info"}}]
-    + [{"name": f"image{i}", "type": "IMAGE", "link": (link1 if i == 1 else None)} for i in range(1, 17)]
-)
-
-def settings_node():
-    return {
-        "id": 1, "type": "RelayAPISettings", "pos": [60, 120], "size": [400, 300],
-        "flags": {}, "order": 0, "mode": 0, "inputs": [],
-        "outputs": [{"name": "STRING", "type": "STRING", "links": [1], "slot_index": 0}],
-        "properties": {"Node name for S&R": "RelayAPISettings"},
-        # task_type, platform, api_format, api_base, model, apikey(空), custom_api_base, custom_model
-        "widgets_values": ["image", "banana-2", "v1/chat/completions",
-                           "https://www.runninghub.cn", "grok-video-3", "",
-                           "http://airelay-newapi:3000", "gemini-image"],
-    }
-
-def generator_node(prompt, ratio, image_link=None):
-    return {
-        "id": 2, "type": "RelayImageGenerator", "pos": [520, 120], "size": [380, 380],
-        "flags": {}, "order": 2, "mode": 0,
-        "inputs": IMG_INPUTS(image_link),
-        "outputs": [
-            {"name": "image", "type": "IMAGE", "links": [2], "slot_index": 0},
-            {"name": "response", "type": "STRING", "links": None, "slot_index": 1},
-            {"name": "image_url", "type": "STRING", "links": None, "slot_index": 2},
-        ],
-        "properties": {"Node name for S&R": "RelayImageGenerator"},
-        # prompt, ratio, size, quality, format, moderation, seed, control_after_generate
-        "widgets_values": [prompt, ratio, "1K", "medium", "jpeg", "low", 42, "fixed"],
-    }
-
-def save_node(prefix):
-    return {
-        "id": 3, "type": "SaveImage", "pos": [960, 120], "size": [340, 320],
-        "flags": {}, "order": 3, "mode": 0,
-        "inputs": [{"name": "images", "type": "IMAGE", "link": 2}],
-        "outputs": [], "properties": {"Node name for S&R": "SaveImage"},
-        "widgets_values": [prefix],
-    }
-
-def load_image_node(filename):
-    return {
-        "id": 4, "type": "LoadImage", "pos": [60, 470], "size": [380, 400],
-        "flags": {}, "order": 1, "mode": 0, "inputs": [],
-        "outputs": [
-            {"name": "IMAGE", "type": "IMAGE", "links": [3], "slot_index": 0},
-            {"name": "MASK", "type": "MASK", "links": None, "slot_index": 1},
-        ],
-        "properties": {"Node name for S&R": "LoadImage"},
-        "widgets_values": [filename, "image"],
-    }
-
 def wf(nodes, links, last_node, last_link):
     return {"last_node_id": last_node, "last_link_id": last_link, "nodes": nodes,
             "links": links, "groups": [], "config": {}, "extra": {}, "version": 0.4}
-
-def with_status(obj, gen_id, resp_slot):
-    """给生成节点的 response 输出接一个「结果/错误信息」文本预览。
-    relayapi 节点出错时不抛异常（作者为批量流程这样设计），只在 response 输出里给出错误 JSON，
-    不接出来的话 ComfyUI 显示「成功」却没有结果，用户看不到原因。"""
-    gen = next(n for n in obj["nodes"] if n["id"] == gen_id)
-    nid, lid = obj["last_node_id"] + 1, obj["last_link_id"] + 1
-    gen["outputs"][resp_slot]["links"] = [lid]
-    # 生成节点在前端会被自动拉高（图片节点有 16 个输入口），摆在它下面会被盖住；
-    # 改摆在下游保存节点的下方。
-    down = next(l for l in obj["links"] if l[1] == gen_id and l[2] == 0)[3]
-    sv = next(n for n in obj["nodes"] if n["id"] == down)
-    obj["nodes"].append({
-        "id": nid, "type": "PreviewAny", "title": "结果 / 错误信息（出错时这里显示原因）",
-        "pos": [sv["pos"][0], sv["pos"][1] + sv["size"][1] + 50], "size": [max(sv["size"][0], 360), 150],
-        "flags": {}, "order": 9, "mode": 0,
-        "inputs": [{"name": "source", "type": "*", "link": lid}],
-        "outputs": [], "properties": {"Node name for S&R": "PreviewAny"}, "widgets_values": [],
-    })
-    obj["links"].append([lid, gen_id, resp_slot, nid, 0, "STRING"])
-    obj["last_node_id"], obj["last_link_id"] = nid, lid
-    return obj
 
 # 类别文件夹（编号不变：文档和对话里都按编号称呼；侧栏里会显示成树）
 FOLDERS = {"1-一条龙": ("12", "20"), "2-图片生成": ("01", "03", "10", "14", "17", "18"),
@@ -99,99 +24,6 @@ def write(name, obj):
     with open(p, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
     print("写出:", p)
-
-# 02 商品图-换背景改图（LoadImage -> image1）
-write("02-商品图-换背景改图.json", with_status(wf(
-    [settings_node(),
-     generator_node("请编辑这张商品照片：把原来的背景完全去掉，换成干净、无缝的纯白色（#FFFFFF）影棚背景；商品本身保持原样（形状、细节、颜色、角度都不要改），在商品下方加柔和自然的接触阴影；专业电商产品图。", "1:1", image_link=3),
-     save_node("product"),
-     load_image_node("demo_product.png")],
-    [[1, 1, 0, 2, 0, "STRING"], [2, 2, 0, 3, 0, "IMAGE"], [3, 4, 0, 2, 1, "IMAGE"]], 4, 3), 2, 1))
-
-print("完成，共 3 个工作流")
-
-# 04 文生视频（geminiweb Veo，经 /v1/videos 异步）
-# Settings 节点 id=11（图片工作流用 id=1 存网关 key；视频要用 geminiweb 自己的 API Key，所以分开存）
-def video_settings_node():
-    return {
-        "id": 11, "type": "RelayAPISettings", "pos": [60, 120], "size": [400, 300],
-        "flags": {}, "order": 0, "mode": 0, "inputs": [],
-        "outputs": [{"name": "STRING", "type": "STRING", "links": [1], "slot_index": 0}],
-        "properties": {"Node name for S&R": "RelayAPISettings"},
-        "widgets_values": ["video", "Veo", "v1/videos", "https://www.runninghub.cn", "veo3.1", "",
-                           "http://airelay-geminiweb:8083", "gemini-video"],
-    }
-
-def video_generator_node(prompt):
-    return {
-        "id": 12, "type": "RelayVideoGenerator", "pos": [520, 120], "size": [380, 420],
-        "flags": {}, "order": 1, "mode": 0,
-        "inputs": [{"name": "info", "type": "STRING", "link": 1, "widget": {"name": "info"}}]
-                  + [{"name": f"image{i}", "type": "IMAGE", "link": None} for i in range(1, 8)],
-        "outputs": [
-            {"name": "video", "type": "VIDEO", "links": [2], "slot_index": 0},
-            {"name": "task_id", "type": "STRING", "links": None, "slot_index": 1},
-            {"name": "response", "type": "STRING", "links": None, "slot_index": 2},
-            {"name": "video_url", "type": "STRING", "links": None, "slot_index": 3},
-        ],
-        "properties": {"Node name for S&R": "RelayVideoGenerator"},
-        # prompt, ratio, size, duration, seed, control_after_generate, enhance_prompt, enable_HD
-        "widgets_values": [prompt, "16:9", "720P", "8", 1, "fixed", "false", "false"],
-    }
-
-def save_video_node():
-    return {
-        "id": 13, "type": "SaveVideo", "pos": [960, 120], "size": [340, 360],
-        "flags": {}, "order": 2, "mode": 0,
-        "inputs": [{"name": "video", "type": "VIDEO", "link": 2}],
-        "outputs": [], "properties": {"Node name for S&R": "SaveVideo"},
-        "widgets_values": ["video/文生视频", "auto", "auto"],
-    }
-
-
-# 05 音乐（Suno，经 New API 网关的 Suno 渠道；也可改成任意 Suno 中转站地址）
-# Settings 节点 id=21（图片 id=1 存网关 key，视频 id=11 存 geminiweb key，音乐单独一个 id）
-def sound_settings_node():
-    return {
-        "id": 21, "type": "RelayAPISettings", "pos": [60, 120], "size": [400, 300],
-        "flags": {}, "order": 0, "mode": 0, "inputs": [],
-        "outputs": [{"name": "STRING", "type": "STRING", "links": [1], "slot_index": 0}],
-        "properties": {"Node name for S&R": "RelayAPISettings"},
-        "widgets_values": ["sound", "Suno", "suno/submit", "https://www.runninghub.cn", "suno_music", "",
-                           "http://airelay-newapi:3000", "suno_music"],
-    }
-
-def sound_generator_node():
-    return {
-        "id": 22, "type": "RelaySoundGenerator", "pos": [520, 120], "size": [400, 420],
-        "flags": {}, "order": 1, "mode": 0,
-        "inputs": [{"name": "info", "type": "STRING", "link": 1, "widget": {"name": "info"}}],
-        "outputs": [
-            {"name": "audio", "type": "AUDIO", "links": [2], "slot_index": 0},
-            {"name": "clip_id", "type": "STRING", "links": None, "slot_index": 1},
-            {"name": "task_id", "type": "STRING", "links": None, "slot_index": 2},
-            {"name": "response", "type": "STRING", "links": None, "slot_index": 3},
-            {"name": "audio_url", "type": "STRING", "links": None, "slot_index": 4},
-        ],
-        "properties": {"Node name for S&R": "RelaySoundGenerator"},
-        # generation_mode, title, tags, prompt, make_instrumental, version, seed, control_after_generate,
-        # negative_tags, extend_mode, continue_clip_id, continue_at
-        "widgets_values": ["描述模式", "", "pop, electronic", "一首轻快的电子流行歌曲，适合做短视频配乐",
-                           True, "V4.5", 1, "fixed", "", False, "", 0],
-    }
-
-def save_audio_node():
-    return {
-        "id": 23, "type": "SaveAudioAdvanced", "pos": [980, 120], "size": [340, 200],
-        "flags": {}, "order": 2, "mode": 0,
-        "inputs": [{"name": "audio", "type": "AUDIO", "link": 2}],
-        "outputs": [], "properties": {"Node name for S&R": "SaveAudioAdvanced"},
-        "widgets_values": ["audio/音乐", "mp3", "V0"],
-    }
-
-write("05-音乐-Suno.json", with_status(wf(
-    [sound_settings_node(), sound_generator_node(), save_audio_node()],
-    [[1, 21, 0, 22, 0, "STRING"], [2, 22, 0, 23, 0, "AUDIO"]], 23, 2), 22, 3))
 
 # 06 图片放大（不用任何模型/密钥：Lanczos 2 倍 + 轻度锐化，CPU 上 1~2 秒）
 # 上游生图（gemini-image）实际只出约 1K，选 2K/4K 无效；要大图就把出的图丢进这里放大 2 倍（可重复两次得 4 倍）。
@@ -217,59 +49,8 @@ def upscale_nodes():
 write("06-图片放大-2倍.json", wf(upscale_nodes(),
     [[1, 31, 0, 32, 0, "IMAGE"], [2, 32, 0, 33, 0, "IMAGE"], [3, 33, 0, 34, 0, "IMAGE"]], 34, 3))
 
-# 07 音乐（Google Lyria，经 geminiweb 的 gemini-music；不需要 Suno 的 key）
-# Settings 节点 id=11，与 04 文生视频共用同一个 geminiweb API Key。
-def gemini_music_nodes():
-    st = video_settings_node()          # id=11，输出 info → link 1
-    gen = {
-        "id": 12, "type": "ProGeminiMusic", "pos": [520, 120], "size": [400, 300], "flags": {}, "order": 1, "mode": 0,
-        "inputs": [{"name": "info", "type": "STRING", "link": 1, "widget": {"name": "info"}}],
-        "outputs": [{"name": "audio", "type": "AUDIO", "links": [2], "slot_index": 0},
-                    {"name": "response", "type": "STRING", "links": None, "slot_index": 1}],
-        "properties": {"Node name for S&R": "ProGeminiMusic"},
-        # prompt, model, seed, control_after_generate
-        "widgets_values": ["创作一段30秒的舒缓钢琴加弦乐纯音乐，温暖治愈，适合产品视频配乐", "gemini-music", 1, "randomize"],
-    }
-    sv = save_audio_node()
-    sv["id"] = 13
-    sv["widgets_values"] = ["audio/Gemini音乐", "mp3", "V0"]
-    return [st, gen, sv]
-
-write("07-音乐-Gemini.json", with_status(wf(gemini_music_nodes(),
-    [[1, 11, 0, 12, 0, "STRING"], [2, 12, 0, 13, 0, "AUDIO"]], 13, 2), 12, 1))
-
-# 10 促销海报 / 11 商品海报（ProPosterPrompt 拼提示词 → Relay Image Generator 的 prompt 输入）
-# 中文文字渲染实测很准；带商品图时提示词已写明「创作新海报、不要返回原图」（含糊写法会原样返回照片）。
-def poster_prompt_node(use_image, title, sub, badge, style, elements):
-    return {
-        "id": 5, "type": "ProPosterPrompt", "pos": [60, 470], "size": [400, 430], "flags": {}, "order": 1, "mode": 0,
-        "inputs": [], "outputs": [{"name": "prompt", "type": "STRING", "links": [5], "slot_index": 0}],
-        "properties": {"Node name for S&R": "ProPosterPrompt"},
-        # title, subtitle, badge, style, elements, use_product_image, extra(optional)
-        "widgets_values": [title, sub, badge, style, elements, use_image, ""],
-    }
-
-def poster_generator(image_link):
-    n = generator_node("（由左下「海报提示词」节点生成）", "3:4", image_link=image_link)
-    n["inputs"].insert(1, {"name": "prompt", "type": "STRING", "link": 5, "widget": {"name": "prompt"}})
-    n["outputs"][0]["links"] = [2]
-    return n
-
-write("10-促销海报.json", with_status(wf(
-    [settings_node(), poster_generator(None), save_node("poster"),
-     poster_prompt_node(False, "夏日清凉节", "全场满199减50", "限时三天", "清爽夏日（蓝白）", "冰饮、柠檬片、水花、椰树叶、遮阳草帽")],
-    [[1, 1, 0, 2, 0, "STRING"], [2, 2, 0, 3, 0, "IMAGE"], [5, 5, 0, 2, 1, "STRING"]], 5, 5), 2, 1))
-
-_pimg = load_image_node("demo_product.png")
-_pimg["id"] = 6; _pimg["pos"] = [500, 560]; _pimg["outputs"][0]["links"] = [7]
-write("11-商品海报.json", with_status(wf(
-    [settings_node(), poster_generator(7), save_node("poster_product"),
-     poster_prompt_node(True, "鲜果季", "红富士 脆甜多汁", "产地直发", "自然绿意", "树叶、木质托盘、水珠、清晨阳光"), _pimg],
-    [[1, 1, 0, 2, 0, "STRING"], [2, 2, 0, 3, 0, "IMAGE"], [5, 5, 0, 2, 1, "STRING"], [7, 6, 0, 2, 2, "IMAGE"]], 6, 7), 2, 1))
-
-
 # ════════════════════════════════════════════════════════════════════════════
-# 搭图辅助（12 号起的模板用它：按名字连线、自动编号，比手写 links 不容易错）
+# 搭图辅助（除 06 外的模板都用它：按名字连线、自动编号，比手写 links 不容易错）
 # ════════════════════════════════════════════════════════════════════════════
 def _imgs(n):
     return [(f"image{i}", "IMAGE") for i in range(1, n + 1)]
@@ -287,12 +68,16 @@ SPEC = {
     "ImageSharpen": ([("image", "IMAGE", False)], [("IMAGE", "IMAGE")], []),
     "PreviewAny": ([("source", "*", False)], [], []),
     "ImageScaleToMaxDimension": ([("image", "IMAGE", False)], [("IMAGE", "IMAGE")], []),
-    "ProPosterPrompt": ([], [("prompt", "STRING")], []),
+    "ProPosterPrompt": ([], [("prompt", "STRING")], ["title", "subtitle", "badge", "elements"]),
+    "ProPosterFields": ([("text", "STRING", False)], [("title", "STRING"), ("subtitle", "STRING"), ("badge", "STRING"), ("elements", "STRING")], []),
+    "RelaySoundGenerator": ([("info", "STRING", True)], [("audio", "AUDIO"), ("clip_id", "STRING"), ("task_id", "STRING"), ("response", "STRING"), ("audio_url", "STRING")], ["prompt"]),
+    "ProGeminiMusic": ([("info", "STRING", True)], [("audio", "AUDIO"), ("response", "STRING")], ["prompt"]),
     "ProAliImage": ([("info", "STRING", True)], [("image", "IMAGE"), ("response", "STRING")], ["prompt"]),
     "ProAliImageEdit": ([("info", "STRING", True), ("image1", "IMAGE", False), ("image2", "IMAGE", False), ("image3", "IMAGE", False)],
                         [("image", "IMAGE"), ("response", "STRING")], ["prompt"]),
+    "ProAliPromptWriter": ([("info", "STRING", True)], [("text", "STRING"), ("response", "STRING")], []),
     "ProAliTTS": ([("info", "STRING", True)], [("audio", "AUDIO"), ("response", "STRING")], ["text", "custom_voice"]),
-    "ProAliVoiceDesign": ([("info", "STRING", True)], [("voice", "STRING"), ("preview", "AUDIO")], []),
+    "ProAliVoiceDesign": ([("info", "STRING", True)], [("voice", "STRING"), ("preview", "AUDIO")], ["voice_prompt"]),
     "ProAliVoiceClone": ([("audio", "AUDIO", False), ("info", "STRING", True)], [("voice", "STRING")], []),
     "SaveAudioAdvanced": ([("audio", "AUDIO", False)], [], []),
     "LoadVideo": ([], [("VIDEO", "VIDEO")], []),
@@ -353,9 +138,7 @@ ALI_TXT_BASE = "https://dashscope.aliyuncs.com/compatible-mode"
 ALI_BASE = "https://dashscope.aliyuncs.com"
 ali_settings = lambda base, model: ["text", "OpenaiText", "v1/chat/completions", "https://www.runninghub.cn", "claude-opus-4-6", "", base, model]
 IMG_SET = ["image", "banana-2", "v1/chat/completions", "https://www.runninghub.cn", "grok-video-3", "", "http://airelay-newapi:3000", "gemini-image"]
-TXT_SET = ["text", "OpenaiText", "v1/chat/completions", "https://www.runninghub.cn", "claude-opus-4-6", "", "http://airelay-newapi:3000", "gemini-3.5-flash-lite"]
 WHITE_BG = "请编辑这张商品照片：把原来的背景完全去掉，换成干净、无缝的纯白色（#FFFFFF）影棚背景；商品本身保持原样（形状、细节、颜色、角度都不要改），在商品下方加柔和自然的接触阴影；专业电商产品图。"
-SCENE = "请以图1的商品照片为素材，创作一张全新的电商场景图（不要直接返回原图）：把商品自然地放在「明亮的现代厨房台面，窗边自然光」的场景里；商品的形状、颜色、包装上的文字都保持原样不要改动，光影和透视与场景一致；专业商品摄影；画面里不要添加任何文字、标签、水印。"
 
 
 def status(g, gen, out="response", pos=(0, 0), title="状态（出错时这里显示原因）", nid=None):
@@ -365,62 +148,166 @@ def status(g, gen, out="response", pos=(0, 0), title="状态（出错时这里�
     return nid
 
 
-# ── AI 扩写提示词：一句话需求 → 阿里文字模型扩写 → 接到生图 / 生视频节点的 prompt ──────────────────
-# 用阿里 Settings 节点 id=31（和其他阿里工作流共用一个 Key）。扩写结果用 PreviewAny 展示，方便看模型写了什么。
+# ── AI 扩写提示词：一句话需求 → 阿里文字模型（pro-ali 的「阿里 写提示词」节点）→ 接到生成节点的 prompt ──────────
+# 用阿里 Settings 节点 id=31（和其他阿里工作流共用一个 Key）。「★ 一句话需求」节点放在画布最上面，
+# 原有节点整体下移，打开就能看到该填哪里；扩写结果用 PreviewAny 展示，方便看模型写了什么。
+# 不用 relayapi 的文字节点：它出错不抛异常，下游会拿着空提示词白白出图；写提示词节点出错直接报红。
+_ONLY = "只输出{}本身，不要解释，不要加引号或标题。"
 EXPAND = {
     "image": "你是生图提示词写手。把下面的一句话需求扩写成一段中文生图提示词（80~150 字）：写清主体、场景、光线、构图、风格和画质；"
-             "忠于原意，不要添加需求里没有的主体；画面里不要出现任何文字、水印、标志。只输出提示词本身，不要解释，不要加引号或标题。\n需求：",
+             "忠于原意，不要添加需求里没有的主体；画面里不要出现任何文字、水印、标志。" + _ONLY.format("提示词"),
     "video": "你是文生视频提示词写手。把下面的一句话需求扩写成一段中文视频提示词（60~120 字）：写清主体、动作、场景、镜头运动（如跟拍/推近/环绕）、光线和风格；"
-             "只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。只输出提示词本身，不要解释，不要加引号或标题。\n需求：",
+             "只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。" + _ONLY.format("提示词"),
+    # 改图：商品要保持原样是硬要求（含糊的说法会让模型原样返回原图，也会让商品被重画），所以模板里写死
+    "edit": "你是商品图编辑指令写手。用户会用一句话说明想怎么修改商品照片，请写成一条清楚的中文改图指令（60~120 字）：开头写「请编辑这张商品照片：」；"
+            "明确写出要改什么（例如把背景换成什么材质、什么光线，或去掉什么、改成什么颜色）；用户没有要求改的部分"
+            "（商品的形状、细节、颜色、包装上的文字、角度）一律写明保持原样不要改；换背景时要写明在商品下方加柔和自然的接触阴影；"
+            "不要添加任何文字、标签、水印；末尾写「专业电商产品图。」" + _ONLY.format("指令"),
+    "scene": "你是商品场景图指令写手。用户会用一句话描述想要的场景，请写成一条中文合成指令（80~150 字）：开头写「请以图1的商品照片为素材，创作一张全新的电商场景图"
+             "（不要直接返回原图）：」；接着写清场景（地点、台面和背景材质、光线、氛围、少量陪衬物），把商品自然地放进场景；商品的形状、颜色、包装上的文字"
+             "都保持原样不要改动，光影和透视与场景一致；画面里不要添加任何文字、标签、水印；末尾写「专业商品摄影。」" + _ONLY.format("指令"),
+    "compose": "你是商品合成指令写手。图1是商品照片，图2是场景照片。用户会用一句话说明想怎么合成，请写成一条中文合成指令（60~120 字）：开头写"
+               "「请把图1里的商品自然地放进图2的场景里，生成一张全新的合成图（不要直接返回其中任何一张原图）：」；写清商品放在场景里的位置、大小和朝向；"
+               "商品的形状、颜色、包装上的文字都保持原样不要改动；光影、透视、比例与图2的场景一致；末尾写「专业商品摄影。」" + _ONLY.format("指令"),
+    "promo": "你是电商宣传图指令写手。用户会用一句话说明想要的宣传图风格，请写成一条中文指令（80~150 字）：开头写「请以图1的商品照片为素材，创作一张全新的电商宣传图"
+             "（不要直接返回原图）：」；写清背景、光线、配色和氛围，商品居中突出；构图要能适配 1:1、3:4、9:16、16:9 多种画幅；商品的形状、颜色、包装上的文字"
+             "都保持原样不要改动；画面里不要添加任何文字、标签、水印或小牌子；末尾写「专业电商摄影。」" + _ONLY.format("指令"),
+    "music": "你是配乐提示词写手。把下面的一句话需求扩写成一段中文音乐创作提示词（50~100 字）：写清风格、情绪、主要乐器、节奏速度和用途；"
+             "纯音乐，不要歌词；时长约 30 秒。" + _ONLY.format("提示词"),
+    "voice": "你是配音音色描述写手。把下面的一句话需求扩写成一段中文音色描述（40~80 字）：写清性别和年龄感、音色质感、语速、情绪语气和适用场景；"
+             "只描述声音，不要写台词。" + _ONLY.format("描述"),
 }
+# 海报：文字必须一字不差，所以不让 AI 写整段提示词，只让它按固定格式填 4 个字段，再由「海报提示词」节点用「」原样嵌进去
+POSTER_EXPAND = ("你是电商促销海报文案策划。根据下面的一句话需求，严格按下面 4 行格式输出，不要输出任何其他内容：\n"
+                 "标题：（4~8 个字，醒目）\n副标题：（8~16 个字，写核心卖点或优惠）\n角标：（2~6 个字，如「限时三天」，没有合适的就留空）\n"
+                 "画面元素：（5~8 个具体的视觉元素，用顿号分隔，不要写文字）\n"
+                 "要求：全部用中文；价格、折扣、日期、数字一律照搬需求里的写法（需求写 199 就写 199，不要改成汉字），需求里没有就不要编造；标题、副标题、角标里不要用英文和特殊符号。")
+IDEA_TITLE = "★ 只填这里：一句话需求"
 
 
-def ai_prompt(g, gen, kind, idea, pos=(60, 600), settings_id=31):
-    """给生成节点 gen 的 prompt 前面接上「一句话需求 → AI 扩写」。节点编号用 70~75，Settings 节点已有则复用。"""
-    x, y = pos
-    if not any(n["id"] == settings_id for n in g.nodes):
-        g.add(settings_id, "RelayAPISettings", (x, y), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里文字）")
-        y += 340
-    g.add(70, "PrimitiveStringMultiline", (x, y), (460, 200), [idea], title="★ 一句话需求（只填这里）")
-    g.add(71, "PrimitiveStringMultiline", (x, y + 240), (460, 240), [EXPAND[kind]], title="扩写指令（一般不用改）")
-    g.add(72, "StringConcatenate", (x + 520, y), (340, 140), ["", "", "\n"], title="拼成完整指令")
-    g.add(73, "RelayTextGenerator", (x + 520, y + 180), (420, 300), ["（由「拼成完整指令」提供）", 1, "randomize"], title="AI 扩写提示词")
-    g.add(74, "PreviewAny", (x + 1000, y + 180), (460, 240), title="AI 扩写出的提示词（想看模型写了什么）")
-    g.connect(settings_id, "STRING", 73, "info")
-    g.connect(71, "STRING", 72, "string_a"); g.connect(70, "STRING", 72, "string_b")
-    g.connect(72, "STRING", 73, "prompt"); g.connect(73, "text", 74, "source")
-    g.connect(73, "text", gen, "prompt")
-    status(g, 73, pos=(x + 1000, y + 460), title="状态：扩写")
+def ai_block(g, instruction, idea, idea_title=IDEA_TITLE, settings_id=31):
+    """在画布最上面加「一句话需求 → AI 写提示词」（节点 70，预览 74），其余节点整体下移；返回写提示词节点 id（70）。"""
+    have = [n for n in g.nodes if n["id"] == settings_id]
+    assert not have or have[0]["type"] == "RelayAPISettings", f"节点 {settings_id} 要留给阿里 Settings（Key 按节点 id 存），换个编号"
+    need_settings = not have
+    shift = (960 if need_settings else 620) + 60
+    for n in g.nodes:
+        n["pos"][1] += shift
+    if need_settings:
+        g.add(settings_id, "RelayAPISettings", (60, 660), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里文字）")
+    # idea, instruction, model, seed, control_after_generate
+    g.add(70, "ProAliPromptWriter", (60, 60), (520, 560), [idea, instruction, "qwen3.8-flash", 1, "randomize"], title=idea_title)
+    g.add(74, "PreviewAny", (620, 60), (460, 300), title="AI 扩写出的结果（想看模型写了什么）")
+    g.connect(settings_id, "STRING", 70, "info"); g.connect(70, "text", 74, "source")
+    return 70
 
 
-def text_to_image(idea, ratio, prefix, cover_hint=""):
+def ai_prompt(g, gen, kind, idea, target="prompt", **kw):
+    """给生成节点（可以是 id 列表）的 prompt 前接上「一句话需求 → AI 扩写」。"""
+    txt = ai_block(g, EXPAND[kind], idea, **kw)
+    for t in (gen if isinstance(gen, (list, tuple)) else [gen]):
+        g.connect(txt, "text", t, target)
+
+
+def ai_poster(g, poster, idea, **kw):
+    """海报：AI 按固定格式写文案 → 「海报文案拆分」→ 接到「海报提示词」的标题 / 副标题 / 角标 / 画面元素。"""
+    txt = ai_block(g, POSTER_EXPAND, idea, **kw)
+    g.add(75, "ProPosterFields", (1120, 60), (300, 140), title="拆成标题 / 副标题 / 角标 / 画面元素")
+    g.connect(txt, "text", 75, "text")
+    for f in ("title", "subtitle", "badge", "elements"):
+        g.connect(75, f, poster, f)
+
+
+VEO_SET = ["video", "Veo", "v1/videos", "https://www.runninghub.cn", "veo3.1", "", "http://airelay-geminiweb:8083", "gemini-video"]
+SUNO_SET = ["sound", "Suno", "suno/submit", "https://www.runninghub.cn", "suno_music", "", "http://airelay-newapi:3000", "suno_music"]
+AI_NOTE = "（由 AI 扩写节点提供）"
+EDIT_IDEA = "把背景换成干净的纯白色影棚背景，商品保持原样，下方加柔和的接触阴影"
+
+
+def text_to_image(idea, ratio, prefix):      # 01 / 03
     g = Graph()
     g.add(1, "RelayAPISettings", (60, 120), (400, 300), IMG_SET)
-    g.add(2, "RelayImageGenerator", (520, 120), (380, 420), ["（由 AI 扩写节点提供）", ratio, "1K", "medium", "jpeg", "low", 42, "randomize"])
+    g.add(2, "RelayImageGenerator", (520, 120), (380, 420), [AI_NOTE, ratio, "1K", "medium", "jpeg", "low", 42, "randomize"])
     g.add(3, "SaveImage", (960, 120), (340, 320), [prefix])
     g.connect(1, "STRING", 2, "info"); g.connect(2, "image", 3, "images")
     status(g, 2, pos=(960, 500), title="结果 / 错误信息（出错时这里显示原因）")
-    ai_prompt(g, 2, "image", idea, pos=(60, 640))
+    ai_prompt(g, 2, "image", idea)
     return g.build()
 
 
-# 01 文生图 / 03 封面横图 16:9 / 04 文生视频：都是「一句话 → AI 扩写 → 生成」
-write("01-文生图.json", text_to_image("一只橘猫坐在窗台上，阳光，写实风格", "1:1", "txt2img"))
-write("03-封面横图-16x9.json", text_to_image("科技感直播封面，蓝紫色渐变背景，中间留白用于放标题", "16:9", "cover"))
-
-
-def text_to_video():
+def product_edit():     # 02：商品图换背景改图（网关 gemini-image，LoadImage → image1）
     g = Graph()
-    g.add(11, "RelayAPISettings", (60, 120), (400, 300), ["video", "Veo", "v1/videos", "https://www.runninghub.cn", "veo3.1", "", "http://airelay-geminiweb:8083", "gemini-video"])
-    g.add(12, "RelayVideoGenerator", (520, 120), (380, 420), ["（由 AI 扩写节点提供）", "16:9", "720P", "8", 1, "fixed", "false", "false"])
+    g.add(1, "RelayAPISettings", (60, 120), (400, 300), IMG_SET)
+    g.add(4, "LoadImage", (60, 470), (380, 400), ["demo_product.png", "image"], title="① 上传商品图")
+    g.add(2, "RelayImageGenerator", (520, 120), (380, 420), [AI_NOTE, "1:1", "1K", "medium", "jpeg", "low", 42, "randomize"], title="改图")
+    g.add(3, "SaveImage", (960, 120), (340, 320), ["product"])
+    g.connect(1, "STRING", 2, "info"); g.connect(4, "IMAGE", 2, "image1"); g.connect(2, "image", 3, "images")
+    status(g, 2, pos=(960, 500), title="结果 / 错误信息（出错时这里显示原因）")
+    ai_prompt(g, 2, "edit", EDIT_IDEA)
+    return g.build()
+
+
+def text_to_video():    # 04
+    g = Graph()
+    g.add(11, "RelayAPISettings", (60, 120), (400, 300), VEO_SET)
+    g.add(12, "RelayVideoGenerator", (520, 120), (380, 420), [AI_NOTE, "16:9", "720P", "8", 1, "fixed", "false", "false"])
     g.add(13, "SaveVideo", (960, 120), (340, 360), ["video/文生视频", "auto", "auto"])
     g.connect(11, "STRING", 12, "info"); g.connect(12, "video", 13, "video")
     status(g, 12, out="response", pos=(960, 540), title="结果 / 错误信息（出错时这里显示原因）")
-    ai_prompt(g, 12, "video", "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍", pos=(60, 640))
+    ai_prompt(g, 12, "video", "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍")
     return g.build()
 
 
+def music_suno():       # 05：Suno（经网关的 Suno 渠道，Settings 节点 id=21）
+    g = Graph()
+    g.add(21, "RelayAPISettings", (60, 120), (400, 300), SUNO_SET)
+    # generation_mode, title, tags, prompt, make_instrumental, version, seed, control_after_generate, negative_tags, extend_mode, continue_clip_id, continue_at
+    g.add(22, "RelaySoundGenerator", (520, 120), (400, 420), ["描述模式", "", "pop, electronic", AI_NOTE, True, "V4.5", 1, "randomize", "", False, "", 0])
+    g.add(23, "SaveAudioAdvanced", (980, 120), (340, 200), ["audio/音乐", "mp3", "V0"])
+    g.connect(21, "STRING", 22, "info"); g.connect(22, "audio", 23, "audio")
+    status(g, 22, pos=(980, 380), title="结果 / 错误信息（出错时这里显示原因）")
+    ai_prompt(g, 22, "music", "一首轻快的电子流行歌曲，适合做短视频配乐")
+    return g.build()
+
+
+def music_gemini():     # 07：Google Lyria（经 geminiweb 的 gemini-music，Settings 节点 id=11，与 04 共用 Key）
+    g = Graph()
+    g.add(11, "RelayAPISettings", (60, 120), (400, 300), VEO_SET)
+    g.add(12, "ProGeminiMusic", (520, 120), (400, 300), [AI_NOTE, "gemini-music", 1, "randomize"])
+    g.add(13, "SaveAudioAdvanced", (980, 120), (340, 200), ["audio/Gemini音乐", "mp3", "V0"])
+    g.connect(11, "STRING", 12, "info"); g.connect(12, "audio", 13, "audio")
+    status(g, 12, pos=(980, 380), title="结果 / 错误信息（出错时这里显示原因）")
+    ai_prompt(g, 12, "music", "舒缓钢琴加弦乐纯音乐，温暖治愈，适合产品视频配乐")
+    return g.build()
+
+
+def poster(use_image, idea, defaults, prefix):   # 10 促销海报 / 11 商品海报（带商品图）
+    g = Graph()
+    g.add(1, "RelayAPISettings", (60, 120), (400, 300), IMG_SET)
+    g.add(2, "RelayImageGenerator", (520, 120), (380, 420), ["（由左下「海报提示词」节点生成）", "3:4", "1K", "medium", "jpeg", "low", 42, "randomize"])
+    g.add(3, "SaveImage", (960, 120), (340, 320), [prefix])
+    # title, subtitle, badge, style, elements, use_product_image, extra —— 标题/副标题/角标/画面元素会被 AI 拆出来的值覆盖，这里的值只是断开连线后的备用
+    g.add(5, "ProPosterPrompt", (60, 470), (400, 430), list(defaults) + [use_image, ""], title="海报提示词（风格在这里选；文字由 AI 填）")
+    g.connect(1, "STRING", 2, "info"); g.connect(5, "prompt", 2, "prompt"); g.connect(2, "image", 3, "images")
+    if use_image:
+        g.add(6, "LoadImage", (520, 780), (380, 400), ["demo_product.png", "image"], title="商品图（海报主体）")
+        g.connect(6, "IMAGE", 2, "image1")
+    status(g, 2, pos=(960, 500), title="结果 / 错误信息（出错时这里显示原因）")
+    ai_poster(g, 5, idea)
+    return g.build()
+
+
+# 01 文生图 / 03 封面横图 16:9 / 04 文生视频 / 02 商品图换背景改图 / 05、07 音乐 / 10、11 海报：都是「一句话 → AI 扩写 → 生成」
+write("01-文生图.json", text_to_image("一只橘猫坐在窗台上，阳光，写实风格", "1:1", "txt2img"))
+write("02-商品图-换背景改图.json", product_edit())
+write("03-封面横图-16x9.json", text_to_image("科技感直播封面，蓝紫色渐变背景，中间留白用于放标题", "16:9", "cover"))
 write("04-文生视频.json", text_to_video())
+write("05-音乐-Suno.json", music_suno())
+write("07-音乐-Gemini.json", music_gemini())
+write("10-促销海报.json", poster(False, "夏日清凉节促销，全场满199减50，限时三天，清爽冰饮风格",
+                               ("夏日清凉节", "全场满199减50", "限时三天", "清爽夏日（蓝白）", "冰饮、柠檬片、水花、椰树叶、遮阳草帽"), "poster"))
+write("11-商品海报.json", poster(True, "鲜果季红富士苹果，脆甜多汁，产地直发，自然清新风格",
+                               ("鲜果季", "红富士 脆甜多汁", "产地直发", "自然绿意", "树叶、木质托盘、水珠、清晨阳光"), "poster_product"))
 
 
 # 12 商品一条龙：一张商品图 → 白底主图(放大 2 倍) + 场景图 + 标题/卖点文案，一次跑完
@@ -436,43 +323,43 @@ def pipeline():
     g.add(6, "ImageSharpen", (1000, 200), (300, 120), [1, 1.0, 0.5])
     g.add(7, "SaveImage", (1360, 60), (340, 300), ["pipeline/白底主图"], title="保存：白底主图")
     # B 场景图
-    g.add(8, "RelayImageGenerator", (540, 640), (400, 420), [SCENE, "3:4", "1K", "medium", "jpeg", "low", 43, "randomize"], title="③ 场景图")
-    g.add(9, "SaveImage", (1000, 640), (340, 300), ["pipeline/场景图"], title="保存：场景图")
+    g.add(8, "RelayImageGenerator", (540, 740), (400, 420), [AI_NOTE, "3:4", "1K", "medium", "jpeg", "low", 43, "randomize"], title="③ 场景图")
+    g.add(9, "SaveImage", (1000, 740), (340, 300), ["pipeline/场景图"], title="保存：场景图")
     # C 文案
-    g.add(10, "RelayTextGenerator", (540, 1240), (420, 300),
+    g.add(10, "RelayTextGenerator", (540, 1440), (420, 300),
           ["看这张商品图，写 1 个电商标题（30 字内）和 3 条卖点（每条 15 字内），中文，不要写图里看不出来的参数。", 44, "randomize"], title="④ 标题 / 卖点文案")
-    g.add(11, "PreviewAny", (1000, 1240), (460, 260), title="生成的文案")
+    g.add(11, "PreviewAny", (1000, 1440), (460, 260), title="生成的文案")
     for a, b in [(1, 4), (1, 8)]:
         g.connect(a, "STRING", b, "info")
     g.connect(31, "STRING", 10, "info")
     for t in (4, 8):
         g.connect(3, "IMAGE", t, "image1")
     # 文字分支的图先缩到最长边 768：大图从服务器传到阿里很慢（实测 1024 的 PNG 超过 180 秒，缩小后约 10 秒）
-    g.add(15, "ImageScaleToMaxDimension", (540, 1560), (320, 90), ["lanczos", 768], title="缩到最长边 768（别删）")
+    g.add(15, "ImageScaleToMaxDimension", (540, 1780), (320, 90), ["lanczos", 768], title="缩到最长边 768（别删）")
     g.connect(3, "IMAGE", 15, "image"); g.connect(15, "IMAGE", 10, "image1")
     g.connect(4, "image", 5, "image"); g.connect(5, "IMAGE", 6, "image"); g.connect(6, "IMAGE", 7, "images")
     g.connect(8, "image", 9, "images")
     g.connect(10, "text", 11, "source")
-    status(g, 4, pos=(1000, 380), title="状态：白底主图"); status(g, 8, pos=(1000, 980), title="状态：场景图"); status(g, 10, pos=(1000, 1540), title="状态：文案")
+    status(g, 4, pos=(1000, 380), title="状态：白底主图"); status(g, 8, pos=(1000, 1080), title="状态：场景图"); status(g, 10, pos=(1000, 1740), title="状态：文案")
+    ai_prompt(g, 8, "scene", "明亮的现代厨房台面，窗边自然光", idea_title="★ 只填这里：场景一句话（只管③场景图，白底主图和文案不受影响）")
     return g.build()
 
 write("12-商品一条龙.json", pipeline())
 
 
 # 13 商品场景合成：商品图(图1) + 场景图(图2) → 商品自然放进场景（实测杯子放进厨房台面，花纹形状保持、光影一致）
-COMPOSE = ("请把图1里的商品自然地放进图2的场景里，生成一张全新的合成图（不要直接返回其中任何一张原图）：商品的形状、颜色、包装上的文字都保持原样不要改动；"
-           "光影、透视、比例与图2的场景一致，商品放在画面里合理的位置；专业商品摄影。")
 
 def compose():
     g = Graph()
     g.add(1, "RelayAPISettings", (60, 60), (400, 300), IMG_SET)
     g.add(2, "LoadImage", (60, 420), (400, 420), ["demo_product.png", "image"], title="① 商品图（图1）")
     g.add(3, "LoadImage", (60, 900), (400, 420), ["demo_product.png", "image"], title="② 场景图（图2，换成你的场景）")
-    g.add(4, "RelayImageGenerator", (540, 60), (400, 420), [COMPOSE, "4:3", "1K", "medium", "jpeg", "low", 42, "randomize"], title="合成")
+    g.add(4, "RelayImageGenerator", (540, 60), (400, 420), [AI_NOTE, "4:3", "1K", "medium", "jpeg", "low", 42, "randomize"], title="合成")
     g.add(5, "SaveImage", (1000, 60), (340, 300), ["compose/商品场景合成"], title="保存")
     g.connect(1, "STRING", 4, "info"); g.connect(2, "IMAGE", 4, "image1"); g.connect(3, "IMAGE", 4, "image2")
     g.connect(4, "image", 5, "images")
     status(g, 4, pos=(1000, 420))
+    ai_prompt(g, 4, "compose", "商品放在场景里最合理的位置，大小自然")
     return g.build()
 
 write("13-商品场景合成.json", compose())
@@ -512,7 +399,7 @@ write("08-文案生成.json", copy_text())
 write("09-看图写文案.json", copy_from_image())
 
 
-def ali_out(g, gen, prefix, pos_save=(900, 120)):
+def ali_out(g, gen, prefix, pos_save=(1000, 120)):
     g.add(90, "SaveImage", pos_save, (340, 320), [prefix], title="保存")
     g.connect(gen, "image", 90, "images")
     status(g, gen, pos=(pos_save[0], pos_save[1] + 380))
@@ -523,16 +410,17 @@ def ali_image():      # 14 高清出图（阿里）
     g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"))
     g.add(2, "ProAliImage", (520, 120), (420, 420), ["（由 AI 扩写节点提供）", "qwen-image-2.0-pro", "3:4", "2K", 1, "randomize"], title="阿里 文生图（2K）")
     g.connect(31, "STRING", 2, "info"); ali_out(g, 2, "ali/高清出图")
-    ai_prompt(g, 2, "image", "一杯冰美式咖啡放在木桌上，自然光，产品摄影，细节丰富", pos=(60, 600))
+    ai_prompt(g, 2, "image", "一杯冰美式咖啡放在木桌上，自然光，产品摄影，细节丰富")
     return g.build()
 
 
-def ali_edit():       # 15 商品改图（阿里）：默认换纯白背景；改 prompt 即可去水印 / 换颜色 / 改文字等局部修改
+def ali_edit():       # 15 商品改图（阿里）：一句话说明怎么改（换背景 / 去水印 / 换颜色 / 改文字等），AI 写成精确的改图指令
     g = Graph()
-    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"))
     g.add(4, "LoadImage", (60, 470), (400, 420), ["demo_product.png", "image"], title="① 上传商品图（图1）")
-    g.add(2, "ProAliImageEdit", (520, 120), (440, 460), [WHITE_BG, "qwen-image-edit-max", 1, "randomize"], title="阿里 改图（改 prompt 可做局部修改）")
+    g.add(2, "ProAliImageEdit", (520, 120), (440, 460), [AI_NOTE, "qwen-image-edit-max", 1, "randomize"], title="阿里 改图（一句话需求可做局部修改）")
     g.connect(31, "STRING", 2, "info"); g.connect(4, "IMAGE", 2, "image1"); ali_out(g, 2, "ali/商品改图", (1020, 120))
+    ai_prompt(g, 2, "edit", EDIT_IDEA)
     return g.build()
 
 
@@ -548,10 +436,11 @@ def ali_tts():        # 16 配音（阿里）
 
 def ali_poster():     # 17 高清海报（阿里）：海报提示词节点 → 阿里 2K 出图
     g = Graph()
-    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
-    g.add(5, "ProPosterPrompt", (60, 470), (400, 430), ["夏日清凉节", "全场满199减50", "限时三天", "清爽夏日（蓝白）", "冰饮、柠檬片、水花、椰树叶、遮阳草帽", False, ""])
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"))
+    g.add(5, "ProPosterPrompt", (60, 470), (400, 430), ["夏日清凉节", "全场满199减50", "限时三天", "清爽夏日（蓝白）", "冰饮、柠檬片、水花、椰树叶、遮阳草帽", False, ""], title="海报提示词（风格在这里选；文字由 AI 填）")
     g.add(2, "ProAliImage", (520, 120), (440, 420), ["（由左下「海报提示词」节点生成）", "qwen-image-2.0-pro", "3:4", "2K", 1, "randomize"], title="阿里 文生图（2K）")
     g.connect(31, "STRING", 2, "info"); g.connect(5, "prompt", 2, "prompt"); ali_out(g, 2, "ali/高清海报")
+    ai_poster(g, 5, "夏日清凉节促销，全场满199减50，限时三天，清爽冰饮风格")
     return g.build()
 
 
@@ -564,25 +453,23 @@ write("17-高清海报-阿里.json", ali_poster())
 # ════════════════════════════════════════════════════════════════════════════
 # 18 多尺寸套图 / 19 成片合成 / 20 文生视频成片
 # ════════════════════════════════════════════════════════════════════════════
-SET_PROMPT = ("请以图1的商品照片为素材，创作一张全新的电商宣传图（不要直接返回原图）：干净明亮的浅色背景，商品居中突出，柔和自然的光影和阴影；"
-              "商品的形状、颜色、包装上的文字都保持原样不要改动；专业电商摄影，构图适配当前画幅；画面里不要添加任何文字、标签、水印或小牌子。")
 
 
 def size_set():       # 18：同一张商品图、同一段提示词，一次出 4 个平台尺寸（ComfyUI 队列按顺序跑，约 1.5 分钟）
     g = Graph()
     g.add(1, "RelayAPISettings", (60, 60), (400, 300), IMG_SET)
     g.add(2, "LoadImage", (60, 420), (400, 420), ["demo_product.png", "image"], title="① 上传商品图")
-    g.add(3, "PrimitiveStringMultiline", (60, 900), (400, 220), [SET_PROMPT], title="② 统一提示词（4 个尺寸共用）")
     plats = [("1:1", "主图 1:1（淘宝/拼多多）", "sizes/主图1x1"), ("3:4", "小红书 3:4", "sizes/小红书3x4"),
              ("9:16", "抖音 / 视频号 9:16", "sizes/抖音9x16"), ("16:9", "封面 16:9", "sizes/封面16x9")]
     for i, (ratio, title, prefix) in enumerate(plats):
-        y = 60 + i * 600
+        y = 60 + i * 680
         gid, sid = 10 + i, 20 + i
-        g.add(gid, "RelayImageGenerator", (540, y), (400, 420), ["（由「统一提示词」节点提供）", ratio, "1K", "medium", "jpeg", "low", 100 + i, "randomize"], title=title)
+        g.add(gid, "RelayImageGenerator", (540, y), (400, 420), [AI_NOTE, ratio, "1K", "medium", "jpeg", "low", 100 + i, "randomize"], title=title)
         g.add(sid, "SaveImage", (1000, y), (340, 300), [prefix], title="保存：" + title)
-        g.connect(1, "STRING", gid, "info"); g.connect(2, "IMAGE", gid, "image1"); g.connect(3, "STRING", gid, "prompt")
+        g.connect(1, "STRING", gid, "info"); g.connect(2, "IMAGE", gid, "image1")
         g.connect(gid, "image", sid, "images")
-        status(g, gid, pos=(1000, y + 340), title="状态：" + title, nid=30 + i)
+        status(g, gid, pos=(1000, y + 340), title="状态：" + title, nid=50 + i)  # 31 号留给阿里 Settings（Key 按节点 id 存）
+    ai_prompt(g, [10, 11, 12, 13], "promo", "干净明亮的浅色背景，商品居中突出，柔和自然的光影和阴影", idea_title="★ 只填这里：一句话需求（4 个尺寸共用）")
     return g.build()
 
 
@@ -654,7 +541,7 @@ def video_pipeline():  # 20：文生视频（Veo，每天约 3 个额度）→ �
     g.connect(3, "audio", 7, "voice"); g.connect(12, "video", 5, "video"); g.connect(3, "audio", 5, "voice"); g.connect(4, "AUDIO", 5, "bgm")
     g.connect(7, "srt", 5, "subtitles")
     status(g, 12, pos=(1020, 620), title="状态：视频", nid=40); status(g, 3, pos=(1020, 780), title="状态：配音", nid=41)
-    ai_prompt(g, 12, "video", "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍", pos=(1500, 60))
+    ai_prompt(g, 12, "video", "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍")
     return g.build()
 
 
@@ -704,16 +591,17 @@ write("24-促销标签叠加.json", labels())
 
 def voice_design():   # 25：文字描述设计新音色 → 试听 + 用它配音；音色 id 存在阿里账号里，可粘进 16/19/20 配音节点的「自定义音色」
     g = Graph()
-    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_BASE, "qwen3.8-flash"))
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"))
     g.add(2, "ProAliVoiceDesign", (520, 120), (460, 420),
-          ["沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍", "欢迎选购我们的新品，限时三天，满一百九十九减五十。", "myvoice", "zh"], title="① 描述你要的声音（试听文字用来生成试听音频）")
+          [AI_NOTE, "欢迎选购我们的新品，限时三天，满一百九十九减五十。", "myvoice", "zh"], title="① 描述你要的声音（试听文字用来生成试听音频）")
     g.add(3, "ProAliTTS", (1040, 120), (440, 460), ["这是用新设计的音色配的音，夏日清凉节，欢迎选购。", "Cherry", "qwen3-tts-flash", "Chinese", "", 1.0, 0.0, ""], title="② 用新音色配音（自定义音色已连上，上面的音色/模型被忽略）")
     g.add(4, "SaveAudioAdvanced", (520, 600), (340, 200), ["audio/音色试听", "mp3", "V0"], title="保存试听")
     g.add(5, "SaveAudioAdvanced", (1540, 120), (340, 200), ["audio/自定义音色配音", "mp3", "V0"], title="保存配音")
-    g.add(6, "PreviewAny", (900, 600), (400, 120), title="音色 id（复制到其他工作流配音节点的「自定义音色」框里可反复使用）")
+    g.add(6, "PreviewAny", (900, 700), (400, 120), title="音色 id（复制到其他工作流配音节点的「自定义音色」框里可反复使用）")
     g.connect(31, "STRING", 2, "info"); g.connect(31, "STRING", 3, "info")
     g.connect(2, "voice", 3, "custom_voice"); g.connect(2, "voice", 6, "source")
     g.connect(2, "preview", 4, "audio"); g.connect(3, "audio", 5, "audio")
+    ai_prompt(g, 2, "voice", "沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍", target="voice_prompt")
     return g.build()
 
 

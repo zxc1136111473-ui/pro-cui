@@ -1,13 +1,13 @@
 {
-  "last_node_id": 6,
-  "last_link_id": 5,
+  "last_node_id": 74,
+  "last_link_id": 8,
   "nodes": [
     {
       "id": 1,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        60
+        1080
       ],
       "size": [
         400,
@@ -46,7 +46,7 @@
       "type": "LoadImage",
       "pos": [
         60,
-        420
+        1440
       ],
       "size": [
         400,
@@ -86,7 +86,7 @@
       "type": "LoadImage",
       "pos": [
         60,
-        900
+        1920
       ],
       "size": [
         400,
@@ -126,7 +126,7 @@
       "type": "RelayImageGenerator",
       "pos": [
         540,
-        60
+        1080
       ],
       "size": [
         400,
@@ -223,6 +223,14 @@
           "name": "image16",
           "type": "IMAGE",
           "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 8,
+          "widget": {
+            "name": "prompt"
+          }
         }
       ],
       "outputs": [
@@ -253,7 +261,7 @@
         "Node name for S&R": "RelayImageGenerator"
       },
       "widgets_values": [
-        "请把图1里的商品自然地放进图2的场景里，生成一张全新的合成图（不要直接返回其中任何一张原图）：商品的形状、颜色、包装上的文字都保持原样不要改动；光影、透视、比例与图2的场景一致，商品放在画面里合理的位置；专业商品摄影。",
+        "（由 AI 扩写节点提供）",
         "4:3",
         "1K",
         "medium",
@@ -269,7 +277,7 @@
       "type": "SaveImage",
       "pos": [
         1000,
-        60
+        1080
       ],
       "size": [
         340,
@@ -299,7 +307,7 @@
       "type": "PreviewAny",
       "pos": [
         1000,
-        420
+        1440
       ],
       "size": [
         360,
@@ -321,6 +329,127 @@
       },
       "widgets_values": [],
       "title": "状态（出错时这里显示原因）"
+    },
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        660
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-flash"
+      ],
+      "title": "Relay API Settings（阿里文字）"
+    },
+    {
+      "id": 70,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        60
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 6,
+          "widget": {
+            "name": "info"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            7,
+            8
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "商品放在场景里最合理的位置，大小自然",
+        "你是商品合成指令写手。图1是商品照片，图2是场景照片。用户会用一句话说明想怎么合成，请写成一条中文合成指令（60~120 字）：开头写「请把图1里的商品自然地放进图2的场景里，生成一张全新的合成图（不要直接返回其中任何一张原图）：」；写清商品放在场景里的位置、大小和朝向；商品的形状、颜色、包装上的文字都保持原样不要改动；光影、透视、比例与图2的场景一致；末尾写「专业商品摄影。」只输出指令本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话需求"
+    },
+    {
+      "id": 74,
+      "type": "PreviewAny",
+      "pos": [
+        620,
+        60
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 7
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 扩写出的结果（想看模型写了什么）"
     }
   ],
   "links": [
@@ -362,6 +491,30 @@
       1,
       6,
       0,
+      "STRING"
+    ],
+    [
+      6,
+      31,
+      0,
+      70,
+      0,
+      "STRING"
+    ],
+    [
+      7,
+      70,
+      0,
+      74,
+      0,
+      "STRING"
+    ],
+    [
+      8,
+      70,
+      0,
+      4,
+      17,
       "STRING"
     ]
   ],

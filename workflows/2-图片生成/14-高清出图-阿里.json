@@ -1,13 +1,13 @@
 {
-  "last_node_id": 92,
-  "last_link_id": 10,
+  "last_node_id": 91,
+  "last_link_id": 6,
   "nodes": [
     {
       "id": 31,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        120
+        800
       ],
       "size": [
         400,
@@ -47,7 +47,7 @@
       "type": "ProAliImage",
       "pos": [
         520,
-        120
+        800
       ],
       "size": [
         420,
@@ -68,7 +68,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 9,
+          "link": 6,
           "widget": {
             "name": "prompt"
           }
@@ -109,8 +109,8 @@
       "id": 90,
       "type": "SaveImage",
       "pos": [
-        900,
-        120
+        1000,
+        800
       ],
       "size": [
         340,
@@ -139,8 +139,8 @@
       "id": 91,
       "type": "PreviewAny",
       "pos": [
-        900,
-        500
+        1000,
+        1180
       ],
       "size": [
         360,
@@ -165,135 +165,17 @@
     },
     {
       "id": 70,
-      "type": "PrimitiveStringMultiline",
+      "type": "ProAliPromptWriter",
       "pos": [
         60,
-        600
+        60
       ],
       "size": [
-        460,
-        200
+        520,
+        560
       ],
       "flags": {},
       "order": 4,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            6
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PrimitiveStringMultiline"
-      },
-      "widgets_values": [
-        "一杯冰美式咖啡放在木桌上，自然光，产品摄影，细节丰富"
-      ],
-      "title": "★ 一句话需求（只填这里）"
-    },
-    {
-      "id": 71,
-      "type": "PrimitiveStringMultiline",
-      "pos": [
-        60,
-        840
-      ],
-      "size": [
-        460,
-        240
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            5
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PrimitiveStringMultiline"
-      },
-      "widgets_values": [
-        "你是生图提示词写手。把下面的一句话需求扩写成一段中文生图提示词（80~150 字）：写清主体、场景、光线、构图、风格和画质；忠于原意，不要添加需求里没有的主体；画面里不要出现任何文字、水印、标志。只输出提示词本身，不要解释，不要加引号或标题。\n需求："
-      ],
-      "title": "扩写指令（一般不用改）"
-    },
-    {
-      "id": 72,
-      "type": "StringConcatenate",
-      "pos": [
-        580,
-        600
-      ],
-      "size": [
-        340,
-        140
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "string_a",
-          "type": "STRING",
-          "link": 5,
-          "widget": {
-            "name": "string_a"
-          }
-        },
-        {
-          "name": "string_b",
-          "type": "STRING",
-          "link": 6,
-          "widget": {
-            "name": "string_b"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            7
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "StringConcatenate"
-      },
-      "widgets_values": [
-        "",
-        "",
-        "\n"
-      ],
-      "title": "拼成完整指令"
-    },
-    {
-      "id": 73,
-      "type": "RelayTextGenerator",
-      "pos": [
-        580,
-        780
-      ],
-      "size": [
-        420,
-        300
-      ],
-      "flags": {},
-      "order": 7,
       "mode": 0,
       "inputs": [
         {
@@ -303,54 +185,6 @@
           "widget": {
             "name": "info"
           }
-        },
-        {
-          "name": "image1",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image2",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image3",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image4",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image5",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image6",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image7",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image8",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "prompt",
-          "type": "STRING",
-          "link": 7,
-          "widget": {
-            "name": "prompt"
-          }
         }
       ],
       "outputs": [
@@ -358,49 +192,49 @@
           "name": "text",
           "type": "STRING",
           "links": [
-            8,
-            9
+            5,
+            6
           ],
           "slot_index": 0
         },
         {
           "name": "response",
           "type": "STRING",
-          "links": [
-            10
-          ],
+          "links": null,
           "slot_index": 1
         }
       ],
       "properties": {
-        "Node name for S&R": "RelayTextGenerator"
+        "Node name for S&R": "ProAliPromptWriter"
       },
       "widgets_values": [
-        "（由「拼成完整指令」提供）",
+        "一杯冰美式咖啡放在木桌上，自然光，产品摄影，细节丰富",
+        "你是生图提示词写手。把下面的一句话需求扩写成一段中文生图提示词（80~150 字）：写清主体、场景、光线、构图、风格和画质；忠于原意，不要添加需求里没有的主体；画面里不要出现任何文字、水印、标志。只输出提示词本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
         1,
         "randomize"
       ],
-      "title": "AI 扩写提示词"
+      "title": "★ 只填这里：一句话需求"
     },
     {
       "id": 74,
       "type": "PreviewAny",
       "pos": [
-        1060,
-        780
+        620,
+        60
       ],
       "size": [
         460,
-        240
+        300
       ],
       "flags": {},
-      "order": 8,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 8
+          "link": 5
         }
       ],
       "outputs": [],
@@ -408,35 +242,7 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "AI 扩写出的提示词（想看模型写了什么）"
-    },
-    {
-      "id": 92,
-      "type": "PreviewAny",
-      "pos": [
-        1060,
-        1060
-      ],
-      "size": [
-        360,
-        110
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 10
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [],
-      "title": "状态：扩写"
+      "title": "AI 扩写出的结果（想看模型写了什么）"
     }
   ],
   "links": [
@@ -468,15 +274,15 @@
       4,
       31,
       0,
-      73,
+      70,
       0,
       "STRING"
     ],
     [
       5,
-      71,
+      70,
       0,
-      72,
+      74,
       0,
       "STRING"
     ],
@@ -484,40 +290,8 @@
       6,
       70,
       0,
-      72,
-      1,
-      "STRING"
-    ],
-    [
-      7,
-      72,
-      0,
-      73,
-      9,
-      "STRING"
-    ],
-    [
-      8,
-      73,
-      0,
-      74,
-      0,
-      "STRING"
-    ],
-    [
-      9,
-      73,
-      0,
       2,
       1,
-      "STRING"
-    ],
-    [
-      10,
-      73,
-      1,
-      92,
-      0,
       "STRING"
     ]
   ],

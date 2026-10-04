@@ -1,13 +1,13 @@
 {
-  "last_node_id": 14,
-  "last_link_id": 3,
+  "last_node_id": 74,
+  "last_link_id": 6,
   "nodes": [
     {
       "id": 11,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        120
+        1140
       ],
       "size": [
         400,
@@ -46,7 +46,7 @@
       "type": "ProGeminiMusic",
       "pos": [
         520,
-        120
+        1140
       ],
       "size": [
         400,
@@ -62,6 +62,14 @@
           "link": 1,
           "widget": {
             "name": "info"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 6,
+          "widget": {
+            "name": "prompt"
           }
         }
       ],
@@ -87,7 +95,7 @@
         "Node name for S&R": "ProGeminiMusic"
       },
       "widgets_values": [
-        "创作一段30秒的舒缓钢琴加弦乐纯音乐，温暖治愈，适合产品视频配乐",
+        "（由 AI 扩写节点提供）",
         "gemini-music",
         1,
         "randomize"
@@ -98,7 +106,7 @@
       "type": "SaveAudioAdvanced",
       "pos": [
         980,
-        120
+        1140
       ],
       "size": [
         340,
@@ -127,17 +135,16 @@
     {
       "id": 14,
       "type": "PreviewAny",
-      "title": "结果 / 错误信息（出错时这里显示原因）",
       "pos": [
         980,
-        370
+        1400
       ],
       "size": [
         360,
-        150
+        110
       ],
       "flags": {},
-      "order": 9,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
@@ -150,7 +157,129 @@
       "properties": {
         "Node name for S&R": "PreviewAny"
       },
-      "widgets_values": []
+      "widgets_values": [],
+      "title": "结果 / 错误信息（出错时这里显示原因）"
+    },
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        660
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-flash"
+      ],
+      "title": "Relay API Settings（阿里文字）"
+    },
+    {
+      "id": 70,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        60
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 4,
+          "widget": {
+            "name": "info"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            5,
+            6
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "舒缓钢琴加弦乐纯音乐，温暖治愈，适合产品视频配乐",
+        "你是配乐提示词写手。把下面的一句话需求扩写成一段中文音乐创作提示词（50~100 字）：写清风格、情绪、主要乐器、节奏速度和用途；纯音乐，不要歌词；时长约 30 秒。只输出提示词本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话需求"
+    },
+    {
+      "id": 74,
+      "type": "PreviewAny",
+      "pos": [
+        620,
+        60
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 5
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 扩写出的结果（想看模型写了什么）"
     }
   ],
   "links": [
@@ -176,6 +305,30 @@
       1,
       14,
       0,
+      "STRING"
+    ],
+    [
+      4,
+      31,
+      0,
+      70,
+      0,
+      "STRING"
+    ],
+    [
+      5,
+      70,
+      0,
+      74,
+      0,
+      "STRING"
+    ],
+    [
+      6,
+      70,
+      0,
+      12,
+      1,
       "STRING"
     ]
   ],

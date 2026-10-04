@@ -1,9 +1,12 @@
 """海报提示词节点：把标题 / 副标题 / 角标 / 风格 / 画面元素拼成一段给生图模型的提示词。
+另有「海报文案拆分」：把文字模型按固定格式写出的海报文案拆成这几个字段，接到海报提示词节点的对应输入，
+这样只写一句话需求，标题 / 副标题 / 角标 / 画面元素由 AI 填，文字仍由海报提示词节点用「」原样嵌进提示词。
 
 不调用任何接口，只做字符串拼接；输出接到 Relay Image Generator 的 prompt 输入即可。
 文字渲染要点（实测 gemini-image 的中文字很准，但要明确「只出现这些字」，否则会自己多加字）：
 用「」括起要出现的文字，并要求不出现其它文字、水印、乱码。
 """
+import re
 
 STYLES = {
     "清爽夏日（蓝白）": "清爽夏日风，蓝白配色，柔和的天空与水的质感，明亮通透",
@@ -68,5 +71,43 @@ class ProPosterPrompt:
         return ("".join(parts),)
 
 
-NODE_CLASS_MAPPINGS = {"ProPosterPrompt": ProPosterPrompt}
-NODE_DISPLAY_NAME_MAPPINGS = {"ProPosterPrompt": "海报提示词（标题/副标题/角标/风格）"}
+# 文字模型要按这个格式写（见 tools/gen_workflows.py 的 POSTER_EXPAND）：每项一行，冒号中英文都行
+_FIELD_RE = re.compile(r"^(副标题|标题|角标|画面元素)\s*[:：]\s*(.*)$")
+_KEYS = {"标题": "title", "副标题": "subtitle", "角标": "badge", "画面元素": "elements"}
+_EMPTY = {"", "无", "没有", "留空", "空", "-", "—", "（无）", "(无)", "（留空）", "(留空)"}
+
+
+def parse_fields(text):
+    """AI 写的海报文案 → (标题, 副标题, 角标, 画面元素)。容忍项目符号、**加粗**、引号；没有任何字段就报错，不悄悄出一张没字的海报。"""
+    out, last = {"title": "", "subtitle": "", "badge": "", "elements": ""}, None
+    for raw in text.replace("\r\n", "\n").split("\n"):
+        line = re.sub(r"^[\s>*\-•·\d.、)）]+", "", raw.strip()).replace("**", "").strip()
+        m = _FIELD_RE.match(line)
+        if m:
+            last = _KEYS[m.group(1)]
+            v = m.group(2).strip().strip("「」“”\"'").strip()
+            out[last] = "" if v in _EMPTY else v
+        elif line and last == "elements":   # 画面元素偶尔会折到下一行
+            out["elements"] += "、" + line.strip("「」“”\"'")
+    if not any(out.values()):
+        raise RuntimeError("[海报] AI 没按「标题：/副标题：/角标：/画面元素：」的格式写，原文：" + text.strip()[:300])
+    return out["title"], out["subtitle"], out["badge"], out["elements"]
+
+
+class ProPosterFields:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"text": ("STRING", {"multiline": True, "forceInput": True})}}
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("title", "subtitle", "badge", "elements")
+    FUNCTION = "split"
+    CATEGORY = "pro/poster"
+
+    def split(self, text):
+        return parse_fields(text)
+
+
+NODE_CLASS_MAPPINGS = {"ProPosterPrompt": ProPosterPrompt, "ProPosterFields": ProPosterFields}
+NODE_DISPLAY_NAME_MAPPINGS = {"ProPosterPrompt": "海报提示词（标题/副标题/角标/风格）",
+                              "ProPosterFields": "海报文案拆分（AI 写的文案 → 标题/副标题/角标/元素）"}

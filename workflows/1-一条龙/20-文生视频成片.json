@@ -1,13 +1,13 @@
 {
-  "last_node_id": 75,
-  "last_link_id": 18,
+  "last_node_id": 74,
+  "last_link_id": 14,
   "nodes": [
     {
       "id": 11,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        60
+        740
       ],
       "size": [
         400,
@@ -47,7 +47,7 @@
       "type": "RelayAPISettings",
       "pos": [
         60,
-        420
+        1100
       ],
       "size": [
         400,
@@ -88,7 +88,7 @@
       "type": "RelayVideoGenerator",
       "pos": [
         520,
-        60
+        740
       ],
       "size": [
         420,
@@ -144,7 +144,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 17,
+          "link": 14,
           "widget": {
             "name": "prompt"
           }
@@ -200,7 +200,7 @@
       "type": "PrimitiveStringMultiline",
       "pos": [
         520,
-        560
+        1240
       ],
       "size": [
         440,
@@ -234,7 +234,7 @@
       "type": "ProAliTTS",
       "pos": [
         520,
-        820
+        1500
       ],
       "size": [
         440,
@@ -300,7 +300,7 @@
       "type": "ProSubtitles",
       "pos": [
         520,
-        1300
+        1980
       ],
       "size": [
         440,
@@ -350,7 +350,7 @@
       "type": "LoadAudio",
       "pos": [
         60,
-        780
+        1460
       ],
       "size": [
         440,
@@ -385,7 +385,7 @@
       "type": "ProVideoDub",
       "pos": [
         1020,
-        60
+        740
       ],
       "size": [
         420,
@@ -444,7 +444,7 @@
       "type": "PreviewAny",
       "pos": [
         1020,
-        620
+        1300
       ],
       "size": [
         360,
@@ -472,7 +472,7 @@
       "type": "PreviewAny",
       "pos": [
         1020,
-        780
+        1460
       ],
       "size": [
         360,
@@ -497,135 +497,17 @@
     },
     {
       "id": 70,
-      "type": "PrimitiveStringMultiline",
+      "type": "ProAliPromptWriter",
       "pos": [
-        1500,
+        60,
         60
       ],
       "size": [
-        460,
-        200
+        520,
+        560
       ],
       "flags": {},
       "order": 10,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            14
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PrimitiveStringMultiline"
-      },
-      "widgets_values": [
-        "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍"
-      ],
-      "title": "★ 一句话需求（只填这里）"
-    },
-    {
-      "id": 71,
-      "type": "PrimitiveStringMultiline",
-      "pos": [
-        1500,
-        300
-      ],
-      "size": [
-        460,
-        240
-      ],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            13
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "PrimitiveStringMultiline"
-      },
-      "widgets_values": [
-        "你是文生视频提示词写手。把下面的一句话需求扩写成一段中文视频提示词（60~120 字）：写清主体、动作、场景、镜头运动（如跟拍/推近/环绕）、光线和风格；只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。只输出提示词本身，不要解释，不要加引号或标题。\n需求："
-      ],
-      "title": "扩写指令（一般不用改）"
-    },
-    {
-      "id": 72,
-      "type": "StringConcatenate",
-      "pos": [
-        2020,
-        60
-      ],
-      "size": [
-        340,
-        140
-      ],
-      "flags": {},
-      "order": 12,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "string_a",
-          "type": "STRING",
-          "link": 13,
-          "widget": {
-            "name": "string_a"
-          }
-        },
-        {
-          "name": "string_b",
-          "type": "STRING",
-          "link": 14,
-          "widget": {
-            "name": "string_b"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            15
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "StringConcatenate"
-      },
-      "widgets_values": [
-        "",
-        "",
-        "\n"
-      ],
-      "title": "拼成完整指令"
-    },
-    {
-      "id": 73,
-      "type": "RelayTextGenerator",
-      "pos": [
-        2020,
-        240
-      ],
-      "size": [
-        420,
-        300
-      ],
-      "flags": {},
-      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -635,54 +517,6 @@
           "widget": {
             "name": "info"
           }
-        },
-        {
-          "name": "image1",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image2",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image3",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image4",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image5",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image6",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image7",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "image8",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
-          "name": "prompt",
-          "type": "STRING",
-          "link": 15,
-          "widget": {
-            "name": "prompt"
-          }
         }
       ],
       "outputs": [
@@ -690,49 +524,49 @@
           "name": "text",
           "type": "STRING",
           "links": [
-            16,
-            17
+            13,
+            14
           ],
           "slot_index": 0
         },
         {
           "name": "response",
           "type": "STRING",
-          "links": [
-            18
-          ],
+          "links": null,
           "slot_index": 1
         }
       ],
       "properties": {
-        "Node name for S&R": "RelayTextGenerator"
+        "Node name for S&R": "ProAliPromptWriter"
       },
       "widgets_values": [
-        "（由「拼成完整指令」提供）",
+        "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍",
+        "你是文生视频提示词写手。把下面的一句话需求扩写成一段中文视频提示词（60~120 字）：写清主体、动作、场景、镜头运动（如跟拍/推近/环绕）、光线和风格；只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。只输出提示词本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
         1,
         "randomize"
       ],
-      "title": "AI 扩写提示词"
+      "title": "★ 只填这里：一句话需求"
     },
     {
       "id": 74,
       "type": "PreviewAny",
       "pos": [
-        2500,
-        240
+        620,
+        60
       ],
       "size": [
         460,
-        240
+        300
       ],
       "flags": {},
-      "order": 14,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 16
+          "link": 13
         }
       ],
       "outputs": [],
@@ -740,35 +574,7 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "AI 扩写出的提示词（想看模型写了什么）"
-    },
-    {
-      "id": 75,
-      "type": "PreviewAny",
-      "pos": [
-        2500,
-        520
-      ],
-      "size": [
-        360,
-        110
-      ],
-      "flags": {},
-      "order": 15,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "source",
-          "type": "*",
-          "link": 18
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewAny"
-      },
-      "widgets_values": [],
-      "title": "状态：扩写"
+      "title": "AI 扩写出的结果（想看模型写了什么）"
     }
   ],
   "links": [
@@ -864,15 +670,15 @@
       12,
       31,
       0,
-      73,
+      70,
       0,
       "STRING"
     ],
     [
       13,
-      71,
+      70,
       0,
-      72,
+      74,
       0,
       "STRING"
     ],
@@ -880,40 +686,8 @@
       14,
       70,
       0,
-      72,
-      1,
-      "STRING"
-    ],
-    [
-      15,
-      72,
-      0,
-      73,
-      9,
-      "STRING"
-    ],
-    [
-      16,
-      73,
-      0,
-      74,
-      0,
-      "STRING"
-    ],
-    [
-      17,
-      73,
-      0,
       12,
       8,
-      "STRING"
-    ],
-    [
-      18,
-      73,
-      1,
-      75,
-      0,
       "STRING"
     ]
   ],
