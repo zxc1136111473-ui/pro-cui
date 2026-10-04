@@ -34,7 +34,7 @@ hr()   { printf '%s\n' "--------------------------------------------------------
 # ── 非交互 / 机器可读 ──────────────────────────────────────────────────────
 ZFC_YES=0
 ZFC_JSON=0
-ZFC_ACTION=""        # install|update|uninstall|check|port|plugins|https|data|menu
+ZFC_ACTION=""        # install|update|sync|refresh-workflows|uninstall|check|port|plugins|https|data|menu
 ZFC_DIR=""           # --dir：安装目录（默认脚本所在目录，或 /opt/comfyui）
 ZFC_PORT=""          # --port：监听端口（默认 8188）
 ZFC_GIT=""           # --git：源码仓库地址（默认官方主仓库）
@@ -287,7 +287,7 @@ run_container() {
   # 停旧容器
   $DOCKER rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
-  # 自带自定义节点必须在容器启动前铺好，首次部署就能加载
+  # 自带自定义节点必须在容器启动前铺好 / 同步好（pro-* 已存在也会换成仓库版本），首次部署就能加载
   seed_custom_nodes
   seed_assets
 
@@ -317,7 +317,7 @@ run_container() {
   # 这样 API 出图节点能用 http://airelay-newapi:3000 直连网关；重建容器也不丢这条连接。
   attach_extra_network
 
-  # 把仓库自带的 API 出图工作流铺进 ComfyUI（已存在的不覆盖，保留用户改动）
+  # 把仓库自带的内置工作流铺进 ComfyUI（已存在的不覆盖，有差异只提示；--refresh-workflows 才覆盖并备份）
   seed_workflows
 
   # 重建过就删掉被替换的旧镜像（每份 1GB+；只删本项目的，共享机上不用全局 prune）
@@ -353,21 +353,68 @@ wait_ready() {
   return 1
 }
 
-# 把仓库自带的 API 出图工作流（workflows/*.json）铺进 ComfyUI 工作流目录。
-# 已存在的同名文件不覆盖（保留用户改动）；工作流不带 key，首次用在节点里填一次网关 Key 即可。
+# 把仓库自带的内置工作流（workflows/<类别>/*.json）铺进 ComfyUI 工作流目录。
+#   · 不存在 → 拷过去（保持子目录，侧栏里显示成文件夹树）。
+#   · 已存在且和仓库一样 → 不动；已存在但不一样 → 不覆盖（可能是你在网页里改过），只提示有几个不同，
+#     要换成仓库版本用 --refresh-workflows（先备份旧文件）。
+# 工作流不带 key：首次用在节点里填一次 Key 即可。
 seed_workflows() {
   local srcdir="$APP_DIR/workflows" dstdir="$APP_DIR/data/user/default/workflows"
   [ -d "$srcdir" ] || return 0
   mkdir -p "$dstdir"
-  # 工作流按类别放在子目录里（workflows/<类别>/*.json），铺进去时保持子目录，侧栏里显示成文件夹树
-  local n=0 f rel
+  local n=0 f rel differ=()
   while IFS= read -r -d '' f; do
     rel="${f#"$srcdir"/}"
-    [ -e "$dstdir/$rel" ] && continue
-    mkdir -p "$(dirname "$dstdir/$rel")"
-    cp "$f" "$dstdir/$rel" && n=$((n + 1))
+    if [ ! -e "$dstdir/$rel" ]; then
+      mkdir -p "$(dirname "$dstdir/$rel")"
+      cp "$f" "$dstdir/$rel" && n=$((n + 1))
+    elif ! cmp -s "$f" "$dstdir/$rel"; then
+      differ+=("$rel")
+    fi
   done < <(find "$srcdir" -name '*.json' -print0)
   [ "$n" -gt 0 ] && say "  已铺入 $n 个内置工作流（Key 见 README：网关 id 1、geminiweb id 11、Suno id 21、阿里 id 31）" || true
+  if [ "${#differ[@]}" -gt 0 ]; then
+    warn "有 ${#differ[@]} 个内置工作流和仓库版本不同（新版，或者你在网页里改过）：$(printf '%s ' "${differ[@]:0:4}")$([ "${#differ[@]}" -gt 4 ] && printf '…')"
+    say "    换成仓库版本：$(self_cmd) --refresh-workflows（旧文件会先备份到 data/user/default/workflows-旧版备份-时间/，不删）"
+  fi
+}
+
+# 把内置工作流换成仓库版本：和仓库不同的先备份再覆盖，缺的补上；只动仓库里有的文件，
+# 你在网页里自己存的工作流不碰。仓库里已经没有的旧工作流（改过编号 / 合并掉的）不会自动删，只列出来。
+do_refresh_workflows() {
+  local srcdir="$APP_DIR/workflows" dstdir="$APP_DIR/data/user/default/workflows"
+  [ -d "$srcdir" ] || die "没有 ${srcdir}（仓库里的 workflows/ 目录；先 git pull 把套件更新到最新）"
+  mkdir -p "$dstdir"
+  local bak n_new=0 n_upd=0 f rel stale=()
+  bak="$APP_DIR/data/user/default/workflows-旧版备份-$(date +%Y%m%d-%H%M%S)"
+  while IFS= read -r -d '' f; do
+    rel="${f#"$srcdir"/}"
+    if [ ! -e "$dstdir/$rel" ]; then
+      mkdir -p "$(dirname "$dstdir/$rel")"
+      cp "$f" "$dstdir/$rel" && n_new=$((n_new + 1))
+    elif ! cmp -s "$f" "$dstdir/$rel"; then
+      mkdir -p "$(dirname "$bak/$rel")"
+      cp -p "$dstdir/$rel" "$bak/$rel" && cp "$f" "$dstdir/$rel" && n_upd=$((n_upd + 1))
+    fi
+  done < <(find "$srcdir" -name '*.json' -print0)
+  # 仓库里没有的（可能是旧版内置的，也可能是你自己存的）：只列出来
+  while IFS= read -r -d '' f; do
+    rel="${f#"$dstdir"/}"
+    [ -e "$srcdir/$rel" ] || stale+=("$rel")
+  done < <(find "$dstdir" -name '*.json' -print0)
+  if [ "$n_new" -eq 0 ] && [ "$n_upd" -eq 0 ]; then
+    ok "内置工作流已经和仓库一致，没有要换的"
+  else
+    ok "内置工作流：补了 $n_new 个，换成仓库版本 $n_upd 个"
+    [ "$n_upd" -eq 0 ] || say "    换掉的旧版已备份到 ${bak}（确认没问题再自己删）"
+    say "    网页里已经打开的标签还是旧内容：关掉再从左侧列表重新打开"
+  fi
+  if [ "${#stale[@]}" -gt 0 ]; then
+    say ""
+    say "  工作流目录里还有 ${#stale[@]} 个不在仓库里的（旧版内置的，或你自己存的），没动：$(printf '%s ' "${stale[@]:0:6}")$([ "${#stale[@]}" -gt 6 ] && printf '…')"
+    say "    确认是旧版内置的话，自己移走即可（它们不会再被更新）"
+  fi
+  json_out "refresh-workflows" "new=$n_new updated=$n_upd"
 }
 
 # 铺入本套件自带的输入素材（assets/* → data/input/*）。目前只有一个 1 秒静音的「无背景音乐.wav」，
@@ -384,19 +431,91 @@ seed_assets() {
   done
 }
 
-# 铺入本套件自带的自定义节点（custom-nodes/<名字>/ → data/custom_nodes/<名字>/）。已存在的不覆盖。
-seed_custom_nodes() {
-  local srcdir="$APP_DIR/custom-nodes" dstdir="$APP_DIR/data/custom_nodes"
+# 本套件自带的自定义节点（custom-nodes/<名字>/ → data/custom_nodes/<名字>/）：
+#   · 不存在 → 拷过去。
+#   · pro-*：本仓库自己维护、没有运行时状态，已存在也同步成仓库版本（改了节点，重建容器 / 菜单 2 / --sync 就生效，不用手动拷）；
+#     被替换的旧版先备份到 data/custom_nodes-旧版备份-时间/（ComfyUI 不扫描那里）。
+#   · 其他（ComfyUI-relayapi：第三方拷贝，目录里有存 Key 的 relay_config.json）不覆盖：只看「仓库里有的文件」是否缺失 / 不同，有就提示（并列出文件名）。
+# scan_custom_nodes 只比较不动手，结果放进 NODES_NEW / NODES_PRO / NODES_OTHER（do_sync 要先知道有没有变化再决定要不要问「有任务在跑」）。
+NODES_NEW=(); NODES_PRO=(); NODES_OTHER=(); NODES_OTHER_FILES=()
+
+# 仓库里有、但目标里缺了或内容不同的文件（打印相对路径，空格分隔）。只看仓库里有的：目标里多出来的文件
+# （旧版遗留的目录、relay_config.json 这类本机状态）不算差异；用 cmp 逐个比，不依赖 diff 的（可能被本地化的）输出
+repo_files_differ() {
+  local src="${1%/}" dst="$2" f
+  while IFS= read -r -d '' f; do
+    cmp -s "$f" "$dst/${f#"$src"/}" 2>/dev/null || printf '%s ' "${f#"$src"/}"
+  done < <(find "$src" -type f ! -path '*/__pycache__/*' ! -name '*.pyc' -print0)
+}
+
+scan_custom_nodes() {
+  local srcdir="$APP_DIR/custom-nodes" dstdir="$APP_DIR/data/custom_nodes" d name files
+  NODES_NEW=(); NODES_PRO=(); NODES_OTHER=(); NODES_OTHER_FILES=()
   [ -d "$srcdir" ] || return 0
-  mkdir -p "$dstdir"
-  local n=0 d name
   for d in "$srcdir"/*/; do
     [ -d "$d" ] || continue
     name="$(basename "$d")"
-    [ -e "$dstdir/$name" ] && continue
-    cp -R "$d" "$dstdir/$name" && n=$((n + 1))
+    if [ ! -e "$dstdir/$name" ]; then NODES_NEW+=("$name"); continue; fi
+    case "$name" in
+      # pro-* 要和仓库完全一致（目标里多出来的是旧版遗留，同步时会一起清掉）；Python 缓存不算
+      pro-*) diff -rq -x __pycache__ -x '*.pyc' "$d" "$dstdir/$name" >/dev/null 2>&1 || NODES_PRO+=("$name") ;;
+      *)     files="$(repo_files_differ "$d" "$dstdir/$name")"
+             [ -z "$files" ] || { NODES_OTHER+=("$name"); NODES_OTHER_FILES+=("$files"); } ;;
+    esac
   done
-  [ "$n" -gt 0 ] && say "  已铺入 $n 个自带插件/节点（relayapi、Gemini 音乐、海报）" || true
+}
+
+seed_custom_nodes() {
+  local srcdir="$APP_DIR/custom-nodes" dstdir="$APP_DIR/data/custom_nodes" name tmp bak=""
+  [ -d "$srcdir" ] || return 0
+  mkdir -p "$dstdir"
+  scan_custom_nodes
+  for name in ${NODES_NEW[@]+"${NODES_NEW[@]}"}; do
+    cp -R "$srcdir/$name" "$dstdir/$name"
+  done
+  for name in ${NODES_PRO[@]+"${NODES_PRO[@]}"}; do
+    [ -n "$bak" ] || bak="$APP_DIR/data/custom_nodes-旧版备份-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$bak"
+    cp -R "$dstdir/$name" "$bak/$name"
+    # 先拷到 data/ 下的临时目录再换：中途失败不会留下半个包，临时目录也不在 custom_nodes 里（不会被当成节点加载）
+    tmp="$APP_DIR/data/.sync-$name"
+    rm -rf "$tmp" && cp -R "$srcdir/$name" "$tmp" && rm -rf "${dstdir:?}/${name:?}" && mv "$tmp" "$dstdir/$name"
+  done
+  [ "${#NODES_NEW[@]}" -eq 0 ] || say "  已铺入 ${#NODES_NEW[@]} 个自带节点包：${NODES_NEW[*]}"
+  if [ "${#NODES_PRO[@]}" -gt 0 ]; then
+    say "  已把 ${#NODES_PRO[@]} 个自带节点包同步成仓库版本：${NODES_PRO[*]}"
+    say "    被替换的旧版在 ${bak}（确认没问题再自己删）"
+  fi
+  local i
+  for i in "${!NODES_OTHER[@]}"; do
+    name="${NODES_OTHER[$i]}"
+    warn "$name 和仓库版本不同，没覆盖（目录里有存 Key 的 relay_config.json）：${NODES_OTHER_FILES[$i]}"
+    say "    要换成仓库版本（保留 relay_config.json）：cp -R $srcdir/$name/. $dstdir/$name/ 然后重启容器"
+  done
+}
+
+# 把仓库里的自带节点 / 工作流 / 素材同步到运行中的 ComfyUI（git pull 套件之后用；不重建镜像、不删容器）：
+# 自带节点包有变化才重启（有任务在跑会先问）；工作流只补新增的，和仓库不同的只提示（--refresh-workflows 才覆盖）。
+do_sync() {
+  docker_ok || die "Docker 没就绪"
+  [ -d "$APP_DIR/custom-nodes" ] || die "没有 $APP_DIR/custom-nodes（先 git pull 把套件更新到最新）"
+  [ "$($DOCKER ps -aq --filter "name=$CONTAINER" 2>/dev/null | wc -l | tr -d ' ')" -ge 1 ] || die "还没部署过（没有容器 ${CONTAINER}），先 --install"
+  scan_custom_nodes
+  local changed=$(( ${#NODES_NEW[@]} + ${#NODES_PRO[@]} ))
+  if [ "$changed" -gt 0 ]; then
+    say "自带节点有变化：新增 ${#NODES_NEW[@]} 个，要同步 ${#NODES_PRO[@]} 个（$(printf '%s ' ${NODES_NEW[@]+"${NODES_NEW[@]}"} ${NODES_PRO[@]+"${NODES_PRO[@]}"})）"
+    busy_guard || { say "已取消，什么都没动"; return 0; }
+  fi
+  seed_custom_nodes
+  seed_assets
+  seed_workflows
+  if [ "$changed" -gt 0 ]; then
+    restart_container
+    ok "同步完成，ComfyUI 已重启（网页要强制刷新：⌘⇧R / Ctrl+Shift+R，否则还是旧的节点列表）"
+  else
+    ok "自带节点没有变化，不用重启"
+  fi
+  json_out "sync" "nodes_changed=$changed"
 }
 
 # 把容器接到额外的 docker 网络（跨栈访问网关用）。没配或网络不存在都静默跳过。
@@ -1177,6 +1296,8 @@ while [ $# -gt 0 ]; do
     --git)       ZFC_GIT="${2:?--git 后面要给仓库地址}"; shift ;;
     --plugins)   ZFC_ACTION="plugins" ;;
     --plugins-set) ZFC_PLUGINS="${2:?--plugins-set 后面要给组号，如 1,2 或 all}"; ZFC_ACTION="plugins"; shift ;;
+    --sync)      ZFC_ACTION="sync" ;;
+    --refresh-workflows) ZFC_ACTION="refresh-workflows" ;;
     --backup)    ZFC_ACTION="backup" ;;
     --restore)   ZFC_ACTION="restore"; ZFC_BACKUP_FILE="${2:-}"; [ $# -gt 1 ] && shift ;;
     -y)          ZFC_YES=1 ;;
@@ -1189,6 +1310,8 @@ while [ $# -gt 0 ]; do
       say "  （不带参数）        交互菜单"
       say "  --install           全新安装 / 重新部署"
       say "  --update            更新（源码 git pull + 插件更新 + 重建镜像 + 重建容器）"
+      say "  --sync              把仓库里的自带节点 / 工作流 / 素材同步到运行中的 ComfyUI（git pull 套件后用；节点有变化才重启，不重建）"
+      say "  --refresh-workflows 把内置工作流换成仓库版本（和仓库不同的先备份到 data/user/default/workflows-旧版备份-时间/）"
       say "  --check             体检 + 看访问地址"
       say "  --uninstall         卸载（加 --purge 连目录一起删）"
       say "  --plugins           插件管理"
@@ -1234,6 +1357,8 @@ if [ "$ZFC_ACTION" = "plugins" ]; then do_plugins; exit 0; fi
 if [ "$ZFC_ACTION" = "backup" ]; then do_backup "${ZFC_BACKUP_FILE:-}"; exit 0; fi
 if [ "$ZFC_ACTION" = "restore" ]; then do_restore "${ZFC_BACKUP_FILE:-}"; exit 0; fi
 if [ "$ZFC_ACTION" = "update" ]; then do_update; exit 0; fi
+if [ "$ZFC_ACTION" = "sync" ]; then do_sync; exit 0; fi
+if [ "$ZFC_ACTION" = "refresh-workflows" ]; then do_refresh_workflows; exit 0; fi
 
 # 已装过 → 菜单
 INSTALLED=0
@@ -1257,6 +1382,8 @@ if [ "$INSTALLED" = "1" ] && [ "$ZFC_ACTION" != "install" ]; then
   say "  11) 测试反代（容器 → New API 连通 + 令牌能用哪些出图模型）"
   say "  12) 回到上次更新前（更新后运行出问题时用，按旧依赖重建镜像）"
   say "  13) 空间占用（出图 / 备份 / 镜像各占多少）"
+  say "  s) 同步自带节点 / 工作流到运行中的 ComfyUI（git pull 套件后用；节点有变化才重启，不重建）"
+  say "  w) 把内置工作流换成仓库版本（先备份旧文件，不删）"
   say "  l) 看日志（最近 / 实时 / 只看问题）"
   say "  r) 重启容器（docker restart，不删容器，现场装的包还在）"
   say "  R) 重建容器（删了重新 run，现场装的包会丢）"
@@ -1288,6 +1415,8 @@ if [ "$INSTALLED" = "1" ] && [ "$ZFC_ACTION" != "install" ]; then
         say "  b) 卸载并${RED}删掉整个目录${RST}（源码/插件/数据/备份全没了）"
         ask UW "选一个" "a"
         do_uninstall "$([ "$UW" = "b" ] && echo 1 || echo 0)"; exit 0 ;;
+    s|S) do_sync; exit 0 ;;
+    w|W) do_refresh_workflows; exit 0 ;;
     l|L) do_logs; exit 0 ;;
     r) restart_container; exit 0 ;;
     R) run_container; exit 0 ;;
