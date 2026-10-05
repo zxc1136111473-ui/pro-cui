@@ -1,19 +1,21 @@
 {
-  "last_node_id": 77,
-  "last_link_id": 21,
+  "last_node_id": 91,
+  "last_link_id": 16,
   "nodes": [
     {
       "id": 1,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1380
+        1114
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 0,
       "mode": 0,
       "inputs": [],
@@ -22,7 +24,7 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            6
+            3
           ],
           "slot_index": 0
         }
@@ -40,108 +42,29 @@
         "http://airelay-newapi:3000",
         "gemini-image"
       ],
-      "title": "Relay API Settings（网关 Key）"
-    },
-    {
-      "id": 4,
-      "type": "LoadImage",
-      "pos": [
-        60,
-        1730
-      ],
-      "size": [
-        400,
-        420
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            10,
-            12
-          ],
-          "slot_index": 0
-        },
-        {
-          "name": "MASK",
-          "type": "MASK",
-          "links": null,
-          "slot_index": 1
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadImage"
-      },
-      "widgets_values": [
-        "demo_product.png",
-        "image"
-      ],
-      "title": "① 上传商品图（图1）"
-    },
-    {
-      "id": 5,
-      "type": "LoadImage",
-      "pos": [
-        60,
-        2210
-      ],
-      "size": [
-        400,
-        420
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            5
-          ],
-          "slot_index": 0
-        },
-        {
-          "name": "MASK",
-          "type": "MASK",
-          "links": null,
-          "slot_index": 1
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "LoadImage"
-      },
-      "widgets_values": [
-        "demo_product.png",
-        "image"
-      ],
-      "title": "② 场景图（图2，只在「放进场景图」模式用，换成你的场景）"
+      "title": "Key：网关（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 2,
       "type": "RelayImageGenerator",
       "pos": [
-        520,
-        1380
+        440,
+        1050
       ],
       "size": [
         380,
         420
       ],
       "flags": {},
-      "order": 3,
+      "order": 1,
       "mode": 0,
       "inputs": [
         {
           "name": "info",
           "type": "STRING",
-          "link": 6,
+          "link": 3,
           "widget": {
             "name": "info"
           }
@@ -149,12 +72,12 @@
         {
           "name": "image1",
           "type": "IMAGE",
-          "link": 10
+          "link": null
         },
         {
           "name": "image2",
           "type": "IMAGE",
-          "link": 11
+          "link": null
         },
         {
           "name": "image3",
@@ -229,10 +152,19 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 8,
+          "link": 5,
           "widget": {
             "name": "prompt"
           }
+        },
+        {
+          "name": "ratio",
+          "type": "COMBO",
+          "widget": {
+            "name": "ratio"
+          },
+          "link": null,
+          "label": "网关·比例"
         }
       ],
       "outputs": [
@@ -240,7 +172,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            15
+            8
           ],
           "slot_index": 0
         },
@@ -248,7 +180,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            18
+            11
           ],
           "slot_index": 1
         },
@@ -272,53 +204,56 @@
         42,
         "randomize"
       ],
-      "title": "引擎 ① 网关 Gemini"
+      "title": "引擎 ① 网关 Gemini（比例在这里选，16:9 就是封面横图）"
     },
     {
       "id": 3,
-      "type": "ProAliImageEdit",
+      "type": "ProAliImage",
       "pos": [
-        960,
-        1380
+        440,
+        1706
       ],
       "size": [
         440,
-        460
+        420
       ],
       "flags": {},
-      "order": 4,
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
           "name": "info",
           "type": "STRING",
-          "link": 7,
+          "link": 4,
           "widget": {
             "name": "info"
           }
         },
         {
-          "name": "image1",
-          "type": "IMAGE",
-          "link": 12
-        },
-        {
-          "name": "image2",
-          "type": "IMAGE",
-          "link": 13
-        },
-        {
-          "name": "image3",
-          "type": "IMAGE",
-          "link": null
-        },
-        {
           "name": "prompt",
           "type": "STRING",
-          "link": 9,
+          "link": 6,
           "widget": {
             "name": "prompt"
           }
+        },
+        {
+          "name": "ratio",
+          "type": "COMBO",
+          "widget": {
+            "name": "ratio"
+          },
+          "link": null,
+          "label": "阿里·比例"
+        },
+        {
+          "name": "level",
+          "type": "COMBO",
+          "widget": {
+            "name": "level"
+          },
+          "link": null,
+          "label": "阿里·清晰度"
         }
       ],
       "outputs": [
@@ -326,7 +261,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            16
+            9
           ],
           "slot_index": 0
         },
@@ -334,41 +269,43 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            19
+            12
           ],
           "slot_index": 1
         }
       ],
       "properties": {
-        "Node name for S&R": "ProAliImageEdit"
+        "Node name for S&R": "ProAliImage"
       },
       "widgets_values": [
         "（由 AI 扩写节点提供）",
-        "qwen-image-edit-max",
+        "qwen-image-2.0-pro",
+        "1:1",
+        "2K",
         1,
         "randomize"
       ],
-      "title": "引擎 ② 阿里 qwen-image-edit"
+      "title": "引擎 ② 阿里 qwen-image（比例、清晰度在这里选）"
     },
     {
-      "id": 8,
+      "id": 4,
       "type": "SaveImage",
       "pos": [
-        1820,
-        1380
+        1430,
+        1050
       ],
       "size": [
         340,
         320
       ],
       "flags": {},
-      "order": 5,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 20
+          "link": 13
         }
       ],
       "outputs": [],
@@ -376,22 +313,24 @@
         "Node name for S&R": "SaveImage"
       },
       "widgets_values": [
-        "edit"
-      ]
+        "txt2img"
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
     },
     {
       "id": 77,
-      "type": "ProModeEdit",
+      "type": "ProModeImage",
       "pos": [
         60,
-        60
+        90
       ],
       "size": [
         520,
         110
       ],
       "flags": {},
-      "order": 6,
+      "order": 4,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -399,49 +338,37 @@
           "name": "branch",
           "type": "INT",
           "links": [
-            14,
-            17
+            7,
+            10
           ],
           "slot_index": 0
-        },
-        {
-          "name": "compose",
-          "type": "BOOLEAN",
-          "links": [
-            4
-          ],
-          "slot_index": 1
-        },
-        {
-          "name": "instruction",
-          "type": "STRING",
-          "links": [
-            2
-          ],
-          "slot_index": 2
         }
       ],
       "properties": {
-        "Node name for S&R": "ProModeEdit"
+        "Node name for S&R": "ProModeImage"
       },
       "widgets_values": [
-        "网关 · 改商品图（换背景 / 去水印 / 换色…）"
+        "网关 Gemini（自然、约 1K）"
       ],
-      "title": "★ 先选模式"
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 31,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        870
+        1050
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
-      "order": 7,
+      "flags": {
+        "collapsed": true
+      },
+      "order": 5,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -450,7 +377,7 @@
           "type": "STRING",
           "links": [
             1,
-            7
+            4
           ],
           "slot_index": 0
         }
@@ -468,21 +395,23 @@
         "https://dashscope.aliyuncs.com/compatible-mode",
         "qwen3.8-flash"
       ],
-      "title": "Relay API Settings（阿里文字）"
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 70,
       "type": "ProAliPromptWriter",
       "pos": [
         60,
-        240
+        280
       ],
       "size": [
         520,
         560
       ],
       "flags": {},
-      "order": 8,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
@@ -497,14 +426,6 @@
           "name": "image",
           "type": "IMAGE",
           "link": null
-        },
-        {
-          "name": "instruction",
-          "type": "STRING",
-          "link": 2,
-          "widget": {
-            "name": "instruction"
-          }
         }
       ],
       "outputs": [
@@ -512,9 +433,10 @@
           "name": "text",
           "type": "STRING",
           "links": [
-            3,
-            8,
-            9
+            2,
+            5,
+            6,
+            15
           ],
           "slot_index": 0
         },
@@ -529,33 +451,35 @@
         "Node name for S&R": "ProAliPromptWriter"
       },
       "widgets_values": [
-        "把背景换成干净的纯白色影棚背景，商品保持原样，下方加柔和的接触阴影",
-        "（由模式节点提供）",
+        "一只橘猫坐在窗台上，阳光，写实风格",
+        "你是生图提示词写手。把下面的一句话需求扩写成一段中文生图提示词（80~150 字）：写清主体、场景、光线、构图、风格和画质；忠于原意，不要添加需求里没有的主体；画面里不要出现任何文字、水印、标志。只输出提示词本身，不要解释，不要加引号或标题。",
         "qwen3.8-flash",
         1,
         "randomize"
       ],
-      "title": "★ 只填这里：一句话需求（改图：怎么改；合成：放在哪、多大）"
+      "title": "★ 只填这里：一句话需求",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 74,
       "type": "PreviewAny",
       "pos": [
-        620,
-        240
+        640,
+        280
       ],
       "size": [
         460,
         300
       ],
       "flags": {},
-      "order": 9,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 3
+          "link": 2
         }
       ],
       "outputs": [],
@@ -563,85 +487,39 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "AI 扩写出的结果（想看模型写了什么）"
-    },
-    {
-      "id": 6,
-      "type": "ProGate",
-      "pos": [
-        520,
-        2040
-      ],
-      "size": [
-        260,
-        100
-      ],
-      "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "value",
-          "type": "*",
-          "link": 5
-        },
-        {
-          "name": "enabled",
-          "type": "BOOLEAN",
-          "link": 4,
-          "widget": {
-            "name": "enabled"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "value",
-          "type": "*",
-          "links": [
-            11,
-            13
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ProGate"
-      },
-      "widgets_values": [
-        true
-      ],
-      "title": "场景图开关（跟模式走）"
+      "title": "AI 扩写出的结果（想看模型写了什么）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 10,
       "type": "ProPick2x1",
       "pos": [
-        1460,
-        1380
+        990,
+        1050
       ],
       "size": [
         300,
         150
       ],
       "flags": {},
-      "order": 11,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
           "name": "in0_0",
           "type": "*",
-          "link": 15
+          "link": 8
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 16
+          "link": 9
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 14,
+          "link": 7,
           "widget": {
             "name": "branch"
           }
@@ -652,7 +530,7 @@
           "name": "out0",
           "type": "*",
           "links": [
-            20
+            13
           ],
           "slot_index": 0
         }
@@ -669,31 +547,31 @@
       "id": 12,
       "type": "ProPick2x1",
       "pos": [
-        1460,
-        1590
+        990,
+        1280
       ],
       "size": [
         300,
         150
       ],
       "flags": {},
-      "order": 12,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "name": "in0_0",
           "type": "*",
-          "link": 18
+          "link": 11
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 19
+          "link": 12
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 17,
+          "link": 10,
           "widget": {
             "name": "branch"
           }
@@ -704,7 +582,8 @@
           "name": "out0",
           "type": "*",
           "links": [
-            21
+            14,
+            16
           ],
           "slot_index": 0
         }
@@ -721,21 +600,21 @@
       "id": 11,
       "type": "PreviewAny",
       "pos": [
-        1820,
-        1760
+        1430,
+        1440
       ],
       "size": [
         360,
         110
       ],
       "flags": {},
-      "order": 13,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 21
+          "link": 14
         }
       ],
       "outputs": [],
@@ -743,7 +622,79 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "结果 / 错误信息（出错时这里显示原因）"
+      "title": "结果 / 错误信息（出错时这里显示原因）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 90,
+      "type": "ProAppText",
+      "pos": [
+        1430,
+        1620
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 15
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "AI 写的提示词",
+        false
+      ],
+      "title": "应用界面 · AI 写的提示词",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 91,
+      "type": "ProAppText",
+      "pos": [
+        1430,
+        1700
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 16
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "出错信息",
+        true
+      ],
+      "title": "应用界面 · 出错信息",
+      "color": "#223",
+      "bgcolor": "#335"
     }
   ],
   "links": [
@@ -757,14 +708,6 @@
     ],
     [
       2,
-      77,
-      2,
-      70,
-      2,
-      "STRING"
-    ],
-    [
-      3,
       70,
       0,
       74,
@@ -772,23 +715,7 @@
       "STRING"
     ],
     [
-      4,
-      77,
-      1,
-      6,
-      1,
-      "BOOLEAN"
-    ],
-    [
-      5,
-      5,
-      0,
-      6,
-      0,
-      "IMAGE"
-    ],
-    [
-      6,
+      3,
       1,
       0,
       2,
@@ -796,7 +723,7 @@
       "STRING"
     ],
     [
-      7,
+      4,
       31,
       0,
       3,
@@ -804,7 +731,7 @@
       "STRING"
     ],
     [
-      8,
+      5,
       70,
       0,
       2,
@@ -812,112 +739,174 @@
       "STRING"
     ],
     [
-      9,
+      6,
       70,
       0,
       3,
-      4,
+      1,
       "STRING"
     ],
     [
-      10,
-      4,
+      7,
+      77,
       0,
+      10,
       2,
+      "INT"
+    ],
+    [
+      8,
+      2,
+      0,
+      10,
+      0,
+      "IMAGE"
+    ],
+    [
+      9,
+      3,
+      0,
+      10,
       1,
       "IMAGE"
+    ],
+    [
+      10,
+      77,
+      0,
+      12,
+      2,
+      "INT"
     ],
     [
       11,
-      6,
+      2,
+      1,
+      12,
       0,
-      2,
-      2,
-      "*"
+      "STRING"
     ],
     [
       12,
-      4,
-      0,
       3,
       1,
-      "IMAGE"
+      12,
+      1,
+      "STRING"
     ],
     [
       13,
-      6,
+      10,
       0,
-      3,
-      2,
+      4,
+      0,
       "*"
     ],
     [
       14,
-      77,
-      0,
-      10,
-      2,
-      "INT"
-    ],
-    [
-      15,
-      2,
-      0,
-      10,
-      0,
-      "IMAGE"
-    ],
-    [
-      16,
-      3,
-      0,
-      10,
-      1,
-      "IMAGE"
-    ],
-    [
-      17,
-      77,
-      0,
-      12,
-      2,
-      "INT"
-    ],
-    [
-      18,
-      2,
-      1,
-      12,
-      0,
-      "STRING"
-    ],
-    [
-      19,
-      3,
-      1,
-      12,
-      1,
-      "STRING"
-    ],
-    [
-      20,
-      10,
-      0,
-      8,
-      0,
-      "*"
-    ],
-    [
-      21,
       12,
       0,
       11,
       0,
       "*"
+    ],
+    [
+      15,
+      70,
+      0,
+      90,
+      0,
+      "STRING"
+    ],
+    [
+      16,
+      12,
+      0,
+      91,
+      0,
+      "*"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 先填这里：选模式 → 写一句话",
+      "bounding": [
+        30,
+        -20,
+        1100,
+        890
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        940,
+        1290,
+        1216
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1400,
+        940,
+        420,
+        800
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
   "config": {},
-  "extra": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        205
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          77,
+          "mode"
+        ],
+        [
+          70,
+          "idea"
+        ],
+        [
+          2,
+          "ratio"
+        ],
+        [
+          3,
+          "ratio"
+        ],
+        [
+          3,
+          "level"
+        ]
+      ],
+      "outputs": [
+        4,
+        90,
+        91
+      ]
+    }
+  },
   "version": 0.4
 }

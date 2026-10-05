@@ -8,6 +8,11 @@
 #   输出节点（保存 / 预览）不能直接接在某一路的节点上，否则 ComfyUI 会为了它强制执行那一路——要经过选择分支再接。
 #   relayapi 的生图 / 出片 / 出歌节点失败时，媒体输出是 ExecutionBlocker（下游被静默跳过），错误只在 response 输出里；
 #   所以「媒体」和「状态」要分成两个选择分支，状态那个只接字符串，失败时界面才看得到错误（tests 里有检查）。
+#
+# 每个工作流同时是一个「应用」（ComfyUI 的 App 模式）：文件名 *.app.json，打开就是应用界面——右栏只有要填的几个控件，下面点运行，
+#   中间显示结果；左上角下拉「退出应用模式」（或 Alt+M）回到节点图。配置存在 extra.linearData（右栏控件 / 结果节点）和 extra.linearMode，
+#   在各工作流函数里用 g.app_in(...) / g.app_out(...) / app_text(...) 登记。应用界面只认文件类结果（图片 / 视频 / 音频 / 文字文件），
+#   所以 AI 写的文字和出错信息要经 pro-flow 的 ProAppText 存成 .txt 才看得到（PreviewAny 返回的是裸字符串，应用界面不显示）。
 import glob, importlib.util, json, os
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -31,6 +36,7 @@ os.makedirs(OUT, exist_ok=True)
 
 
 def write(name, obj):
+    assert name.endswith(".app.json"), f"{name}：内置工作流都是应用，文件名要以 .app.json 结尾（左侧栏「应用」标签只列这种文件）"
     folder = next((d for d, nums in FOLDERS.items() if name[:2] in nums), None)
     assert folder, f"{name} 没有归到任何类别文件夹（改 FOLDERS）"
     p = os.path.join(OUT, folder, name)
@@ -94,12 +100,15 @@ for _b in (2, 3, 4):
         SPEC[f"ProPick{_b}x{_c}"] = ([(f"in{b}_{c}", "*", False) for b in range(_b) for c in range(_c)],
                                     [(f"out{c}", "*") for c in range(_c)], [("branch", "INT")])
 SPEC["ProGate"] = ([("value", "*", False)], [("value", "*")], [("enabled", "BOOLEAN")])
+SPEC["ProAppText"] = ([("text", "STRING", False)], [], [])
 
 
 class Graph:
     def __init__(self):
         self.nodes, self.links, self._lid, self._order = [], [], 0, 0
         self.dy = 0   # top_block 把已有节点整体下移后，之后新增节点的 y 也自动加上，所以位置都可以按「下移前」的坐标写
+        self.in_ids, self.out_ids, self.auto_ids = set(), set(), set()   # 角色覆盖：要用户填 / 要当结果看 / 其实是内部节点（见 tidy）
+        self.app_inputs, self.app_outputs = [], []                       # 应用界面：右栏的控件 [节点 id, 控件名] / 结果节点 id（见 app_in / app_out）
 
     def add(self, nid, ntype, pos, size, widgets=None, title=None):
         ins, outs, _ = SPEC[ntype]
@@ -131,9 +140,170 @@ class Graph:
         s["outputs"][slot]["links"] = (s["outputs"][slot]["links"] or []) + [self._lid]
         self.links.append([self._lid, src, slot, dst, next(i for i, x in enumerate(d["inputs"]) if x is inp), s["outputs"][slot]["type"]])
 
+    def app_in(self, nid, widget, label=None):
+        """把节点 nid 的控件 widget 放进应用界面的右栏（按登记顺序从上到下）。label = 给这个控件起的中文名：同一个工作流里有两个
+        「图像」上传、两个「比例」时必须起名，否则右栏是两行一模一样的字。名字写进节点的 inputs[].label，节点图里这个控件也显示它。
+        右栏不显示的控件（比如写提示词节点的「扩写指令」）不用登记；右栏里太长的名字会被截断，尽量 12 个字以内。"""
+        if label:
+            n = self.node(nid)
+            inp = next((i for i in n["inputs"] if i["name"] == widget), None)
+            if inp is None:
+                inp = {"name": widget, "type": APP_WIDGET_TYPES[widget], "widget": {"name": widget}, "link": None}
+                n["inputs"].append(inp)
+            inp["label"] = label
+        self.app_inputs.append([nid, widget])
+
+    def app_out(self, nid):
+        """应用界面里显示的结果节点（必须是输出节点：保存图片 / 视频 / 音频、ProAppText）。"""
+        self.app_outputs.append(nid)
+
     def build(self):
+        assert self.app_inputs and self.app_outputs, "每个工作流都要登记应用界面的右栏控件和结果节点（g.app_in / g.app_out）"
+        groups, extra = tidy(self)
+        extra["linearMode"] = True          # 打开就是应用界面
+        extra["linearData"] = {"inputs": self.app_inputs, "outputs": self.app_outputs}
         return {"last_node_id": max(n["id"] for n in self.nodes), "last_link_id": self._lid, "nodes": self.nodes,
-                "links": self.links, "groups": [], "config": {}, "extra": {}, "version": 0.4}
+                "links": self.links, "groups": groups, "config": {}, "extra": extra, "version": 0.4}
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 整理画布：按角色分三个区——「先填这里」（模式 / 一句话 / 上传 / 要调的参数）、「自动处理」（含 Key）、「结果」，
+# 分别上色（绿 / 默认 / 蓝；Key 黄色并折叠成一条）、加带标题的分组框，打开时直接定位到「先填这里」。
+# 节点位置全部由这里算，工作流函数里写的 pos 只当排序依据（同一列里谁在上谁在下），所以新增工作流不用手摆。
+# 分组框是矩形，框里不能混进别的角色的节点：三个区在空间上互相隔开（先填在最上，自动处理在左下，结果在右下），测试里检查。
+# ════════════════════════════════════════════════════════════════════════════
+IN_TYPES = {"LoadImage", "LoadAudio", "LoadVideo", "PrimitiveStringMultiline", "ProAliPromptWriter", "ProPosterFields"}
+OUT_TYPES = {"SaveImage", "SaveAudioAdvanced", "SaveVideo", "ProVideoDub", "PreviewAny", "ProAppText"}
+ROLE_COLORS = {"IN": ("#232", "#353"), "OUT": ("#223", "#335"), "KEY": ("#432", "#653")}   # (标题栏, 节点底色)：绿 / 蓝 / 黄
+GROUP_COLORS = {"IN": "#3f7f4f", "AUTO": "#6b6b6b", "OUT": "#3f6fa8"}
+KEY_TITLES = {"image": "Key：网关（填一次）", "video": "Key：geminiweb（填一次）", "sound": "Key：Suno（填一次）", "text": "Key：阿里（填一次）"}
+KEY_W = 280          # 折叠后的 Key 节点占的宽度
+INIT_SCALE = 0.65    # 打开时的缩放：低于约 0.6 ComfyUI 不画节点上的字，会变成一片灰块
+INIT_XY = (72, 120)  # 打开时「先填这里」左上角对到屏幕的位置：避开左侧栏（约 50px 宽）和顶部的标签栏 + 浮动工具栏（约 100px 高），不然分组标题会被盖住
+
+
+def node_role(n, g):
+    i, t = n["id"], n["type"]
+    if i in g.out_ids:
+        return "OUT"
+    if i in g.auto_ids:
+        return "AUTO"
+    if i in g.in_ids or t.startswith("ProMode") or t in IN_TYPES or i == 74:
+        return "IN"
+    if t == "RelayAPISettings":
+        return "KEY"
+    return "OUT" if t in OUT_TYPES else "AUTO"
+
+
+def eff_size(n):
+    """节点在界面里实际占的 (宽, 含标题栏的高)：Key 折叠成一条；生图节点（16 个图片输入口）会被撑高到约 576；加载音频 / 视频的标题会撑宽节点。"""
+    w, h = n["size"]
+    if n["flags"].get("collapsed"):
+        return KEY_W, 40
+    if n["type"] == "RelayImageGenerator":
+        h = max(h, 576)
+    if n["type"] in ("LoadAudio", "LoadVideo"):
+        w = max(w, int(13.5 * len(n.get("title", "")) + 60))
+    return w, h + 30
+
+
+def tidy(g):
+    """整理 g 里的节点，返回 (groups, extra)。"""
+    nodes = g.nodes
+    byid = {n["id"]: n for n in nodes}
+    role = {n["id"]: node_role(n, g) for n in nodes}
+    orig = {n["id"]: (n["pos"][1], n["pos"][0], n["id"]) for n in nodes}      # 原来的位置只当排序依据
+    for n in nodes:
+        r = role[n["id"]]
+        if r in ROLE_COLORS:
+            n["color"], n["bgcolor"] = ROLE_COLORS[r]
+        if r == "KEY":
+            n["flags"]["collapsed"] = True
+            n["title"] = KEY_TITLES[n["widgets_values"][0]]
+        elif n["type"] == "ProAppText":              # 只给应用界面用的小条，节点图里折叠起来不占地方（看文字用旁边的预览节点）
+            n["flags"]["collapsed"] = True
+    rects = {"IN": [], "KEY": [], "AUTO": [], "OUT": []}
+
+    def put(n, x, top):                     # 节点块 = 标题栏 + 本体；pos 是本体左上角
+        w, h = eff_size(n)
+        n["pos"] = [x, top + 30]
+        rects[role[n["id"]]].append((x, top, x + w, top + h))
+        return rects[role[n["id"]]][-1]
+
+    # ① 先填这里：模式、一句话（写提示词节点 + 它的预览）、其余要用户填 / 上传 / 调的节点（右边，按列排）
+    cur = 60
+    if 77 in byid:
+        cur = put(byid[77], 60, cur)[3] + 50
+    ux, ut = 60, cur
+    if 70 in byid:
+        w_ = put(byid[70], 60, cur)
+        ux = w_[2] + 60
+        if 74 in byid and role[74] == "IN":
+            p_ = put(byid[74], ux, cur)
+            if 75 in byid:
+                put(byid[75], ux, p_[3] + 40)
+            ux = p_[2] + 60
+    x, top, col_w = ux, ut, 0
+    for n in sorted((n for n in nodes if role[n["id"]] == "IN" and n["id"] not in (70, 74, 75, 77)), key=lambda n: orig[n["id"]]):
+        w, h = eff_size(n)
+        if top > ut and top + h > ut + 1100:            # 这一列放不下了：换一列
+            x, top, col_w = x + col_w + 60, ut, 0
+        put(n, x, top)
+        top, col_w = top + h + 40, max(col_w, w)
+    z2 = max(r[3] for r in rects["IN"]) + 30 + 150       # 第二区的节点块顶部（上面留出分组框的标题）
+
+    # ② 自动处理：Key 折叠成一列放最左；其余按「离输入多远」分层，从左到右（只看自动节点之间的连线）
+    keys = sorted((n for n in nodes if role[n["id"]] == "KEY"), key=lambda n: orig[n["id"]])
+    cur = z2
+    for n in keys:
+        cur = put(n, 60, cur)[3] + 24
+    autos = [n for n in nodes if role[n["id"]] == "AUTO"]
+    preds = {n["id"]: {l[1] for l in g.links if l[3] == n["id"] and role.get(l[1]) == "AUTO"} for n in autos}
+    depth = {}
+
+    def dep(i):
+        if i not in depth:
+            depth[i] = 1 + max((dep(p) for p in preds[i]), default=-1)
+        return depth[i]
+    cols = {}
+    for n in autos:
+        cols.setdefault(dep(n["id"]), []).append(n)
+    x = 60 + (KEY_W + 100 if keys else 0)
+    for d in sorted(cols):
+        top, col_w = z2, 0
+        for n in sorted(cols[d], key=lambda n: orig[n["id"]]):
+            w, h = eff_size(n)
+            put(n, x, top)
+            top, col_w = top + h + 50, max(col_w, w)
+        x += col_w + 110
+
+    # ③ 结果：最右一列
+    ox = max(r[2] for r in rects["KEY"] + rects["AUTO"]) + 140
+    top = z2
+    for n in sorted((n for n in nodes if role[n["id"]] == "OUT"), key=lambda n: orig[n["id"]]):
+        top = put(n, ox, top)[3] + 40
+
+    def box(rs):                                            # 分组框：节点块外扩一圈，上面留出标题
+        x0, y0 = min(r[0] for r in rs) - 30, min(r[1] for r in rs) - 80
+        return [x0, y0, max(r[2] for r in rs) + 30 - x0, max(r[3] for r in rs) + 30 - y0]
+    parts = []
+    if 77 in byid:
+        parts.append("选模式")
+    if 70 in byid:
+        parts.append("写一句话")
+    if any(n["type"] in ("LoadImage", "LoadAudio", "LoadVideo", "PrimitiveStringMultiline") for n in nodes if role[n["id"]] == "IN"):
+        parts.append("传素材")
+    if any(role[n["id"]] == "IN" and n["id"] in g.in_ids for n in nodes):
+        parts.append("调参数")
+    titles = {"IN": "① 先填这里：" + " → ".join(parts),
+              "AUTO": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）" + ("；黄色的是 Key，点开填一次" if keys else ""),
+              "OUT": "③ 结果在这里（出错时错误信息也在这里）"}
+    groups = []
+    for gid, (r, rs) in enumerate((("IN", rects["IN"]), ("AUTO", rects["KEY"] + rects["AUTO"]), ("OUT", rects["OUT"])), 1):
+        groups.append({"id": gid, "title": titles[r], "bounding": box(rs), "color": GROUP_COLORS[r], "font_size": 28, "flags": {}})
+    gx, gy = groups[0]["bounding"][:2]
+    # 打开时：「先填这里」的左上角对到画面左上，缩放保证看得见字（offset 是画布坐标的平移，屏幕位置 = (坐标 + offset) × scale）
+    return groups, {"ds": {"scale": INIT_SCALE, "offset": [round(INIT_XY[0] / INIT_SCALE - gx), round(INIT_XY[1] / INIT_SCALE - gy)]}}
 
 
 # 工作流里 Key 按节点 id 存（服务器 relay_config.json 的 node_settings[节点 id]）：1 网关、11 geminiweb、21 Suno、31 阿里
@@ -149,6 +319,21 @@ DUB_WIDGETS = [-14, 0, 1.5, False, "video/成片", "烧进画面", 46, 70]   # �
 TTS_DEFAULT = ["（由文案框提供）", "Cherry", "qwen3-tts-flash", "Chinese", "", 1.0, 0.0, ""]   # text, voice, model, language, instructions, speed, volume_db, custom_voice
 
 
+# app_in 给控件起名时要在节点里补一个 inputs 条目，需要知道控件类型（按控件名查；这些名字在各节点里含义一致）
+APP_WIDGET_TYPES = {"mode": "COMBO", "image": "COMBO", "audio": "COMBO", "file": "COMBO", "ratio": "COMBO", "level": "COMBO", "style": "COMBO", "voice": "COMBO",
+                    "idea": "STRING", "value": "STRING", "text": "STRING", "text1": "STRING", "text2": "STRING", "text3": "STRING"}
+
+
+def app_text(g, src, out, label, only_on_error=False):
+    """应用界面里显示的一条文字结果：来源 src.out → ProAppText（折叠成蓝色小条，排在结果区最后），并登记成应用的结果。
+    only_on_error=True 给「状态」用：成功时不显示，出错才显示原因。注意来源必须是一直会执行的节点或选择分支的输出（输出节点直接接某一路的引擎会强制执行它）。"""
+    nid = max([89] + [n["id"] for n in g.nodes]) + 1       # 90 号起，不和其他固定编号（31 阿里 Key、70~78）撞
+    g.add(nid, "ProAppText", (0, 9000 + len(g.app_outputs)), (300, 90), [label, only_on_error], title="应用界面 · " + label)
+    g.connect(src, out, nid, "text")
+    g.app_out(nid)
+    return nid
+
+
 def status(g, gen, out="response", pos=(0, 0), title="状态（出错时这里显示原因）", nid=None):
     nid = nid or max(n["id"] for n in g.nodes) + 1  # 节点编号不是连续分配的模板要显式传 nid，避免撞号
     g.add(nid, "PreviewAny", pos, (360, 110), title=title)
@@ -162,7 +347,7 @@ IDEA_TITLE = "★ 只填这里：一句话需求"
 
 
 def top_block(g, mode=None, writer=None, settings_id=31):
-    """writer: None 或 dict(kind=EXPAND 里的指令名 / None=指令由模式节点输出, idea=默认需求, idea_title, model, preview(默认 True), preview_title, fields=True 表示海报)。
+    """writer: None 或 dict(kind=EXPAND 里的指令名 / None=指令由模式节点输出, idea=默认需求, idea_title, model, preview(默认 True), preview_title, preview_is_result, fields=True 表示海报)。
     返回 None；调用方再自己连 70.text → 生成节点的 prompt 等。"""
     have = [n for n in g.nodes if n["id"] == settings_id]
     assert not have or have[0]["type"] == "RelayAPISettings", f"节点 {settings_id} 要留给阿里 Settings（Key 按节点 id 存），换个编号"
@@ -190,6 +375,8 @@ def top_block(g, mode=None, writer=None, settings_id=31):
         if w.get("preview", True):
             g.add(74, "PreviewAny", (620, wy), (460, 300), title=w.get("preview_title", "AI 扩写出的结果（想看模型写了什么）"))
             g.connect(70, "text", 74, "source")
+            if w.get("preview_is_result"):               # 07 文案：写出来的文案就是结果，放进「结果」区
+                g.out_ids.add(74)
         if w.get("fields"):                          # 海报：AI 按固定格式写文案 → 拆成 4 个字段
             g.add(75, "ProPosterFields", (1120, wy), (300, 140), title="拆成标题 / 副标题 / 角标 / 画面元素")
             g.connect(70, "text", 75, "text")
@@ -227,6 +414,10 @@ def wf_text_to_image():       # 01 文生图（原 01 / 03 / 14）：改比例�
     pick(g, 12, 2, 1, (1460, 330), (77, "branch"), [[(2, "response")], [(3, "response")]], title="按模式取状态（单独一个，失败时才看得到错误）")
     g.connect(10, "out0", 4, "images")
     g.add(11, "PreviewAny", (1820, 500), (360, 110), title="结果 / 错误信息（出错时这里显示原因）"); g.connect(12, "out0", 11, "source")
+    # 应用界面：右栏 = 模式 + 一句话 + 两个引擎的比例 / 清晰度；结果 = 图 + AI 写的提示词 + 出错信息（成功时不显示）
+    g.app_in(77, "mode"); g.app_in(70, "idea")
+    g.app_in(2, "ratio", "网关·比例"); g.app_in(3, "ratio", "阿里·比例"); g.app_in(3, "level", "阿里·清晰度")
+    g.app_out(4); app_text(g, 70, "text", "AI 写的提示词"); app_text(g, 12, "out0", "出错信息", True)
     return g.build()
 
 
@@ -244,6 +435,7 @@ def wf_poster():              # 02 海报（原 10 / 11 / 17）
     g.add(6, "LoadImage", (520, 780), (380, 400), DEMO, title="商品图（只在「带商品图」模式用）")
     g.add(4, "SaveImage", (1820, 120), (340, 320), ["poster"])
     top_block(g, mode="ProModePoster", writer=dict(kind="poster", idea="夏日清凉节促销，全场满199减50，限时三天，清爽冰饮风格", fields=True))
+    g.in_ids.add(5)                              # 海报提示词节点：风格在这里选
     for f in ("title", "subtitle", "badge", "elements"):
         g.connect(75, f, 5, f)
     g.connect(77, "use_product", 5, "use_product_image")
@@ -255,6 +447,8 @@ def wf_poster():              # 02 海报（原 10 / 11 / 17）
     pick(g, 12, 2, 1, (1460, 330), (77, "branch"), [[(2, "response")], [(3, "response")]], title="按模式取状态（单独一个，失败时才看得到错误）")
     g.connect(10, "out0", 4, "images")
     g.add(11, "PreviewAny", (1820, 500), (360, 110), title="结果 / 错误信息（出错时这里显示原因）"); g.connect(12, "out0", 11, "source")
+    g.app_in(77, "mode"); g.app_in(70, "idea"); g.app_in(6, "image", "商品图（带图模式）"); g.app_in(5, "style", "风格")
+    g.app_out(4); app_text(g, 70, "text", "AI 写的海报文案"); app_text(g, 12, "out0", "出错信息", True)
     return g.build()
 
 
@@ -279,6 +473,8 @@ def wf_edit():                # 03 商品改图与合成（原 02 / 15 / 13）
     pick(g, 12, 2, 1, (1460, 330), (77, "branch"), [[(2, "response")], [(3, "response")]], title="按模式取状态（单独一个，失败时才看得到错误）")
     g.connect(10, "out0", 8, "images")
     g.add(11, "PreviewAny", (1820, 500), (360, 110), title="结果 / 错误信息（出错时这里显示原因）"); g.connect(12, "out0", 11, "source")
+    g.app_in(77, "mode"); g.app_in(70, "idea"); g.app_in(4, "image", "商品图"); g.app_in(5, "image", "场景图（合成模式）")
+    g.app_out(8); app_text(g, 70, "text", "AI 写的改图指令"); app_text(g, 12, "out0", "出错信息", True)
     return g.build()
 
 
@@ -299,6 +495,12 @@ def wf_sizes():               # 04 多尺寸套图：同一张商品图、同一
     top_block(g, writer=dict(kind="promo", idea="干净明亮的浅色背景，商品居中突出，柔和自然的光影和阴影", idea_title="★ 只填这里：一句话需求（4 个尺寸共用）"))
     for gid in (10, 11, 12, 13):
         g.connect(70, "text", gid, "prompt")
+    g.app_in(70, "idea"); g.app_in(2, "image", "商品图")
+    for sid in (20, 21, 22, 23):
+        g.app_out(sid)
+    app_text(g, 70, "text", "AI 写的提示词")
+    for gid, (ratio, name) in zip((10, 11, 12, 13), [("1:1", "主图"), ("3:4", "小红书"), ("9:16", "抖音"), ("16:9", "封面")]):
+        app_text(g, gid, "response", f"出错信息：{name} {ratio}", True)
     return g.build()
 
 
@@ -313,11 +515,16 @@ def wf_post_process():        # 05 图片后处理（原 06 / 24）：放大 2 �
           title="促销标签（3 个，文字留空=不加；样式/位置/大小按图片宽度的百分比）")
     g.add(8, "SaveImage", (2140, 120), (340, 320), ["post/处理后"])
     top_block(g, mode="ProModeProcess")
+    g.in_ids.add(6)                              # 促销标签节点：标签文字 / 位置 / 样式在这里填
     g.connect(2, "IMAGE", 3, "image"); g.connect(3, "IMAGE", 4, "image")
     pick(g, 5, 2, 1, (900, 120), (77, "upscale"), [[(2, "IMAGE")], [(4, "IMAGE")]], title="要不要放大")
     g.connect(5, "out0", 6, "image")
     pick(g, 7, 2, 1, (1780, 120), (77, "labels"), [[(5, "out0")], [(6, "image")]], title="要不要贴标签")
     g.connect(7, "out0", 8, "images")
+    g.app_in(77, "mode"); g.app_in(2, "image", "图片")
+    for k in (1, 2, 3):
+        g.app_in(6, f"text{k}", f"标签 {k} 文字")
+    g.app_out(8)
     return g.build()
 
 
@@ -352,15 +559,19 @@ def wf_pipeline():            # 06 商品一条龙：一张商品图 → 白底�
     status(g, 4, pos=(1000, 380), title="状态：白底主图"); status(g, 8, pos=(1000, 1080), title="状态：场景图"); status(g, 10, pos=(1000, 1740), title="状态：文案")
     top_block(g, writer=dict(kind="scene", idea="明亮的现代厨房台面，窗边自然光", idea_title="★ 只填这里：场景一句话（只管③场景图，白底主图和文案不受影响）"))
     g.connect(70, "text", 8, "prompt")
+    g.app_in(70, "idea", "场景一句话"); g.app_in(3, "image", "商品图")
+    g.app_out(7); g.app_out(9)
+    app_text(g, 10, "text", "标题 / 卖点文案"); app_text(g, 70, "text", "AI 写的场景指令")
+    app_text(g, 4, "response", "出错信息：白底主图", True); app_text(g, 8, "response", "出错信息：场景图", True); app_text(g, 10, "response", "出错信息：文案", True)
     return g.build()
 
 
-write("01-文生图.json", wf_text_to_image())
-write("02-海报.json", wf_poster())
-write("03-商品改图与合成.json", wf_edit())
-write("04-多尺寸套图.json", wf_sizes())
-write("05-图片后处理.json", wf_post_process())
-write("06-商品一条龙.json", wf_pipeline())
+write("01-文生图.app.json", wf_text_to_image())
+write("02-海报.app.json", wf_poster())
+write("03-商品改图与合成.app.json", wf_edit())
+write("04-多尺寸套图.app.json", wf_sizes())
+write("05-图片后处理.app.json", wf_post_process())
+write("06-商品一条龙.app.json", wf_pipeline())
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -375,10 +586,12 @@ def wf_copy():                # 07 文案（原 08 / 09 / 21）：写文案 / �
     # 图先缩到最长边 768：大图从服务器传到阿里很慢（实测 1024 的 PNG 超过 180 秒，缩小后约 10 秒）
     g.add(5, "ImageScaleToMaxDimension", (520, 520), (320, 90), ["lanczos", 768], title="缩到最长边 768（别删）")
     g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-omni-flash"), title="Relay API Settings（阿里文字）")
-    top_block(g, mode="ProModeCopy", writer=dict(kind=None, idea=COPY_IDEA, model="qwen3.8-omni-flash", preview_title="生成的文案",
+    top_block(g, mode="ProModeCopy", writer=dict(kind=None, idea=COPY_IDEA, model="qwen3.8-omni-flash", preview_title="生成的文案", preview_is_result=True,
                                                   idea_title="★ 只填这里：商品信息（翻译模式：贴上要翻译的中文文案）"))
     gate(g, 6, (900, 520), (77, "use_image"), (5, "IMAGE"), title="商品图开关（跟模式走）")
     g.connect(3, "IMAGE", 5, "image"); g.connect(6, "value", 70, "image")
+    g.app_in(77, "mode"); g.app_in(70, "idea", "商品信息 / 原文"); g.app_in(3, "image", "商品图（看图模式）")
+    app_text(g, 70, "text", "文案")
     return g.build()
 
 
@@ -393,6 +606,8 @@ def wf_voice():               # 08 配音（原 16 / 25 / 26）：预置音色 /
     g.add(6, "LoadAudio", (60, 470), (400, 300), ["无背景音乐.wav", "", ""], title="上传样音（克隆模式用，10~60 秒人声）")
     g.add(7, "ProAliVoiceClone", (1040, 700), (420, 200), ["myclone"], title="克隆音色（只克隆本人或已获授权的声音）")
     g.add(8, "PrimitiveStringMultiline", (520, 1180), (300, 100), [""], title="（空：预置音色时用它占位）")
+    g.in_ids.add(3)                              # 配音节点：要念的文字和音色在这里
+    g.auto_ids.add(8)                            # 空字符串占位（预置音色时顶替音色 id），内部用
     top_block(g, mode="ProModeVoice", writer=dict(kind="voice", idea="沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍", preview=False,
                                                   idea_title="★ 只填这里：一句话描述想要的声音（只在「设计新音色」模式用）"))
     g.connect(31, "STRING", 3, "info"); g.connect(31, "STRING", 2, "info"); g.connect(31, "STRING", 7, "info")
@@ -403,6 +618,9 @@ def wf_voice():               # 08 配音（原 16 / 25 / 26）：预置音色 /
     g.connect(10, "out0", 3, "custom_voice"); g.connect(3, "audio", 4, "audio")
     g.add(11, "PreviewAny", (1520, 400), (400, 120), title="音色 id（复制到别的配音节点的「自定义音色」框里可反复使用）"); g.connect(10, "out0", 11, "source")
     g.add(12, "PreviewAny", (1520, 580), (460, 200), title="AI 写的音色描述（只有「设计新音色」模式有）"); g.connect(10, "out1", 12, "source")
+    g.app_in(77, "mode"); g.app_in(3, "text", "要念的文字"); g.app_in(3, "voice", "音色（预置模式）")
+    g.app_in(70, "idea", "声音描述（设计模式）"); g.app_in(6, "audio", "样音（克隆模式）")
+    g.app_out(4); app_text(g, 10, "out0", "音色 id（可复制到别处）"); app_text(g, 10, "out1", "AI 写的音色描述")
     return g.build()
 
 
@@ -421,6 +639,8 @@ def wf_music():               # 09 音乐（原 05 / 07）：Gemini Lyria / Suno
     pick(g, 13, 2, 1, (1000, 330), (77, "branch"), [[(12, "response")], [(22, "response")]], title="按模式取状态（单独一个，失败时才看得到错误）")
     g.connect(10, "out0", 5, "audio")
     g.add(6, "PreviewAny", (1380, 380), (360, 110), title="结果 / 错误信息（出错时这里显示原因）"); g.connect(13, "out0", 6, "source")
+    g.app_in(77, "mode"); g.app_in(70, "idea")
+    g.app_out(5); app_text(g, 70, "text", "AI 写的音乐提示词"); app_text(g, 13, "out0", "出错信息", True)
     return g.build()
 
 
@@ -444,6 +664,8 @@ def wf_text_to_video():       # 10 文生视频成片（原 04 / 20）：Veo 出
     gate(g, 22, (1100, 780), (77, "dub"), (4, "AUDIO"), title="背景音乐开关（跟模式走）"); g.connect(22, "value", 5, "bgm")
     gate(g, 23, (1100, 920), (77, "dub"), (7, "srt"), title="字幕开关（跟模式走）"); g.connect(23, "value", 5, "subtitles")
     status(g, 12, pos=(1100, 1080), title="状态：视频（Veo）")
+    g.app_in(77, "mode"); g.app_in(70, "idea"); g.app_in(6, "value", "配音文案（配音模式）"); g.app_in(4, "audio", "背景音乐（配音模式）")
+    g.app_out(5); app_text(g, 70, "text", "AI 写的视频提示词"); app_text(g, 12, "response", "出错信息：视频", True)
     return g.build()
 
 
@@ -477,11 +699,17 @@ def wf_compose():             # 11 视频成片（原 19 / 22 / 23）：上传�
     g.connect(16, "out0", 5, "video"); g.connect(17, "out0", 5, "subtitles"); g.connect(18, "value", 5, "voice"); g.connect(19, "value", 5, "bgm")
     g.connect(77, "keep_original", 5, "keep_original_audio")
     g.add(20, "PreviewAny", (1560, 1580), (440, 200), title="字幕文字（文案 / 听写结果）"); g.connect(17, "out1", 20, "source")
+    g.app_in(77, "mode"); g.app_in(2, "file", "上传视频"); g.app_in(6, "value", "配音文案（配音模式）")
+    for k, nid in enumerate((12, 13, 14), 1):
+        g.app_in(nid, "image", f"图片 {k}（轮播模式）")
+    g.app_in(4, "audio", "背景音乐")
+    # 字幕文字不放进应用的结果：字幕已经烧进成片、也存了 .srt；应用界面默认显示「最后执行完的那一条」，字幕文字比成片晚几毫秒，会把成片挤到第二位
+    g.app_out(5)
     return g.build()
 
 
-write("07-文案.json", wf_copy())
-write("08-配音.json", wf_voice())
-write("09-音乐.json", wf_music())
-write("10-文生视频成片.json", wf_text_to_video())
-write("11-视频成片.json", wf_compose())
+write("07-文案.app.json", wf_copy())
+write("08-配音.app.json", wf_voice())
+write("09-音乐.app.json", wf_music())
+write("10-文生视频成片.app.json", wf_text_to_video())
+write("11-视频成片.app.json", wf_compose())

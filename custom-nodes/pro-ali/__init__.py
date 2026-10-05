@@ -64,7 +64,7 @@ def _creds(info):
             pass
     key = (cfg.get("apikey") or "").strip()
     if not key:
-        raise RuntimeError("[阿里] 没有 API Key：请在 Relay API Settings 的 apikey 填阿里百炼的 Key（或在服务器 relay_config.json 里预置）")
+        raise RuntimeError("[阿里] 没有 API Key：请点开画布上标题为「Key：阿里」的节点（折叠着的，点标题左边的圆点展开；类型 Relay API Settings），在 apikey 填阿里百炼的 Key（或在服务器 relay_config.json 里预置）")
     raw = (cfg.get("custom_api_base") or "").strip() or DEFAULT_BASE
     u = urlparse(raw)
     host = (u.hostname or "").lower()

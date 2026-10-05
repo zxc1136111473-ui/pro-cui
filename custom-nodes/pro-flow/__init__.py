@@ -4,10 +4,14 @@
 - 选择分支（ProPick*）：按 branch 选一路输出。没选中的那一路**不会执行**（lazy），所以不会调接口、不花钱，
   也不会因为没填那一路的 Key 而报错。
 - 开关门（ProGate）：enabled 为假时输出 None（下游当作没连），为真时放行 value；同样 lazy。
+- 应用界面文字（ProAppText）：让文字结果（AI 写的提示词 / 文案 / 出错信息）能在 ComfyUI 的「应用」界面里显示（见该类的说明）。
 
 注意：输出节点（保存 / 预览）不能直接接在某一路的节点上，否则 ComfyUI 会为了它强制执行那一路；要经过选择分支再接。
-本文件只用标准库，tools/gen_workflows.py 和 tests 直接 import 它拿模式表（MODES）。
+本文件只用标准库（folder_paths 在运行时才 import），tools/gen_workflows.py 和 tests 直接 import 它拿模式表（MODES）。
 """
+import json
+import os
+import re
 
 # ── AI 写提示词用的扩写指令（「阿里 写提示词」节点的第二个框）──────────────────────────────────────────────
 # 放这里是因为模式节点要把它们当常量输出（同一个工作流里，改图 / 合成、写文案 / 看图 / 翻译用的指令不同）；
@@ -154,8 +158,64 @@ class ProGate:
         return (value if enabled else None,)
 
 
+def _app_text(text, only_on_error):
+    """要显示的文字；None = 这次不显示。空文字不显示；only_on_error 时，成功（{"code": "success", ...}）不显示，失败显示出错原因。"""
+    if text is None:
+        return None
+    s = text if isinstance(text, str) else str(text)
+    if not s.strip():
+        return None
+    if only_on_error:
+        try:
+            d = json.loads(s)
+        except ValueError:
+            d = None
+        if isinstance(d, dict):
+            if d.get("code") == "success":
+                return None
+            if d.get("message"):
+                return f"出错了：{d['message']}"
+    return s
+
+
+class ProAppText:
+    """让文字结果在 ComfyUI 的「应用」界面（App 模式）里显示。
+
+    应用界面只显示「文件类」结果（图片 / 视频 / 音频 / 文字文件）；预览节点（PreviewAny）返回的是裸字符串，应用界面不认，
+    所以 AI 写的提示词 / 文案、relayapi 的出错信息要存成 .txt（output/text/）并按文件结果返回才看得到。
+    - 空文字不存、不显示（比如「预置音色」模式下没有音色描述）；
+    - 「只在出错时显示」给状态用：relayapi 成功时的 {"code": "success", ...} 不显示，失败原因才显示，应用界面里就不会多一堆没用的 JSON；
+    - 名称就是应用界面里这条结果的标题。
+    节点图里它折叠成一条蓝色的小条，不用管；节点图里看文字仍用旁边的预览节点。"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "text": ("STRING", {"forceInput": True}),
+            "label": ("STRING", {"default": "文字结果", "display_name": "名称（应用界面里显示的标题）"}),
+            "only_on_error": ("BOOLEAN", {"default": False, "label_on": "只在出错时显示", "label_off": "总是显示", "display_name": "显示时机"})}}
+
+    RETURN_TYPES = ()
+    FUNCTION = "show"
+    OUTPUT_NODE = True
+    CATEGORY = "pro/flow"
+
+    def show(self, text, label, only_on_error):
+        shown = _app_text(text, only_on_error)
+        if shown is None:
+            return {"ui": {}}
+        import folder_paths
+        name = re.sub(r'[\\/:*?"<>|\r\n]+', "-", label).strip() or "文字结果"
+        folder, filename, counter, subfolder, _ = folder_paths.get_save_image_path("text/" + name, folder_paths.get_output_directory())
+        os.makedirs(folder, exist_ok=True)
+        fname = f"{filename}_{counter:05}.txt"
+        with open(os.path.join(folder, fname), "w", encoding="utf-8") as f:
+            f.write(shown)
+        return {"ui": {"files": [{"filename": fname, "subfolder": subfolder, "type": "output", "display_name": label}]}}
+
+
 def _build():
-    classes, names = {"ProGate": ProGate}, {"ProGate": "开关门（不用时输出空）"}
+    classes, names = {"ProGate": ProGate, "ProAppText": ProAppText}, {"ProGate": "开关门（不用时输出空）", "ProAppText": "应用界面：文字结果（折叠的小条，不用管）"}
     for b in (2, 3, 4):
         for c in (1, 2, 3):
             n, cls = _pick_class(b, c)

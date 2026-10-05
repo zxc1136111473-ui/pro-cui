@@ -1,6 +1,11 @@
 """pro-flow：模式 / 选择分支 / 开关门。这几个节点只用标准库，直接 import，不用 stub。"""
 import importlib.util
+import json
 import os
+import shutil
+import sys
+import tempfile
+import types
 import unittest
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -93,6 +98,82 @@ class Mode(unittest.TestCase):
     def test_unknown_mode_raises(self):
         with self.assertRaises(ValueError):
             CLS["ProModeImage"]().go("不存在的模式")
+
+
+class AppText(unittest.TestCase):
+    """ProAppText：文字存成 .txt 并按「文件结果」返回，应用界面才显示；空文字不存；只在出错时显示。"""
+
+    def setUp(self):
+        self.out = tempfile.mkdtemp()
+        fp = types.ModuleType("folder_paths")
+        fp.get_output_directory = lambda: self.out
+
+        def get_save_image_path(prefix, out_dir, w=0, h=0):      # 和 ComfyUI 的同名函数一样：前缀里的目录是子文件夹，序号接着已有的往下数
+            sub, name = os.path.split(prefix)
+            folder = os.path.join(out_dir, sub)
+            os.makedirs(folder, exist_ok=True)
+            counter = 1 + len([f for f in os.listdir(folder) if f.startswith(name + "_")])
+            return folder, name, counter, sub, prefix
+        fp.get_save_image_path = get_save_image_path
+        self._saved = sys.modules.get("folder_paths")
+        sys.modules["folder_paths"] = fp
+        self.node = CLS["ProAppText"]()
+
+    def tearDown(self):
+        if self._saved is None:
+            sys.modules.pop("folder_paths", None)
+        else:
+            sys.modules["folder_paths"] = self._saved
+        shutil.rmtree(self.out)
+
+    def read(self, item):
+        with open(os.path.join(self.out, item["subfolder"], item["filename"]), encoding="utf-8") as f:
+            return f.read()
+
+    def test_node_definition(self):
+        cls = CLS["ProAppText"]
+        self.assertTrue(cls.OUTPUT_NODE)
+        self.assertEqual(cls.RETURN_TYPES, ())
+        req = cls.INPUT_TYPES()["required"]
+        self.assertTrue(req["text"][1]["forceInput"])
+        self.assertEqual(list(req), ["text", "label", "only_on_error"], "控件顺序 = 工作流里 widgets_values 的顺序（名称、显示时机）")
+
+    def test_text_is_saved_and_returned_as_a_file_result(self):
+        ui = self.node.show("AI 写的提示词：一只橘猫", "AI 写的提示词", False)["ui"]
+        (item,) = ui["files"]            # 应用界面认「文件结果」：filename / subfolder / type，display_name 是显示的标题
+        self.assertEqual((item["subfolder"], item["type"], item["display_name"]), ("text", "output", "AI 写的提示词"))
+        self.assertTrue(item["filename"].endswith(".txt"))
+        self.assertEqual(self.read(item), "AI 写的提示词：一只橘猫")
+
+    def test_counter_goes_up_instead_of_overwriting(self):
+        a = self.node.show("第一次", "文案", False)["ui"]["files"][0]["filename"]
+        b = self.node.show("第二次", "文案", False)["ui"]["files"][0]["filename"]
+        self.assertNotEqual(a, b)
+        self.assertEqual(sorted(os.listdir(os.path.join(self.out, "text"))), sorted([a, b]))
+
+    def test_empty_text_is_not_saved_or_shown(self):
+        for t in (None, "", "   \n"):
+            self.assertEqual(self.node.show(t, "音色描述", False), {"ui": {}})
+        self.assertFalse(os.path.exists(os.path.join(self.out, "text")), "什么都没存就不该建目录")
+
+    def test_only_on_error_hides_success_and_shows_the_reason_on_failure(self):
+        ok = json.dumps({"code": "success", "type": "base64"})
+        self.assertEqual(self.node.show(ok, "状态", True), {"ui": {}})
+        err = json.dumps({"code": "error", "message": "HTTPConnectionPool: Max retries exceeded"}, ensure_ascii=False)
+        item = self.node.show(err, "状态：白底主图", True)["ui"]["files"][0]
+        self.assertEqual(self.read(item), "出错了：HTTPConnectionPool: Max retries exceeded")
+        self.assertEqual(item["display_name"], "状态：白底主图")
+        # 不是 JSON 的（意料之外的格式）一律显示，宁可多显示也别吞掉错误
+        self.assertEqual(self.read(self.node.show("Suno create error: 503", "状态", True)["ui"]["files"][0]), "Suno create error: 503")
+        # 「总是显示」时成功的 JSON 也照样显示
+        self.assertEqual(len(self.node.show(ok, "状态", False)["ui"]["files"]), 1)
+
+    def test_label_cannot_escape_the_text_folder(self):
+        item = self.node.show("x", "../../etc/a:b\\c", False)["ui"]["files"][0]
+        self.assertEqual(item["subfolder"], "text")
+        self.assertNotIn("/", item["filename"])
+        self.assertTrue(os.path.exists(os.path.join(self.out, "text", item["filename"])))
+        self.assertEqual(os.listdir(self.out), ["text"])
 
 
 if __name__ == "__main__":

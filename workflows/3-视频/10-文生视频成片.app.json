@@ -1,19 +1,21 @@
 {
-  "last_node_id": 78,
-  "last_link_id": 20,
+  "last_node_id": 91,
+  "last_link_id": 22,
   "nodes": [
     {
       "id": 11,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1320
+        1114
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 0,
       "mode": 0,
       "inputs": [],
@@ -40,14 +42,16 @@
         "http://airelay-geminiweb:8083",
         "gemini-video"
       ],
-      "title": "Relay API Settings（geminiweb 视频 Key）"
+      "title": "Key：geminiweb（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 12,
       "type": "RelayVideoGenerator",
       "pos": [
-        520,
-        1320
+        440,
+        1050
       ],
       "size": [
         420,
@@ -128,7 +132,8 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            20
+            20,
+            22
           ],
           "slot_index": 2
         },
@@ -158,8 +163,8 @@
       "id": 6,
       "type": "PrimitiveStringMultiline",
       "pos": [
-        520,
-        1900
+        1160,
+        550
       ],
       "size": [
         440,
@@ -168,7 +173,17 @@
       "flags": {},
       "order": 2,
       "mode": 0,
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "value",
+          "type": "STRING",
+          "widget": {
+            "name": "value"
+          },
+          "link": null,
+          "label": "配音文案（配音模式）"
+        }
+      ],
       "outputs": [
         {
           "name": "STRING",
@@ -186,14 +201,16 @@
       "widgets_values": [
         "快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！"
       ],
-      "title": "② 配音文案（只在「出视频，再配音」模式用；同时用于配音和字幕）"
+      "title": "② 配音文案（只在「出视频，再配音」模式用；同时用于配音和字幕）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 3,
       "type": "ProAliTTS",
       "pos": [
-        520,
-        2160
+        440,
+        1730
       ],
       "size": [
         440,
@@ -256,8 +273,8 @@
       "id": 7,
       "type": "ProSubtitles",
       "pos": [
-        520,
-        2680
+        990,
+        1230
       ],
       "size": [
         440,
@@ -306,8 +323,8 @@
       "id": 4,
       "type": "LoadAudio",
       "pos": [
-        60,
-        1680
+        1160,
+        280
       ],
       "size": [
         440,
@@ -316,7 +333,17 @@
       "flags": {},
       "order": 5,
       "mode": 0,
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "COMBO",
+          "widget": {
+            "name": "audio"
+          },
+          "link": null,
+          "label": "背景音乐（配音模式）"
+        }
+      ],
       "outputs": [
         {
           "name": "AUDIO",
@@ -335,14 +362,16 @@
         "",
         ""
       ],
-      "title": "③ 背景音乐（配音模式用，默认静音=不加）"
+      "title": "③ 背景音乐（配音模式用，默认静音=不加）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 5,
       "type": "ProVideoDub",
       "pos": [
-        1100,
-        1320
+        1940,
+        1050
       ],
       "size": [
         420,
@@ -402,14 +431,16 @@
         46,
         70
       ],
-      "title": "④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+      "title": "④ 合成成片（保留原声 / 替换成配音，跟模式走）",
+      "color": "#223",
+      "bgcolor": "#335"
     },
     {
       "id": 77,
       "type": "ProModeTextVideo",
       "pos": [
         60,
-        60
+        90
       ],
       "size": [
         520,
@@ -445,20 +476,24 @@
       "widgets_values": [
         "只出视频（保留 Veo 自带声音）"
       ],
-      "title": "★ 先选模式"
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 31,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        870
+        1050
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 8,
       "mode": 0,
       "inputs": [],
@@ -486,14 +521,16 @@
         "https://dashscope.aliyuncs.com/compatible-mode",
         "qwen3.8-flash"
       ],
-      "title": "Relay API Settings（阿里文字）"
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 70,
       "type": "ProAliPromptWriter",
       "pos": [
         60,
-        240
+        280
       ],
       "size": [
         520,
@@ -523,7 +560,8 @@
           "type": "STRING",
           "links": [
             2,
-            4
+            4,
+            21
           ],
           "slot_index": 0
         },
@@ -544,14 +582,16 @@
         1,
         "randomize"
       ],
-      "title": "★ 只填这里：一句话需求"
+      "title": "★ 只填这里：一句话需求",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 74,
       "type": "PreviewAny",
       "pos": [
-        620,
-        240
+        640,
+        280
       ],
       "size": [
         460,
@@ -572,14 +612,16 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "AI 扩写出的结果（想看模型写了什么）"
+      "title": "AI 扩写出的结果（想看模型写了什么）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 21,
       "type": "ProGate",
       "pos": [
-        1100,
-        1900
+        990,
+        1050
       ],
       "size": [
         260,
@@ -625,8 +667,8 @@
       "id": 22,
       "type": "ProGate",
       "pos": [
-        1100,
-        2040
+        440,
+        1550
       ],
       "size": [
         260,
@@ -672,8 +714,8 @@
       "id": 23,
       "type": "ProGate",
       "pos": [
-        1100,
-        2180
+        1540,
+        1050
       ],
       "size": [
         260,
@@ -719,8 +761,8 @@
       "id": 78,
       "type": "PreviewAny",
       "pos": [
-        1100,
-        2340
+        1940,
+        1600
       ],
       "size": [
         360,
@@ -741,7 +783,79 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "状态：视频（Veo）"
+      "title": "状态：视频（Veo）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 90,
+      "type": "ProAppText",
+      "pos": [
+        1940,
+        1780
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 21
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "AI 写的视频提示词",
+        false
+      ],
+      "title": "应用界面 · AI 写的视频提示词",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 91,
+      "type": "ProAppText",
+      "pos": [
+        1940,
+        1860
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 22
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "出错信息：视频",
+        true
+      ],
+      "title": "应用界面 · 出错信息：视频",
+      "color": "#223",
+      "bgcolor": "#335"
     }
   ],
   "links": [
@@ -904,10 +1018,100 @@
       78,
       0,
       "STRING"
+    ],
+    [
+      21,
+      70,
+      0,
+      90,
+      0,
+      "STRING"
+    ],
+    [
+      22,
+      12,
+      2,
+      91,
+      0,
+      "STRING"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 先填这里：选模式 → 写一句话 → 传素材",
+      "bounding": [
+        30,
+        -20,
+        1600,
+        890
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        940,
+        1800,
+        1280
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1910,
+        940,
+        480,
+        960
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
   "config": {},
-  "extra": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        205
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          77,
+          "mode"
+        ],
+        [
+          70,
+          "idea"
+        ],
+        [
+          6,
+          "value"
+        ],
+        [
+          4,
+          "audio"
+        ]
+      ],
+      "outputs": [
+        5,
+        90,
+        91
+      ]
+    }
+  },
   "version": 0.4
 }

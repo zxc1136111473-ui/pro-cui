@@ -1,13 +1,13 @@
 {
-  "last_node_id": 77,
-  "last_link_id": 7,
+  "last_node_id": 90,
+  "last_link_id": 8,
   "nodes": [
     {
       "id": 3,
       "type": "LoadImage",
       "pos": [
-        60,
-        1360
+        640,
+        280
       ],
       "size": [
         400,
@@ -16,7 +16,17 @@
       "flags": {},
       "order": 0,
       "mode": 0,
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "商品图（看图模式）"
+        }
+      ],
       "outputs": [
         {
           "name": "IMAGE",
@@ -40,14 +50,16 @@
         "demo_product.png",
         "image"
       ],
-      "title": "商品图（只在「看图写文案」模式用）"
+      "title": "商品图（只在「看图写文案」模式用）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 5,
       "type": "ImageScaleToMaxDimension",
       "pos": [
-        520,
-        1410
+        440,
+        1050
       ],
       "size": [
         320,
@@ -87,13 +99,15 @@
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1010
+        1050
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 2,
       "mode": 0,
       "inputs": [],
@@ -120,14 +134,16 @@
         "https://dashscope.aliyuncs.com/compatible-mode",
         "qwen3.8-omni-flash"
       ],
-      "title": "Relay API Settings（阿里文字）"
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 77,
       "type": "ProModeCopy",
       "pos": [
         60,
-        60
+        90
       ],
       "size": [
         520,
@@ -161,14 +177,16 @@
       "widgets_values": [
         "文字写文案（按商品信息）"
       ],
-      "title": "★ 先选模式"
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 70,
       "type": "ProAliPromptWriter",
       "pos": [
         60,
-        240
+        280
       ],
       "size": [
         520,
@@ -198,6 +216,15 @@
           "widget": {
             "name": "instruction"
           }
+        },
+        {
+          "name": "idea",
+          "type": "STRING",
+          "widget": {
+            "name": "idea"
+          },
+          "link": null,
+          "label": "商品信息 / 原文"
         }
       ],
       "outputs": [
@@ -205,7 +232,8 @@
           "name": "text",
           "type": "STRING",
           "links": [
-            3
+            3,
+            8
           ],
           "slot_index": 0
         },
@@ -226,14 +254,16 @@
         1,
         "randomize"
       ],
-      "title": "★ 只填这里：商品信息（翻译模式：贴上要翻译的中文文案）"
+      "title": "★ 只填这里：商品信息（翻译模式：贴上要翻译的中文文案）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 74,
       "type": "PreviewAny",
       "pos": [
-        620,
-        240
+        1270,
+        1050
       ],
       "size": [
         460,
@@ -254,14 +284,16 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "生成的文案"
+      "title": "生成的文案",
+      "color": "#223",
+      "bgcolor": "#335"
     },
     {
       "id": 6,
       "type": "ProGate",
       "pos": [
-        900,
-        1410
+        870,
+        1050
       ],
       "size": [
         260,
@@ -302,6 +334,41 @@
         true
       ],
       "title": "商品图开关（跟模式走）"
+    },
+    {
+      "id": 90,
+      "type": "ProAppText",
+      "pos": [
+        1270,
+        1420
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 8
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "文案",
+        false
+      ],
+      "title": "应用界面 · 文案",
+      "color": "#223",
+      "bgcolor": "#335"
     }
   ],
   "links": [
@@ -360,10 +427,86 @@
       70,
       1,
       "*"
+    ],
+    [
+      8,
+      70,
+      0,
+      90,
+      0,
+      "STRING"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 先填这里：选模式 → 写一句话 → 传素材",
+      "bounding": [
+        30,
+        -20,
+        1040,
+        890
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        940,
+        1130,
+        240
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1240,
+        940,
+        520,
+        520
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
   "config": {},
-  "extra": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        205
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          77,
+          "mode"
+        ],
+        [
+          70,
+          "idea"
+        ],
+        [
+          3,
+          "image"
+        ]
+      ],
+      "outputs": [
+        90
+      ]
+    }
+  },
   "version": 0.4
 }

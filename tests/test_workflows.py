@@ -29,7 +29,16 @@ KNOWN_EXTERNAL = {
     "ImageScale", "ImageScaleBy", "ImageScaleToMaxDimension", "ImageSharpen", "ImageBatch", "Note", "MarkdownNote",
     "PrimitiveNode", "PrimitiveStringMultiline", "StringConcatenate",
 }
-OUTPUT_TYPES = {"SaveImage", "PreviewImage", "PreviewAny", "SaveVideo", "SaveAudioAdvanced", "SaveAudio", "ProVideoDub"}
+OUTPUT_TYPES = {"SaveImage", "PreviewImage", "PreviewAny", "SaveVideo", "SaveAudioAdvanced", "SaveAudio", "ProVideoDub", "ProAppText"}
+
+
+def load_node_pkg(pkg):
+    sys.path.insert(0, os.path.join(ROOT, "tests"))
+    try:
+        import _load
+        return _load.load(pkg)
+    finally:
+        sys.path.pop(0)
 
 
 def own_node_names():
@@ -145,20 +154,185 @@ class Workflows(unittest.TestCase):
     # 界面会把「生图」节点（16 个图片输入口）自动撑高到约 576，再加标题栏约 30；按这个算才和实际看到的一致
     MIN_HEIGHT = {"RelayImageGenerator": 576}
 
+    def rect(self, n):
+        """节点在界面里实际占的矩形 (x0, y0, x1, y1)：pos 是本体左上角，标题栏（约 30）在它上面。
+        折叠的节点只剩标题栏，宽度 = 标题文字宽 + 60（不超过原宽度）；加载音频 / 视频的标题会撑宽节点
+        （实测 58 字的标题把宽度撑到 771px，约 13.5px/字 + 60px），长标题会压到右边的节点。"""
+        x, y = n["pos"]
+        w, h = n["size"]
+        title_w = 13.5 * len(n.get("title", "")) + 60
+        if n["flags"].get("collapsed"):
+            return (x, y - 30, x + min(w, title_w), y)
+        if n["type"] in ("LoadAudio", "LoadVideo"):
+            w = max(w, title_w)
+        return (x, y - 30, x + w, y + max(h, self.MIN_HEIGHT.get(n["type"], 0)))
+
     def test_no_overlapping_nodes(self):
         for p in all_workflows():
             with open(p, encoding="utf-8") as f:
                 wf = json.load(f)
-            # 加载音频 / 视频的标题会撑宽节点（实测 58 字的标题把宽度撑到 771px，约 13.5px/字 + 60px），长标题会压到右边的节点
-            title_wide = lambda n: 13.5 * len(n.get("title", "")) + 60 if n["type"] in ("LoadAudio", "LoadVideo") else 0
-            rect = lambda n: (n["pos"][0], n["pos"][1], n["pos"][0] + max(n["size"][0], title_wide(n)),
-                              n["pos"][1] + max(n["size"][1], self.MIN_HEIGHT.get(n["type"], 0)) + 30)
             ns = wf["nodes"]
             for i, a in enumerate(ns):
                 for b in ns[i + 1:]:
-                    ra, rb = rect(a), rect(b)
+                    ra, rb = self.rect(a), self.rect(b)
                     overlap = ra[0] < rb[2] - 4 and rb[0] < ra[2] - 4 and ra[1] < rb[3] - 4 and rb[1] < ra[3] - 4
                     self.assertFalse(overlap, f"{os.path.basename(p)}: 节点 {a['id']}（{a['type']}）和 {b['id']}（{b['type']}）重叠")
+
+    # 角色颜色：绿 = 要用户填 / 上传 / 调，蓝 = 结果，黄 = Key（折叠），没颜色 = 自动处理
+    GREEN, BLUE, YELLOW = "#353", "#335", "#653"
+    MUST_GREEN = {"LoadImage", "LoadAudio", "LoadVideo", "ProAliPromptWriter", "ProPosterFields"}
+    MUST_BLUE = {"SaveImage", "SaveAudioAdvanced", "SaveVideo", "ProVideoDub", "ProAppText"}
+    COLLAPSED = {"RelayAPISettings", "ProAppText"}        # 折叠成一条的：Key、应用界面用的文字小条
+
+    def role_of(self, n):
+        return {self.GREEN: "IN", self.BLUE: "OUT", self.YELLOW: "KEY"}.get(n.get("bgcolor"), "AUTO")
+
+    def test_node_roles_and_colors(self):
+        for p in all_workflows():
+            name = os.path.basename(p)
+            with open(p, encoding="utf-8") as f:
+                wf = json.load(f)
+            for n in wf["nodes"]:
+                t, r = n["type"], self.role_of(n)
+                if t in self.MUST_GREEN or t.startswith("ProMode"):
+                    self.assertEqual(r, "IN", f"{name}: 节点 {n['id']}（{t}）要用户填，应该是绿色")
+                if t in self.MUST_BLUE:
+                    self.assertEqual(r, "OUT", f"{name}: 节点 {n['id']}（{t}）是结果，应该是蓝色")
+                if t == "PreviewAny":
+                    self.assertIn(r, ("IN", "OUT"), f"{name}: 节点 {n['id']} 预览节点应该是绿色（扩写出的提示词）或蓝色（结果 / 状态）")
+                # Key：折叠 + 黄色 + 标题写明是哪个 Key，且只有 Key 才这样
+                self.assertEqual(r == "KEY", t == "RelayAPISettings", f"{name}: 节点 {n['id']}（{t}）")
+                self.assertEqual(bool(n["flags"].get("collapsed")), t in self.COLLAPSED, f"{name}: 节点 {n['id']}（{t}）折叠状态不对")
+                if t == "RelayAPISettings":
+                    self.assertTrue(n["title"].startswith("Key："), f"{name}: Key 节点标题要写明是哪个 Key")
+
+    def test_three_zone_groups(self):
+        """三个分组框：① 先填这里（绿）、② 自动处理（含黄色 Key）、③ 结果（蓝）；每个节点整个落在自己角色的框里，三个框互不相交。"""
+        zone_of = {"IN": 0, "KEY": 1, "AUTO": 1, "OUT": 2}
+        for p in all_workflows():
+            name = os.path.basename(p)
+            with open(p, encoding="utf-8") as f:
+                wf = json.load(f)
+            groups = wf["groups"]
+            self.assertEqual([g["title"][:2] for g in groups], ["① ", "② ", "③ "], f"{name}: 应该有三个分组框，按 ①②③ 排")
+            boxes = [(g["bounding"][0], g["bounding"][1], g["bounding"][0] + g["bounding"][2], g["bounding"][1] + g["bounding"][3]) for g in groups]
+            for i, a in enumerate(boxes):
+                for b in boxes[i + 1:]:
+                    self.assertFalse(a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3], f"{name}: 分组框互相重叠")
+            for n in wf["nodes"]:
+                r = self.rect(n)
+                inside = [i for i, b in enumerate(boxes) if b[0] <= r[0] and b[1] <= r[1] and r[2] <= b[2] and r[3] <= b[3]]
+                self.assertEqual(inside, [zone_of[self.role_of(n)]], f"{name}: 节点 {n['id']}（{n['type']}，{self.role_of(n)}）应该整个落在分组框 {zone_of[self.role_of(n)] + 1} 里，实际 {[i + 1 for i in inside]}")
+            for z, want in enumerate(("IN", "AUTO", "OUT")):    # 框里至少有一个对应角色的节点（没有空框）
+                self.assertTrue(any(zone_of[self.role_of(n)] == z for n in wf["nodes"]), f"{name}: 分组框 {z + 1}（{want}）是空的")
+
+    def test_opens_focused_on_the_first_zone(self):
+        """打开时直接对准「先填这里」：缩放不低于 0.62（再小 ComfyUI 不画节点上的字），分组框左上角避开左侧栏和顶部工具栏（标题不被盖住），★ 节点一屏内看得到。"""
+        for p in all_workflows():
+            name = os.path.basename(p)
+            with open(p, encoding="utf-8") as f:
+                wf = json.load(f)
+            ds = wf["extra"]["ds"]
+            self.assertGreaterEqual(ds["scale"], 0.62, f"{name}: 打开时缩放太小，节点上的字会不显示")
+            to_screen = lambda x, y: ((x + ds["offset"][0]) * ds["scale"], (y + ds["offset"][1]) * ds["scale"])
+            gx, gy = wf["groups"][0]["bounding"][:2]
+            sx, sy = to_screen(gx, gy)
+            self.assertTrue(60 <= sx <= 100 and 100 <= sy <= 150, f"{name}: 「先填这里」应该在屏幕左上角、避开侧栏和顶部工具栏，实际 ({sx:.0f}, {sy:.0f})")
+            for n in wf["nodes"]:
+                if n.get("title", "").startswith("★"):
+                    r = self.rect(n)
+                    ex, ey = to_screen(r[2], r[3])
+                    self.assertTrue(ex <= 1100 and ey <= 720, f"{name}: ★ 节点 {n['id']} 打开时超出一屏（右下角 {ex:.0f}, {ey:.0f}）")
+
+
+    # ── 应用界面（ComfyUI 的 App 模式）：extra.linearData = {inputs: [[节点 id, 控件名]], outputs: [节点 id]}，extra.linearMode = True ──
+    # 核心节点 / relayapi 的控件名（来自服务器 /object_info；自带的 pro-* 节点直接读它们的 INPUT_TYPES，不在这里重复写）
+    KNOWN_WIDGETS = {
+        "LoadImage": {"image"}, "LoadAudio": {"audio"}, "LoadVideo": {"file"}, "PrimitiveStringMultiline": {"value"},
+        "RelayImageGenerator": {"prompt", "ratio", "size", "quality", "format", "moderation", "seed"},
+        "RelayVideoGenerator": {"prompt", "ratio", "size", "duration", "seed", "enhance_prompt", "enable_HD"},
+    }
+    APP_OUTPUT_TYPES = {"SaveImage", "SaveVideo", "SaveAudioAdvanced", "ProVideoDub", "ProAppText"}
+    # 应用界面默认显示「最后执行完的那一条」。这些预览节点的文字不放进应用：它们和成片几乎同时执行完，会把成片挤到第二位（11：字幕已烧进成片、也存了 .srt）
+    APP_TEXT_EXEMPT = {"11": {20}}
+    MEDIA_SAVERS = {"SaveImage", "SaveVideo", "SaveAudioAdvanced", "ProVideoDub"}
+
+    @classmethod
+    def widget_names(cls, node_type):
+        """节点类型的控件名：pro-* 节点读 INPUT_TYPES（不是强制连线的输入），其余查 KNOWN_WIDGETS；都没有返回 None。"""
+        if node_type in cls.KNOWN_WIDGETS:
+            return cls.KNOWN_WIDGETS[node_type]
+        if not hasattr(cls, "_own"):
+            cls._own = {}
+            for pkg in sorted(os.listdir(os.path.join(ROOT, "custom-nodes"))):
+                if not pkg.startswith("pro-"):
+                    continue
+                mod = FLOW if pkg == "pro-flow" else load_node_pkg(pkg)
+                for name, klass in mod.NODE_CLASS_MAPPINGS.items():
+                    spec = klass.INPUT_TYPES()
+                    cls._own[name] = {k for sect in ("required", "optional") for k, v in spec.get(sect, {}).items()
+                                      if not (len(v) > 1 and isinstance(v[1], dict) and v[1].get("forceInput")) and (isinstance(v[0], list) or v[0] in ("STRING", "INT", "FLOAT", "BOOLEAN"))}
+        return cls._own.get(node_type)
+
+    def test_every_workflow_is_an_app(self):
+        """每个内置工作流都是应用：文件名 .app.json（左侧栏「应用」标签只列这种）、打开就是应用界面（linearMode）、右栏控件和结果节点都登记了。"""
+        for p in all_workflows():
+            name = os.path.basename(p)
+            self.assertTrue(name.endswith(".app.json"), f"{name}: 文件名要以 .app.json 结尾")
+            with open(p, encoding="utf-8") as f:
+                wf = json.load(f)
+            self.assertIs(wf["extra"].get("linearMode"), True, f"{name}: extra.linearMode 要是 true，打开才是应用界面")
+            data = wf["extra"]["linearData"]
+            self.assertTrue(data["inputs"] and data["outputs"], f"{name}: 右栏控件和结果节点都不能是空的")
+
+    def test_app_inputs_are_real_unlinked_widgets_with_distinct_labels(self):
+        """右栏登记的 [节点 id, 控件名] 必须真有这个控件（写错了 ComfyUI 只在控制台警告、右栏悄悄少一项），且不能是连了线的；
+        同一个工作流里不能出现两行一模一样的名字（两个「图像」上传、两个「比例」要各起名）。"""
+        for p in all_workflows():
+            name = os.path.basename(p)
+            with open(p, encoding="utf-8") as f:
+                wf = json.load(f)
+            nodes = {n["id"]: n for n in wf["nodes"]}
+            shown = []
+            for nid, widget in wf["extra"]["linearData"]["inputs"]:
+                self.assertTrue(nid in nodes, f"{name}: 右栏登记了不存在的节点 {nid}")
+                n = nodes[nid]
+                names = self.widget_names(n["type"])
+                self.assertIsNotNone(names, f"{name}: 节点 {nid}（{n['type']}）的控件名未知，请加进 KNOWN_WIDGETS")
+                self.assertTrue(widget in names, f"{name}: 节点 {nid}（{n['type']}）没有控件 {widget}（有：{sorted(names)}）")
+                inp = next((i for i in n["inputs"] if i["name"] == widget), None)
+                self.assertTrue(inp is None or inp.get("link") is None, f"{name}: 节点 {nid} 的 {widget} 连了线，不能放进右栏")
+                shown.append((inp or {}).get("label") or f"{n['type']}.{widget}")
+            self.assertEqual(len(shown), len(set(shown)), f"{name}: 右栏有重复的名字（要用 g.app_in 的 label 参数各起名）：{shown}")
+
+    def test_app_outputs_cover_every_result(self):
+        """结果节点登记齐全：所有保存图片 / 视频 / 音频的节点都要在应用里显示；每个预览节点显示的文字，应用界面里也要有（ProAppText）。"""
+        for p in all_workflows():
+            name = os.path.basename(p)
+            with open(p, encoding="utf-8") as f:
+                wf = json.load(f)
+            nodes = {n["id"]: n for n in wf["nodes"]}
+            src = {l[0]: (l[1], l[2]) for l in wf["links"]}
+            outs = wf["extra"]["linearData"]["outputs"]
+            self.assertEqual(len(outs), len(set(outs)), f"{name}: 结果节点重复登记")
+            for o in outs:
+                self.assertTrue(o in nodes, f"{name}: 登记了不存在的结果节点 {o}")
+                self.assertTrue(nodes[o]["type"] in self.APP_OUTPUT_TYPES, f"{name}: 结果节点 {o}（{nodes[o]['type']}）应用界面显示不了")
+            savers = {n["id"] for n in wf["nodes"] if n["type"] in self.MEDIA_SAVERS}
+            self.assertEqual(savers, savers & set(outs), f"{name}: 这些保存结果的节点没登记成应用的结果，应用里看不到：{sorted(savers - set(outs))}")
+
+            def source_of(n):
+                link = next(i for i in n["inputs"] if i["name"] in ("source", "text"))["link"]
+                return src[link]
+            num = name.split("-")[0]
+            previews = {source_of(n) for n in wf["nodes"] if n["type"] == "PreviewAny" and n["id"] not in self.APP_TEXT_EXEMPT.get(num, ())}
+            app_texts = {source_of(n) for n in wf["nodes"] if n["type"] == "ProAppText"}
+            self.assertEqual(previews - app_texts, set(), f"{name}: 这些预览节点显示的文字，应用界面里看不到（缺 app_text）：{sorted(previews - app_texts)}")
+            for n in wf["nodes"]:
+                if n["type"] == "ProAppText":
+                    label, only_on_error = n["widgets_values"]
+                    self.assertEqual(label.startswith("出错信息"), only_on_error, f"{name}: 节点 {n['id']}「{label}」：出错信息才用「只在出错时显示」，别的要总是显示")
+                    self.assertEqual(n["title"], "应用界面 · " + label)
 
     def test_default_media_files_exist_in_assets(self):
         """ComfyUI 提交前会校验所有连着的节点（包括没选中的那一路）：加载音频 / 视频节点默认引用的文件必须随套件带上（assets/ → data/input）。

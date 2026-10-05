@@ -43,7 +43,7 @@ class ProGeminiMusic:
         if "runninghub" in base or not base:  # 模板里 api_base 是占位的公网地址，别拿来当 geminiweb 地址
             base = DEFAULT_BASE
         if not key:
-            raise RuntimeError("[Gemini 音乐] 没有 API Key：请在 Relay API Settings 的 apikey 填 geminiweb 的 API Key（与 04 文生视频相同）")
+            raise RuntimeError("[Gemini 音乐] 没有 API Key：请点开画布上标题为「Key：geminiweb」的节点（折叠着的，点标题左边的圆点展开；类型 Relay API Settings），在 apikey 填 geminiweb 的 API Key（与 10 文生视频成片相同）")
         model = model.strip() or "gemini-music"
         try:
             resp = requests.post(

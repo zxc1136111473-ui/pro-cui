@@ -1,19 +1,21 @@
 {
-  "last_node_id": 77,
-  "last_link_id": 23,
+  "last_node_id": 91,
+  "last_link_id": 25,
   "nodes": [
     {
       "id": 1,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1380
+        1454
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 0,
       "mode": 0,
       "inputs": [],
@@ -40,14 +42,16 @@
         "http://airelay-newapi:3000",
         "gemini-image"
       ],
-      "title": "Relay API Settings（网关 Key）"
+      "title": "Key：网关（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 5,
       "type": "ProPosterPrompt",
       "pos": [
-        60,
-        1730
+        1160,
+        280
       ],
       "size": [
         400,
@@ -96,6 +100,15 @@
           "widget": {
             "name": "use_product_image"
           }
+        },
+        {
+          "name": "style",
+          "type": "COMBO",
+          "widget": {
+            "name": "style"
+          },
+          "link": null,
+          "label": "风格"
         }
       ],
       "outputs": [
@@ -121,14 +134,16 @@
         false,
         ""
       ],
-      "title": "海报提示词（风格在这里选；文字由 AI 填）"
+      "title": "海报提示词（风格在这里选；文字由 AI 填）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 2,
       "type": "RelayImageGenerator",
       "pos": [
-        520,
-        1380
+        990,
+        1390
       ],
       "size": [
         380,
@@ -278,8 +293,8 @@
       "id": 3,
       "type": "ProAliImage",
       "pos": [
-        960,
-        1380
+        440,
+        1390
       ],
       "size": [
         440,
@@ -341,8 +356,8 @@
       "id": 6,
       "type": "LoadImage",
       "pos": [
-        520,
-        2040
+        1160,
+        780
       ],
       "size": [
         380,
@@ -351,7 +366,17 @@
       "flags": {},
       "order": 4,
       "mode": 0,
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "商品图（带图模式）"
+        }
+      ],
       "outputs": [
         {
           "name": "IMAGE",
@@ -375,14 +400,16 @@
         "demo_product.png",
         "image"
       ],
-      "title": "商品图（只在「带商品图」模式用）"
+      "title": "商品图（只在「带商品图」模式用）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 4,
       "type": "SaveImage",
       "pos": [
-        1820,
-        1380
+        1920,
+        1390
       ],
       "size": [
         340,
@@ -404,14 +431,16 @@
       },
       "widgets_values": [
         "poster"
-      ]
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
     },
     {
       "id": 77,
       "type": "ProModePoster",
       "pos": [
         60,
-        60
+        90
       ],
       "size": [
         520,
@@ -447,20 +476,24 @@
       "widgets_values": [
         "网关 Gemini · 不带商品图"
       ],
-      "title": "★ 先选模式"
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 31,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        870
+        1390
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 7,
       "mode": 0,
       "inputs": [],
@@ -488,14 +521,16 @@
         "https://dashscope.aliyuncs.com/compatible-mode",
         "qwen3.8-flash"
       ],
-      "title": "Relay API Settings（阿里文字）"
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 70,
       "type": "ProAliPromptWriter",
       "pos": [
         60,
-        240
+        280
       ],
       "size": [
         520,
@@ -525,7 +560,8 @@
           "type": "STRING",
           "links": [
             2,
-            3
+            3,
+            24
           ],
           "slot_index": 0
         },
@@ -546,14 +582,16 @@
         1,
         "randomize"
       ],
-      "title": "★ 只填这里：一句话需求"
+      "title": "★ 只填这里：一句话需求",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 74,
       "type": "PreviewAny",
       "pos": [
-        620,
-        240
+        640,
+        280
       ],
       "size": [
         460,
@@ -574,14 +612,16 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "AI 扩写出的结果（想看模型写了什么）"
+      "title": "AI 扩写出的结果（想看模型写了什么）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 75,
       "type": "ProPosterFields",
       "pos": [
-        1120,
-        240
+        640,
+        650
       ],
       "size": [
         300,
@@ -635,14 +675,16 @@
         "Node name for S&R": "ProPosterFields"
       },
       "widgets_values": [],
-      "title": "拆成标题 / 副标题 / 角标 / 画面元素"
+      "title": "拆成标题 / 副标题 / 角标 / 画面元素",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 7,
       "type": "ProGate",
       "pos": [
-        960,
-        2040
+        440,
+        1890
       ],
       "size": [
         260,
@@ -688,8 +730,8 @@
       "id": 10,
       "type": "ProPick2x1",
       "pos": [
-        1460,
-        1380
+        1480,
+        1390
       ],
       "size": [
         300,
@@ -740,8 +782,8 @@
       "id": 12,
       "type": "ProPick2x1",
       "pos": [
-        1460,
-        1590
+        1480,
+        1620
       ],
       "size": [
         300,
@@ -775,7 +817,8 @@
           "name": "out0",
           "type": "*",
           "links": [
-            23
+            23,
+            25
           ],
           "slot_index": 0
         }
@@ -792,8 +835,8 @@
       "id": 11,
       "type": "PreviewAny",
       "pos": [
-        1820,
-        1760
+        1920,
+        1780
       ],
       "size": [
         360,
@@ -814,7 +857,79 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "结果 / 错误信息（出错时这里显示原因）"
+      "title": "结果 / 错误信息（出错时这里显示原因）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 90,
+      "type": "ProAppText",
+      "pos": [
+        1920,
+        1960
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 24
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "AI 写的海报文案",
+        false
+      ],
+      "title": "应用界面 · AI 写的海报文案",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 91,
+      "type": "ProAppText",
+      "pos": [
+        1920,
+        2040
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 25
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "出错信息",
+        true
+      ],
+      "title": "应用界面 · 出错信息",
+      "color": "#223",
+      "bgcolor": "#335"
     }
   ],
   "links": [
@@ -1001,10 +1116,100 @@
       11,
       0,
       "*"
+    ],
+    [
+      24,
+      70,
+      0,
+      90,
+      0,
+      "STRING"
+    ],
+    [
+      25,
+      12,
+      0,
+      91,
+      0,
+      "*"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 先填这里：选模式 → 写一句话 → 传素材 → 调参数",
+      "bounding": [
+        30,
+        -20,
+        1560,
+        1230
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        1280,
+        1780,
+        740
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1890,
+        1280,
+        420,
+        800
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
   "config": {},
-  "extra": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        205
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          77,
+          "mode"
+        ],
+        [
+          70,
+          "idea"
+        ],
+        [
+          6,
+          "image"
+        ],
+        [
+          5,
+          "style"
+        ]
+      ],
+      "outputs": [
+        4,
+        90,
+        91
+      ]
+    }
+  },
   "version": 0.4
 }

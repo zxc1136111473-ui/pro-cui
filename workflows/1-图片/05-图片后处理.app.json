@@ -7,7 +7,7 @@
       "type": "LoadImage",
       "pos": [
         60,
-        380
+        280
       ],
       "size": [
         400,
@@ -16,7 +16,17 @@
       "flags": {},
       "order": 0,
       "mode": 0,
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "图片"
+        }
+      ],
       "outputs": [
         {
           "name": "IMAGE",
@@ -41,14 +51,16 @@
         "demo_product.png",
         "image"
       ],
-      "title": "① 上传图片（可接 01~04 出的图）"
+      "title": "① 上传图片（可接 01~04 出的图）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 3,
       "type": "ImageScaleBy",
       "pos": [
-        520,
-        380
+        60,
+        1190
       ],
       "size": [
         300,
@@ -87,8 +99,8 @@
       "id": 4,
       "type": "ImageSharpen",
       "pos": [
-        520,
-        520
+        470,
+        1190
       ],
       "size": [
         300,
@@ -128,8 +140,8 @@
       "id": 6,
       "type": "ProLabels",
       "pos": [
-        1260,
-        380
+        520,
+        280
       ],
       "size": [
         460,
@@ -143,6 +155,33 @@
           "name": "image",
           "type": "IMAGE",
           "link": 6
+        },
+        {
+          "name": "text1",
+          "type": "STRING",
+          "widget": {
+            "name": "text1"
+          },
+          "link": null,
+          "label": "标签 1 文字"
+        },
+        {
+          "name": "text2",
+          "type": "STRING",
+          "widget": {
+            "name": "text2"
+          },
+          "link": null,
+          "label": "标签 2 文字"
+        },
+        {
+          "name": "text3",
+          "type": "STRING",
+          "widget": {
+            "name": "text3"
+          },
+          "link": null,
+          "label": "标签 3 文字"
         }
       ],
       "outputs": [
@@ -174,14 +213,16 @@
         "黑底金字",
         4.5
       ],
-      "title": "促销标签（3 个，文字留空=不加；样式/位置/大小按图片宽度的百分比）"
+      "title": "促销标签（3 个，文字留空=不加；样式/位置/大小按图片宽度的百分比）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 8,
       "type": "SaveImage",
       "pos": [
-        2140,
-        380
+        1730,
+        1190
       ],
       "size": [
         340,
@@ -203,14 +244,16 @@
       },
       "widgets_values": [
         "post/处理后"
-      ]
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
     },
     {
       "id": 77,
       "type": "ProModeProcess",
       "pos": [
         60,
-        60
+        90
       ],
       "size": [
         520,
@@ -244,14 +287,16 @@
       "widgets_values": [
         "放大 2 倍"
       ],
-      "title": "★ 先选模式"
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 5,
       "type": "ProPick2x1",
       "pos": [
-        900,
-        380
+        880,
+        1190
       ],
       "size": [
         300,
@@ -303,8 +348,8 @@
       "id": 7,
       "type": "ProPick2x1",
       "pos": [
-        1780,
-        380
+        1290,
+        1190
       ],
       "size": [
         300,
@@ -434,8 +479,84 @@
       "*"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 先填这里：选模式 → 传素材 → 调参数",
+      "bounding": [
+        30,
+        -20,
+        980,
+        1030
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）",
+      "bounding": [
+        30,
+        1080,
+        1590,
+        290
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1700,
+        1080,
+        400,
+        460
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
   "config": {},
-  "extra": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        205
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          77,
+          "mode"
+        ],
+        [
+          2,
+          "image"
+        ],
+        [
+          6,
+          "text1"
+        ],
+        [
+          6,
+          "text2"
+        ],
+        [
+          6,
+          "text3"
+        ]
+      ],
+      "outputs": [
+        8
+      ]
+    }
+  },
   "version": 0.4
 }

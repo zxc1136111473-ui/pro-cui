@@ -1,19 +1,21 @@
 {
-  "last_node_id": 77,
-  "last_link_id": 14,
+  "last_node_id": 91,
+  "last_link_id": 16,
   "nodes": [
     {
       "id": 11,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1380
+        1114
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 0,
       "mode": 0,
       "inputs": [],
@@ -40,20 +42,24 @@
         "http://airelay-geminiweb:8083",
         "gemini-video"
       ],
-      "title": "Relay API Settings（geminiweb Key，Gemini 音乐用）"
+      "title": "Key：geminiweb（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 21,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1730
+        1178
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 1,
       "mode": 0,
       "inputs": [],
@@ -80,14 +86,16 @@
         "http://airelay-newapi:3000",
         "suno_music"
       ],
-      "title": "Relay API Settings（Suno Key）"
+      "title": "Key：Suno（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 12,
       "type": "ProGeminiMusic",
       "pos": [
-        520,
-        1380
+        440,
+        1050
       ],
       "size": [
         400,
@@ -147,8 +155,8 @@
       "id": 22,
       "type": "RelaySoundGenerator",
       "pos": [
-        520,
-        1740
+        440,
+        1430
       ],
       "size": [
         400,
@@ -234,8 +242,8 @@
       "id": 5,
       "type": "SaveAudioAdvanced",
       "pos": [
-        1380,
-        1380
+        1390,
+        1050
       ],
       "size": [
         340,
@@ -259,14 +267,16 @@
         "audio/音乐",
         "mp3",
         "V0"
-      ]
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
     },
     {
       "id": 77,
       "type": "ProModeMusic",
       "pos": [
         60,
-        60
+        90
       ],
       "size": [
         520,
@@ -293,20 +303,24 @@
       "widgets_values": [
         "Gemini Lyria（约 1 分钟，成功率约一半）"
       ],
-      "title": "★ 先选模式"
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 31,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        870
+        1050
       ],
       "size": [
         400,
         300
       ],
-      "flags": {},
+      "flags": {
+        "collapsed": true
+      },
       "order": 6,
       "mode": 0,
       "inputs": [],
@@ -333,14 +347,16 @@
         "https://dashscope.aliyuncs.com/compatible-mode",
         "qwen3.8-flash"
       ],
-      "title": "Relay API Settings（阿里文字）"
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
     },
     {
       "id": 70,
       "type": "ProAliPromptWriter",
       "pos": [
         60,
-        240
+        280
       ],
       "size": [
         520,
@@ -371,7 +387,8 @@
           "links": [
             2,
             5,
-            6
+            6,
+            15
           ],
           "slot_index": 0
         },
@@ -392,14 +409,16 @@
         1,
         "randomize"
       ],
-      "title": "★ 只填这里：一句话需求"
+      "title": "★ 只填这里：一句话需求",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 74,
       "type": "PreviewAny",
       "pos": [
-        620,
-        240
+        640,
+        280
       ],
       "size": [
         460,
@@ -420,14 +439,16 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "AI 扩写出的结果（想看模型写了什么）"
+      "title": "AI 扩写出的结果（想看模型写了什么）",
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 10,
       "type": "ProPick2x1",
       "pos": [
-        1000,
-        1380
+        950,
+        1050
       ],
       "size": [
         300,
@@ -478,8 +499,8 @@
       "id": 13,
       "type": "ProPick2x1",
       "pos": [
-        1000,
-        1590
+        950,
+        1280
       ],
       "size": [
         300,
@@ -513,7 +534,8 @@
           "name": "out0",
           "type": "*",
           "links": [
-            14
+            14,
+            16
           ],
           "slot_index": 0
         }
@@ -530,8 +552,8 @@
       "id": 6,
       "type": "PreviewAny",
       "pos": [
-        1380,
-        1640
+        1390,
+        1320
       ],
       "size": [
         360,
@@ -552,7 +574,79 @@
         "Node name for S&R": "PreviewAny"
       },
       "widgets_values": [],
-      "title": "结果 / 错误信息（出错时这里显示原因）"
+      "title": "结果 / 错误信息（出错时这里显示原因）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 90,
+      "type": "ProAppText",
+      "pos": [
+        1390,
+        1500
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 15
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "AI 写的音乐提示词",
+        false
+      ],
+      "title": "应用界面 · AI 写的音乐提示词",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 91,
+      "type": "ProAppText",
+      "pos": [
+        1390,
+        1580
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 16
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "出错信息",
+        true
+      ],
+      "title": "应用界面 · 出错信息",
+      "color": "#223",
+      "bgcolor": "#335"
     }
   ],
   "links": [
@@ -667,10 +761,92 @@
       6,
       0,
       "*"
+    ],
+    [
+      15,
+      70,
+      0,
+      90,
+      0,
+      "STRING"
+    ],
+    [
+      16,
+      13,
+      0,
+      91,
+      0,
+      "*"
     ]
   ],
-  "groups": [],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 先填这里：选模式 → 写一句话",
+      "bounding": [
+        30,
+        -20,
+        1100,
+        890
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        940,
+        1250,
+        940
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1360,
+        940,
+        420,
+        680
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
   "config": {},
-  "extra": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        205
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          77,
+          "mode"
+        ],
+        [
+          70,
+          "idea"
+        ]
+      ],
+      "outputs": [
+        5,
+        90,
+        91
+      ]
+    }
+  },
   "version": 0.4
 }
