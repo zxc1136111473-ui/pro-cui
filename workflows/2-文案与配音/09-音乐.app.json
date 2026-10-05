@@ -846,7 +846,8 @@
         90,
         91
       ]
-    }
+    },
+    "appDescription": "生成约 30 秒的纯音乐配乐：Gemini Lyria（默认，约 1 分钟，成功率约一半）或 Suno（需要先配好 Suno 渠道，没配就别选）。"
   },
   "version": 0.4
 }

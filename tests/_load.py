@@ -18,5 +18,6 @@ def load(pkg):
     path = os.path.join(ROOT, "custom-nodes", pkg, "__init__.py")
     spec = importlib.util.spec_from_file_location("t_" + pkg.replace("-", "_"), path)
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod        # 和 ComfyUI 的加载器一样先登记：包里用相对导入（pro-chat）才找得到同级模块
     spec.loader.exec_module(mod)
     return mod

@@ -1,0 +1,3243 @@
+{
+ "ImageScaleBy": {
+  "essentials_category": "Image Tools",
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "image": [
+     "IMAGE"
+    ],
+    "scale_by": [
+     "FLOAT",
+     {
+      "default": 1.0,
+      "max": 8.0,
+      "min": 0.01,
+      "step": 0.01
+     }
+    ],
+    "upscale_method": [
+     [
+      "nearest-exact",
+      "bilinear",
+      "area",
+      "bicubic",
+      "lanczos"
+     ]
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "image",
+    "upscale_method",
+    "scale_by"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ImageScaleBy",
+  "output": [
+   "IMAGE"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "IMAGE"
+  ],
+  "output_node": false
+ },
+ "ImageScaleToMaxDimension": {
+  "api_node": false,
+  "deprecated": false,
+  "dev_only": false,
+  "essentials_category": null,
+  "experimental": false,
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "image": [
+     "IMAGE",
+     {}
+    ],
+    "largest_size": [
+     "INT",
+     {
+      "default": 512,
+      "max": 16384,
+      "min": 0,
+      "step": 1
+     }
+    ],
+    "upscale_method": [
+     "COMBO",
+     {
+      "multiselect": false,
+      "options": [
+       "area",
+       "lanczos",
+       "bilinear",
+       "nearest-exact",
+       "bilinear",
+       "bicubic"
+      ]
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "image",
+    "upscale_method",
+    "largest_size"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ImageScaleToMaxDimension",
+  "output": [
+   "IMAGE"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_matchtypes": null,
+  "output_name": [
+   "IMAGE"
+  ],
+  "output_node": false,
+  "output_tooltips": [
+   null
+  ],
+  "price_badge": null
+ },
+ "ImageSharpen": {
+  "api_node": false,
+  "deprecated": false,
+  "dev_only": false,
+  "essentials_category": null,
+  "experimental": false,
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "alpha": [
+     "FLOAT",
+     {
+      "advanced": true,
+      "default": 1.0,
+      "max": 5.0,
+      "min": 0.0,
+      "step": 0.01
+     }
+    ],
+    "image": [
+     "IMAGE",
+     {}
+    ],
+    "sharpen_radius": [
+     "INT",
+     {
+      "advanced": true,
+      "default": 1,
+      "max": 31,
+      "min": 1,
+      "step": 1
+     }
+    ],
+    "sigma": [
+     "FLOAT",
+     {
+      "advanced": true,
+      "default": 1.0,
+      "max": 10.0,
+      "min": 0.1,
+      "step": 0.01
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "image",
+    "sharpen_radius",
+    "sigma",
+    "alpha"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ImageSharpen",
+  "output": [
+   "IMAGE"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_matchtypes": null,
+  "output_name": [
+   "IMAGE"
+  ],
+  "output_node": false,
+  "output_tooltips": [
+   null
+  ],
+  "price_badge": null
+ },
+ "LoadAudio": {
+  "api_node": false,
+  "deprecated": false,
+  "dev_only": false,
+  "essentials_category": "Audio",
+  "experimental": false,
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "audio": [
+     "COMBO",
+     {
+      "audio_upload": true,
+      "multiselect": false,
+      "options": [
+       "无背景音乐.wav",
+       "请上传视频.mp4"
+      ]
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "audio"
+   ]
+  },
+  "is_input_list": false,
+  "name": "LoadAudio",
+  "output": [
+   "AUDIO"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_matchtypes": null,
+  "output_name": [
+   "AUDIO"
+  ],
+  "output_node": false,
+  "output_tooltips": [
+   null
+  ],
+  "price_badge": null
+ },
+ "LoadImage": {
+  "essentials_category": "Basics",
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "image": [
+     [
+      "batch_1791096740362_input.png",
+      "batch_1791096781454_input.png",
+      "batch_1791100264161_batch-test.png",
+      "canvas_1791096638584_0.png",
+      "canvas_1791096742573_0.png",
+      "demo_product.png",
+      "input.png"
+     ],
+     {
+      "image_upload": true
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "image"
+   ]
+  },
+  "is_input_list": false,
+  "name": "LoadImage",
+  "output": [
+   "IMAGE",
+   "MASK"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "IMAGE",
+   "MASK"
+  ],
+  "output_node": false
+ },
+ "LoadVideo": {
+  "api_node": false,
+  "deprecated": false,
+  "dev_only": false,
+  "essentials_category": "Basics",
+  "experimental": false,
+  "has_intermediate_output": true,
+  "input": {
+   "required": {
+    "file": [
+     "COMBO",
+     {
+      "multiselect": false,
+      "options": [
+       "请上传视频.mp4"
+      ],
+      "video_upload": true
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "file"
+   ]
+  },
+  "is_input_list": false,
+  "name": "LoadVideo",
+  "output": [
+   "VIDEO"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_matchtypes": null,
+  "output_name": [
+   "VIDEO"
+  ],
+  "output_node": false,
+  "output_tooltips": [
+   null
+  ],
+  "price_badge": null
+ },
+ "PreviewAny": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "source": [
+     "*",
+     {}
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "source"
+   ]
+  },
+  "is_input_list": false,
+  "name": "PreviewAny",
+  "output": [
+   "STRING"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "STRING"
+  ],
+  "output_node": true
+ },
+ "PrimitiveStringMultiline": {
+  "api_node": false,
+  "deprecated": false,
+  "dev_only": false,
+  "essentials_category": "Basics",
+  "experimental": false,
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "value": [
+     "STRING",
+     {
+      "multiline": true
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "value"
+   ]
+  },
+  "is_input_list": false,
+  "name": "PrimitiveStringMultiline",
+  "output": [
+   "STRING"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_matchtypes": null,
+  "output_name": [
+   "STRING"
+  ],
+  "output_node": false,
+  "output_tooltips": [
+   null
+  ],
+  "price_badge": null
+ },
+ "ProAliASR": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "audio": [
+     "AUDIO"
+    ],
+    "language": [
+     [
+      "auto",
+      "zh",
+      "en",
+      "ja",
+      "ko"
+     ],
+     {
+      "default": "auto"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info"
+   ],
+   "required": [
+    "audio",
+    "language"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAliASR",
+  "output": [
+   "STRING",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "text",
+   "response"
+  ],
+  "output_node": false
+ },
+ "ProAliImage": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "level": [
+     [
+      "1K",
+      "2K"
+     ],
+     {
+      "default": "1K"
+     }
+    ],
+    "model": [
+     [
+      "qwen-image-2.0-pro",
+      "qwen-image-3.0"
+     ],
+     {
+      "default": "qwen-image-2.0-pro"
+     }
+    ],
+    "prompt": [
+     "STRING",
+     {
+      "default": "一杯冰美式咖啡放在木桌上，自然光，产品摄影",
+      "multiline": true
+     }
+    ],
+    "ratio": [
+     [
+      "1:1",
+      "3:4",
+      "4:3",
+      "9:16",
+      "16:9",
+      "2:3",
+      "3:2"
+     ],
+     {
+      "default": "3:4"
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "max": 2147483646,
+      "min": 0
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info"
+   ],
+   "required": [
+    "prompt",
+    "model",
+    "ratio",
+    "level",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAliImage",
+  "output": [
+   "IMAGE",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "image",
+   "response"
+  ],
+  "output_node": false
+ },
+ "ProAliImageEdit": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "image2": [
+     "IMAGE"
+    ],
+    "image3": [
+     "IMAGE"
+    ],
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "image1": [
+     "IMAGE"
+    ],
+    "model": [
+     [
+      "qwen-image-edit-max"
+     ],
+     {
+      "default": "qwen-image-edit-max"
+     }
+    ],
+    "prompt": [
+     "STRING",
+     {
+      "default": "请编辑这张商品照片：把原来的背景完全去掉，换成干净、无缝的纯白色（#FFFFFF）影棚背景；商品本身保持原样（形状、细节、颜色、角度都不要改），在商品下方加柔和自然的接触阴影；专业电商产品图。",
+      "multiline": true
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "max": 2147483646,
+      "min": 0
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "image2",
+    "image3",
+    "info"
+   ],
+   "required": [
+    "image1",
+    "prompt",
+    "model",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAliImageEdit",
+  "output": [
+   "IMAGE",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "image",
+   "response"
+  ],
+  "output_node": false
+ },
+ "ProAliPromptWriter": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "image": [
+     "IMAGE"
+    ],
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "idea": [
+     "STRING",
+     {
+      "default": "",
+      "display_name": "一句话需求",
+      "multiline": true,
+      "tooltip": "想要什么，一句话说清楚；模型会按下面的「扩写指令」写成完整提示词"
+     }
+    ],
+    "instruction": [
+     "STRING",
+     {
+      "default": "",
+      "display_name": "扩写指令（一般不用改）",
+      "multiline": true,
+      "tooltip": "告诉模型怎么写、写成什么样；各工作流已经按用途写好"
+     }
+    ],
+    "model": [
+     "STRING",
+     {
+      "default": "qwen3.8-flash",
+      "display_name": "模型"
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "display_name": "随机数（变一下就重新扩写）",
+      "max": 18446744073709551615,
+      "min": 0
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info",
+    "image"
+   ],
+   "required": [
+    "idea",
+    "instruction",
+    "model",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAliPromptWriter",
+  "output": [
+   "STRING",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "text",
+   "response"
+  ],
+  "output_node": false
+ },
+ "ProAliTTS": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "custom_voice": [
+     "STRING",
+     {
+      "default": "",
+      "tooltip": "自定义音色 id（音色设计 / 声音克隆节点输出）；填了就忽略上面的音色和模型"
+     }
+    ],
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ],
+    "instructions": [
+     "STRING",
+     {
+      "default": "",
+      "multiline": true,
+      "placeholder": "仅 instruct 模型有效，例如：语气热情洪亮，语速偏快，像直播间主播带货"
+     }
+    ],
+    "speed": [
+     "FLOAT",
+     {
+      "default": 1.0,
+      "max": 2.0,
+      "min": 0.5,
+      "step": 0.05,
+      "tooltip": "语速倍数，本地变速不变调（阿里接口本身没有语速参数）"
+     }
+    ],
+    "volume_db": [
+     "FLOAT",
+     {
+      "default": 0.0,
+      "max": 12.0,
+      "min": -20.0,
+      "step": 0.5,
+      "tooltip": "音量增减 dB，本地处理"
+     }
+    ]
+   },
+   "required": {
+    "language": [
+     [
+      "Chinese",
+      "English",
+      "Japanese",
+      "Korean",
+      "German",
+      "French",
+      "Spanish",
+      "Italian",
+      "Portuguese",
+      "Russian",
+      "Auto"
+     ],
+     {
+      "default": "Chinese"
+     }
+    ],
+    "model": [
+     [
+      "qwen3-tts-flash",
+      "qwen3-tts-instruct-flash"
+     ],
+     {
+      "default": "qwen3-tts-flash"
+     }
+    ],
+    "text": [
+     "STRING",
+     {
+      "default": "夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。",
+      "multiline": true
+     }
+    ],
+    "voice": [
+     [
+      "Cherry",
+      "Serena",
+      "Ethan",
+      "Chelsie",
+      "Momo",
+      "Vivian",
+      "Moon",
+      "Maia",
+      "Kai",
+      "Nofish",
+      "Bella",
+      "Jennifer",
+      "Ryan",
+      "Katerina",
+      "Aiden",
+      "Eldric Sage",
+      "Mia",
+      "Mochi",
+      "Bellona",
+      "Vincent",
+      "Bunny",
+      "Neil",
+      "Elias",
+      "Arthur",
+      "Nini",
+      "Ebona",
+      "Seren",
+      "Pip",
+      "Stella",
+      "Bodega",
+      "Sonrisa",
+      "Alek",
+      "Dolce",
+      "Sohee",
+      "Ono Anna",
+      "Lenn",
+      "Emilien",
+      "Andre",
+      "Radio Gol",
+      "Jada",
+      "Dylan",
+      "Li",
+      "Marcus",
+      "Roy",
+      "Peter",
+      "Sunny",
+      "Eric",
+      "Rocky",
+      "Kiki"
+     ],
+     {
+      "default": "Cherry"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "instructions",
+    "speed",
+    "volume_db",
+    "custom_voice",
+    "info"
+   ],
+   "required": [
+    "text",
+    "voice",
+    "model",
+    "language"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAliTTS",
+  "output": [
+   "AUDIO",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "audio",
+   "response"
+  ],
+  "output_node": false
+ },
+ "ProAliVoiceClone": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "audio": [
+     "AUDIO"
+    ],
+    "name": [
+     "STRING",
+     {
+      "default": "myclone",
+      "tooltip": "只能用字母/数字/下划线"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info"
+   ],
+   "required": [
+    "audio",
+    "name"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAliVoiceClone",
+  "output": [
+   "STRING"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "voice"
+  ],
+  "output_node": false
+ },
+ "ProAliVoiceDesign": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "language": [
+     [
+      "zh",
+      "en",
+      "ja",
+      "ko",
+      "de",
+      "fr",
+      "es",
+      "it",
+      "pt",
+      "ru"
+     ],
+     {
+      "default": "zh"
+     }
+    ],
+    "name": [
+     "STRING",
+     {
+      "default": "myvoice",
+      "tooltip": "只能用字母/数字/下划线"
+     }
+    ],
+    "preview_text": [
+     "STRING",
+     {
+      "default": "欢迎选购我们的新品，限时三天，满一百九十九减五十。",
+      "multiline": true
+     }
+    ],
+    "voice_prompt": [
+     "STRING",
+     {
+      "default": "沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍",
+      "multiline": true
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info"
+   ],
+   "required": [
+    "voice_prompt",
+    "preview_text",
+    "name",
+    "language"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAliVoiceDesign",
+  "output": [
+   "STRING",
+   "AUDIO"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "voice",
+   "preview"
+  ],
+  "output_node": false
+ },
+ "ProAppText": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "label": [
+     "STRING",
+     {
+      "default": "文字结果",
+      "display_name": "名称（应用界面里显示的标题）"
+     }
+    ],
+    "only_on_error": [
+     "BOOLEAN",
+     {
+      "default": false,
+      "display_name": "显示时机",
+      "label_off": "总是显示",
+      "label_on": "只在出错时显示"
+     }
+    ],
+    "text": [
+     "STRING",
+     {
+      "forceInput": true
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "text",
+    "label",
+    "only_on_error"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAppText",
+  "output": [],
+  "output_is_list": [],
+  "output_name": [],
+  "output_node": true
+ },
+ "ProGate": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "value": [
+     "*",
+     {
+      "lazy": true
+     }
+    ]
+   },
+   "required": {
+    "enabled": [
+     "BOOLEAN",
+     {
+      "default": true,
+      "display_name": "启用",
+      "label_off": "不用",
+      "label_on": "用"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "value"
+   ],
+   "required": [
+    "enabled"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProGate",
+  "output": [
+   "*"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "value"
+  ],
+  "output_node": false
+ },
+ "ProGeminiMusic": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "model": [
+     "STRING",
+     {
+      "default": "gemini-music"
+     }
+    ],
+    "prompt": [
+     "STRING",
+     {
+      "default": "创作一段30秒的轻快电子流行纯音乐，适合短视频配乐",
+      "multiline": true
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "max": 18446744073709551615,
+      "min": 0
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info"
+   ],
+   "required": [
+    "prompt",
+    "model",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProGeminiMusic",
+  "output": [
+   "AUDIO",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "audio",
+   "response"
+  ],
+  "output_node": false
+ },
+ "ProLabels": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "image": [
+     "IMAGE"
+    ],
+    "margin_pct": [
+     "FLOAT",
+     {
+      "default": 3.0,
+      "max": 20.0,
+      "min": 0.0,
+      "step": 0.5
+     }
+    ],
+    "position1": [
+     [
+      "左上",
+      "右上",
+      "左下",
+      "右下",
+      "上中",
+      "下中",
+      "正中"
+     ],
+     {
+      "default": "左上"
+     }
+    ],
+    "position2": [
+     [
+      "左上",
+      "右上",
+      "左下",
+      "右下",
+      "上中",
+      "下中",
+      "正中"
+     ],
+     {
+      "default": "右下"
+     }
+    ],
+    "position3": [
+     [
+      "左上",
+      "右上",
+      "左下",
+      "右下",
+      "上中",
+      "下中",
+      "正中"
+     ],
+     {
+      "default": "左下"
+     }
+    ],
+    "shape": [
+     [
+      "圆角矩形",
+      "胶囊",
+      "直角",
+      "圆形"
+     ],
+     {
+      "default": "圆角矩形"
+     }
+    ],
+    "size1_pct": [
+     "FLOAT",
+     {
+      "default": 5.0,
+      "max": 30.0,
+      "min": 1.0,
+      "step": 0.5
+     }
+    ],
+    "size2_pct": [
+     "FLOAT",
+     {
+      "default": 6.0,
+      "max": 30.0,
+      "min": 1.0,
+      "step": 0.5
+     }
+    ],
+    "size3_pct": [
+     "FLOAT",
+     {
+      "default": 4.5,
+      "max": 30.0,
+      "min": 1.0,
+      "step": 0.5
+     }
+    ],
+    "style1": [
+     [
+      "红底白字",
+      "黄底黑字",
+      "黑底金字",
+      "蓝底白字",
+      "绿底白字",
+      "白底红字",
+      "无底白字描边"
+     ],
+     {
+      "default": "红底白字"
+     }
+    ],
+    "style2": [
+     [
+      "红底白字",
+      "黄底黑字",
+      "黑底金字",
+      "蓝底白字",
+      "绿底白字",
+      "白底红字",
+      "无底白字描边"
+     ],
+     {
+      "default": "黄底黑字"
+     }
+    ],
+    "style3": [
+     [
+      "红底白字",
+      "黄底黑字",
+      "黑底金字",
+      "蓝底白字",
+      "绿底白字",
+      "白底红字",
+      "无底白字描边"
+     ],
+     {
+      "default": "黑底金字"
+     }
+    ],
+    "text1": [
+     "STRING",
+     {
+      "default": "限时三天",
+      "multiline": false
+     }
+    ],
+    "text2": [
+     "STRING",
+     {
+      "default": "满199减50",
+      "multiline": false
+     }
+    ],
+    "text3": [
+     "STRING",
+     {
+      "default": "",
+      "multiline": false
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "image",
+    "shape",
+    "margin_pct",
+    "text1",
+    "position1",
+    "style1",
+    "size1_pct",
+    "text2",
+    "position2",
+    "style2",
+    "size2_pct",
+    "text3",
+    "position3",
+    "style3",
+    "size3_pct"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProLabels",
+  "output": [
+   "IMAGE"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "image"
+  ],
+  "output_node": false
+ },
+ "ProModeCompose": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "上传视频 + 配音文案（替换原声）",
+      "上传视频 + 听写字幕（保留原声）",
+      "图片轮播 + 配音文案"
+     ],
+     {
+      "default": "上传视频 + 配音文案（替换原声）",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeCompose",
+  "output": [
+   "INT",
+   "INT",
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "source",
+   "subs",
+   "use_voice",
+   "use_bgm",
+   "keep_original"
+  ],
+  "output_node": false
+ },
+ "ProModeCopy": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "文字写文案（按商品信息）",
+      "看图写文案（要上传商品图）",
+      "把已有文案翻译成多语言"
+     ],
+     {
+      "default": "文字写文案（按商品信息）",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeCopy",
+  "output": [
+   "STRING",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "instruction",
+   "use_image"
+  ],
+  "output_node": false
+ },
+ "ProModeEdit": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "网关 · 改商品图（换背景 / 去水印 / 换色…）",
+      "网关 · 把商品放进场景图（要再传场景图）",
+      "阿里 · 改商品图（换背景 / 去水印 / 换色…）",
+      "阿里 · 把商品放进场景图（要再传场景图）"
+     ],
+     {
+      "default": "网关 · 改商品图（换背景 / 去水印 / 换色…）",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeEdit",
+  "output": [
+   "INT",
+   "BOOLEAN",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "branch",
+   "compose",
+   "instruction"
+  ],
+  "output_node": false
+ },
+ "ProModeImage": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "网关 Gemini（自然、约 1K）",
+      "阿里 qwen-image（2K，中文字准）"
+     ],
+     {
+      "default": "网关 Gemini（自然、约 1K）",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeImage",
+  "output": [
+   "INT"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "branch"
+  ],
+  "output_node": false
+ },
+ "ProModeMusic": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "Gemini Lyria（约 1 分钟，成功率约一半）",
+      "Suno（要有 Suno 渠道）"
+     ],
+     {
+      "default": "Gemini Lyria（约 1 分钟，成功率约一半）",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeMusic",
+  "output": [
+   "INT"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "branch"
+  ],
+  "output_node": false
+ },
+ "ProModePoster": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "网关 Gemini · 不带商品图",
+      "网关 Gemini · 带商品图（要上传商品图）",
+      "阿里 qwen-image 2K · 不带商品图（文字更准）"
+     ],
+     {
+      "default": "网关 Gemini · 不带商品图",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModePoster",
+  "output": [
+   "INT",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "branch",
+   "use_product"
+  ],
+  "output_node": false
+ },
+ "ProModeProcess": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "放大 2 倍",
+      "贴促销标签",
+      "先放大 2 倍，再贴促销标签"
+     ],
+     {
+      "default": "放大 2 倍",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeProcess",
+  "output": [
+   "INT",
+   "INT"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "upscale",
+   "labels"
+  ],
+  "output_node": false
+ },
+ "ProModeTextVideo": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "只出视频（保留 Veo 自带声音）",
+      "出视频，再配音 + 烧字幕"
+     ],
+     {
+      "default": "只出视频（保留 Veo 自带声音）",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeTextVideo",
+  "output": [
+   "BOOLEAN",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "dub",
+   "keep_original"
+  ],
+  "output_node": false
+ },
+ "ProModeVoice": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "预置音色（在配音节点里选）",
+      "设计新音色（文字描述 → 新音色）",
+      "克隆声音（要上传样音）"
+     ],
+     {
+      "default": "预置音色（在配音节点里选）",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeVoice",
+  "output": [
+   "INT"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "branch"
+  ],
+  "output_node": false
+ },
+ "ProPick2x1": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "in0_0": [
+     "*",
+     {
+      "lazy": true
+     }
+    ],
+    "in1_0": [
+     "*",
+     {
+      "lazy": true
+     }
+    ]
+   },
+   "required": {
+    "branch": [
+     "INT",
+     {
+      "default": 0,
+      "display_name": "走第几路（从 0 数）",
+      "max": 1,
+      "min": 0
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "in0_0",
+    "in1_0"
+   ],
+   "required": [
+    "branch"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProPick2x1",
+  "output": [
+   "*"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "out0"
+  ],
+  "output_node": false
+ },
+ "ProPick2x2": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "in0_0": [
+     "*",
+     {
+      "lazy": true
+     }
+    ],
+    "in0_1": [
+     "*",
+     {
+      "lazy": true
+     }
+    ],
+    "in1_0": [
+     "*",
+     {
+      "lazy": true
+     }
+    ],
+    "in1_1": [
+     "*",
+     {
+      "lazy": true
+     }
+    ]
+   },
+   "required": {
+    "branch": [
+     "INT",
+     {
+      "default": 0,
+      "display_name": "走第几路（从 0 数）",
+      "max": 1,
+      "min": 0
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "in0_0",
+    "in0_1",
+    "in1_0",
+    "in1_1"
+   ],
+   "required": [
+    "branch"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProPick2x2",
+  "output": [
+   "*",
+   "*"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "out0",
+   "out1"
+  ],
+  "output_node": false
+ },
+ "ProPick3x2": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "in0_0": [
+     "*",
+     {
+      "lazy": true
+     }
+    ],
+    "in0_1": [
+     "*",
+     {
+      "lazy": true
+     }
+    ],
+    "in1_0": [
+     "*",
+     {
+      "lazy": true
+     }
+    ],
+    "in1_1": [
+     "*",
+     {
+      "lazy": true
+     }
+    ],
+    "in2_0": [
+     "*",
+     {
+      "lazy": true
+     }
+    ],
+    "in2_1": [
+     "*",
+     {
+      "lazy": true
+     }
+    ]
+   },
+   "required": {
+    "branch": [
+     "INT",
+     {
+      "default": 0,
+      "display_name": "走第几路（从 0 数）",
+      "max": 2,
+      "min": 0
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "in0_0",
+    "in0_1",
+    "in1_0",
+    "in1_1",
+    "in2_0",
+    "in2_1"
+   ],
+   "required": [
+    "branch"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProPick3x2",
+  "output": [
+   "*",
+   "*"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "out0",
+   "out1"
+  ],
+  "output_node": false
+ },
+ "ProPosterFields": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "text": [
+     "STRING",
+     {
+      "forceInput": true,
+      "multiline": true
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "text"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProPosterFields",
+  "output": [
+   "STRING",
+   "STRING",
+   "STRING",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "title",
+   "subtitle",
+   "badge",
+   "elements"
+  ],
+  "output_node": false
+ },
+ "ProPosterPrompt": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "extra": [
+     "STRING",
+     {
+      "default": "",
+      "multiline": true
+     }
+    ]
+   },
+   "required": {
+    "badge": [
+     "STRING",
+     {
+      "default": "限时三天"
+     }
+    ],
+    "elements": [
+     "STRING",
+     {
+      "default": "冰饮、柠檬片、水花、椰树叶、遮阳草帽",
+      "multiline": true
+     }
+    ],
+    "style": [
+     [
+      "清爽夏日（蓝白）",
+      "喜庆红金",
+      "高级黑金",
+      "小清新（马卡龙）",
+      "科技蓝紫",
+      "极简白底",
+      "自然绿意",
+      "自定义（只用下面的画面元素）"
+     ],
+     {
+      "default": "清爽夏日（蓝白）"
+     }
+    ],
+    "subtitle": [
+     "STRING",
+     {
+      "default": "全场满199减50"
+     }
+    ],
+    "title": [
+     "STRING",
+     {
+      "default": "夏日清凉节"
+     }
+    ],
+    "use_product_image": [
+     "BOOLEAN",
+     {
+      "default": false,
+      "label_off": "不带商品图",
+      "label_on": "用图1的商品做主体"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "extra"
+   ],
+   "required": [
+    "title",
+    "subtitle",
+    "badge",
+    "style",
+    "elements",
+    "use_product_image"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProPosterPrompt",
+  "output": [
+   "STRING"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "prompt"
+  ],
+  "output_node": false
+ },
+ "ProSlideshow": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "fit_audio": [
+     "AUDIO"
+    ],
+    "image1": [
+     "IMAGE"
+    ],
+    "image2": [
+     "IMAGE"
+    ],
+    "image3": [
+     "IMAGE"
+    ],
+    "image4": [
+     "IMAGE"
+    ],
+    "image5": [
+     "IMAGE"
+    ],
+    "image6": [
+     "IMAGE"
+    ],
+    "image7": [
+     "IMAGE"
+    ],
+    "image8": [
+     "IMAGE"
+    ]
+   },
+   "required": {
+    "filename_prefix": [
+     "STRING",
+     {
+      "default": "video/轮播"
+     }
+    ],
+    "fps": [
+     [
+      24,
+      30
+     ],
+     {
+      "default": 24
+     }
+    ],
+    "ratio": [
+     [
+      "9:16",
+      "1:1",
+      "16:9",
+      "3:4",
+      "4:3"
+     ],
+     {
+      "default": "9:16"
+     }
+    ],
+    "seconds_per_image": [
+     "FLOAT",
+     {
+      "default": 2.5,
+      "max": 12.0,
+      "min": 0.8,
+      "step": 0.1
+     }
+    ],
+    "short_side": [
+     [
+      720,
+      1080
+     ],
+     {
+      "default": 720
+     }
+    ],
+    "transition_s": [
+     "FLOAT",
+     {
+      "default": 0.5,
+      "max": 2.0,
+      "min": 0.0,
+      "step": 0.1
+     }
+    ],
+    "zoom": [
+     "FLOAT",
+     {
+      "default": 1.15,
+      "max": 1.5,
+      "min": 1.0,
+      "step": 0.01
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "image1",
+    "image2",
+    "image3",
+    "image4",
+    "image5",
+    "image6",
+    "image7",
+    "image8",
+    "fit_audio"
+   ],
+   "required": [
+    "ratio",
+    "short_side",
+    "seconds_per_image",
+    "transition_s",
+    "zoom",
+    "fps",
+    "filename_prefix"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProSlideshow",
+  "output": [
+   "VIDEO"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "video"
+  ],
+  "output_node": false
+ },
+ "ProSubtitles": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "filename_prefix": [
+     "STRING",
+     {
+      "default": "subtitles/字幕"
+     }
+    ],
+    "max_chars": [
+     "INT",
+     {
+      "default": 16,
+      "max": 60,
+      "min": 4
+     }
+    ],
+    "offset_s": [
+     "FLOAT",
+     {
+      "default": 0.0,
+      "max": 60.0,
+      "min": -10.0,
+      "step": 0.1
+     }
+    ],
+    "text": [
+     "STRING",
+     {
+      "default": "夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。",
+      "multiline": true
+     }
+    ],
+    "voice": [
+     "AUDIO"
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "text",
+    "voice",
+    "max_chars",
+    "offset_s",
+    "filename_prefix"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProSubtitles",
+  "output": [
+   "STRING"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "srt"
+  ],
+  "output_node": false
+ },
+ "ProVideoAudio": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "video": [
+     "VIDEO"
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "video"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProVideoAudio",
+  "output": [
+   "AUDIO"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "audio"
+  ],
+  "output_node": false
+ },
+ "ProVideoDub": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "bgm": [
+     "AUDIO"
+    ],
+    "subtitles": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ],
+    "voice": [
+     "AUDIO"
+    ]
+   },
+   "required": {
+    "bgm_fade_out_s": [
+     "FLOAT",
+     {
+      "default": 1.5,
+      "max": 10.0,
+      "min": 0.0,
+      "step": 0.1
+     }
+    ],
+    "bgm_volume_db": [
+     "FLOAT",
+     {
+      "default": -14.0,
+      "max": 12.0,
+      "min": -60.0,
+      "step": 0.5
+     }
+    ],
+    "filename_prefix": [
+     "STRING",
+     {
+      "default": "video/成片"
+     }
+    ],
+    "keep_original_audio": [
+     "BOOLEAN",
+     {
+      "default": false,
+      "label_off": "替换原视频声音",
+      "label_on": "保留原视频声音"
+     }
+    ],
+    "subtitle_bottom_margin": [
+     "INT",
+     {
+      "default": 70,
+      "max": 400,
+      "min": 0
+     }
+    ],
+    "subtitle_font_size": [
+     "INT",
+     {
+      "default": 46,
+      "max": 120,
+      "min": 16
+     }
+    ],
+    "subtitle_mode": [
+     [
+      "不加字幕",
+      "烧进画面"
+     ],
+     {
+      "default": "不加字幕"
+     }
+    ],
+    "video": [
+     "VIDEO"
+    ],
+    "voice_volume_db": [
+     "FLOAT",
+     {
+      "default": 0.0,
+      "max": 12.0,
+      "min": -60.0,
+      "step": 0.5
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "voice",
+    "bgm",
+    "subtitles"
+   ],
+   "required": [
+    "video",
+    "bgm_volume_db",
+    "voice_volume_db",
+    "bgm_fade_out_s",
+    "keep_original_audio",
+    "filename_prefix",
+    "subtitle_mode",
+    "subtitle_font_size",
+    "subtitle_bottom_margin"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProVideoDub",
+  "output": [
+   "VIDEO"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "video"
+  ],
+  "output_node": true
+ },
+ "RelayAPISettings": {
+  "has_intermediate_output": false,
+  "input": {
+   "hidden": {
+    "unique_id": "UNIQUE_ID"
+   },
+   "optional": {
+    "custom_api_base": [
+     "STRING",
+     {
+      "default": "",
+      "placeholder": "输入地址添加 | 输入 delete:地址 删除"
+     }
+    ],
+    "custom_model": [
+     "STRING",
+     {
+      "default": "",
+      "placeholder": "输入模型名添加 | 输入 delete:模型名 删除"
+     }
+    ]
+   },
+   "required": {
+    "api_base": [
+     [
+      "https://www.runninghub.cn",
+      "https://llm.runninghub.ai",
+      "https://yunwu.ai",
+      "https://ai.t8star.cn",
+      "https://api.bltcy.ai",
+      "http://172.18.0.1:8971",
+      "http://airelay-geminiweb:8083",
+      "http://airelay-newapi:3000",
+      "http://172.18.0.1:8972",
+      "https://dashscope.aliyuncs.com",
+      "https://dashscope.aliyuncs.com/compatible-mode",
+      "http://127.0.0.1:9"
+     ],
+     {
+      "default": "https://www.runninghub.cn"
+     }
+    ],
+    "api_format": [
+     [
+      "runninghub-/openapi/v2",
+      "v1beta/models",
+      "v1/images",
+      "v1/chat/completions"
+     ],
+     {
+      "default": "runninghub-/openapi/v2"
+     }
+    ],
+    "apikey": [
+     "STRING",
+     {
+      "default": ""
+     }
+    ],
+    "model": [
+     [
+      "grok-video-3",
+      "grok-videos",
+      "rhart-video-g",
+      "veo3.1",
+      "veo3.1-fast",
+      "veo_3_1-lite",
+      "veo_3_1-lite-4K",
+      "veo_3_1-fast-4K",
+      "rhart-video-v3.1-fast",
+      "nano-banana-pro",
+      "gemini-3-pro-image-preview",
+      "rhart-image-n-pro",
+      "rhart-image-n-pro-official",
+      "gemini-3.1-flash-image-preview",
+      "rhart-image-n-g31-flash",
+      "rhart-image-n-g31-flash-official",
+      "gpt-image-2",
+      "rhart-image-g-2",
+      "rhart-image-g-2-official",
+      "suno_music",
+      "rhart-audio-suno-v5.5",
+      "gemini-3.1-flash-lite-preview",
+      "gemini-3-flash-preview",
+      "gemini-3.1-pro-preview",
+      "anthropic/claude-opus-4.6",
+      "openai/gpt-5.5",
+      "google/gemini-3.1-pro-preview",
+      "google/gemini-3-flash-preview",
+      "google/gemini-3.1-flash-lite-preview",
+      "claude-opus-4-6",
+      "grok-4.1",
+      "gemini-image",
+      "no-such-model",
+      "gemini-video",
+      "gemini-3.6-flash",
+      "gemini-3.5-flash-lite",
+      "qwen3.8-flash",
+      "qwen3.8-omni-flash"
+     ],
+     {
+      "default": "grok-video-3"
+     }
+    ],
+    "platform": [
+     [
+      "Grok",
+      "Veo",
+      "banana-pro",
+      "banana-2",
+      "gpt-image2",
+      "Suno",
+      "GeminiText",
+      "OpenaiText"
+     ],
+     {
+      "default": "banana-pro"
+     }
+    ],
+    "task_type": [
+     [
+      "image",
+      "video",
+      "sound",
+      "text"
+     ],
+     {
+      "default": "image"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "hidden": [
+    "unique_id"
+   ],
+   "optional": [
+    "custom_api_base",
+    "custom_model"
+   ],
+   "required": [
+    "task_type",
+    "platform",
+    "api_format",
+    "api_base",
+    "model",
+    "apikey"
+   ]
+  },
+  "is_input_list": false,
+  "name": "RelayAPISettings",
+  "output": [
+   "STRING"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "info"
+  ],
+  "output_node": false
+ },
+ "RelayImageGenerator": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "image1": [
+     "IMAGE"
+    ],
+    "image10": [
+     "IMAGE"
+    ],
+    "image11": [
+     "IMAGE"
+    ],
+    "image12": [
+     "IMAGE"
+    ],
+    "image13": [
+     "IMAGE"
+    ],
+    "image14": [
+     "IMAGE"
+    ],
+    "image15": [
+     "IMAGE"
+    ],
+    "image16": [
+     "IMAGE"
+    ],
+    "image2": [
+     "IMAGE"
+    ],
+    "image3": [
+     "IMAGE"
+    ],
+    "image4": [
+     "IMAGE"
+    ],
+    "image5": [
+     "IMAGE"
+    ],
+    "image6": [
+     "IMAGE"
+    ],
+    "image7": [
+     "IMAGE"
+    ],
+    "image8": [
+     "IMAGE"
+    ],
+    "image9": [
+     "IMAGE"
+    ],
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "format": [
+     [
+      "jpeg",
+      "png",
+      "webp"
+     ],
+     {
+      "default": "jpeg"
+     }
+    ],
+    "moderation": [
+     [
+      "auto",
+      "low"
+     ],
+     {
+      "default": "low"
+     }
+    ],
+    "prompt": [
+     "STRING",
+     {
+      "multiline": true
+     }
+    ],
+    "quality": [
+     [
+      "low",
+      "medium",
+      "high",
+      "auto"
+     ],
+     {
+      "default": "medium"
+     }
+    ],
+    "ratio": [
+     [
+      "auto",
+      "1:1",
+      "2:3",
+      "3:2",
+      "4:3",
+      "3:4",
+      "9:16",
+      "16:9",
+      "9:21",
+      "21:9",
+      "1:4",
+      "4:1",
+      "1:8",
+      "8:1",
+      "1:3",
+      "3:1"
+     ],
+     {
+      "default": "1:1"
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "max": 18446744073709551615,
+      "min": 0
+     }
+    ],
+    "size": [
+     [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     {
+      "default": "2K"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info",
+    "image1",
+    "image2",
+    "image3",
+    "image4",
+    "image5",
+    "image6",
+    "image7",
+    "image8",
+    "image9",
+    "image10",
+    "image11",
+    "image12",
+    "image13",
+    "image14",
+    "image15",
+    "image16"
+   ],
+   "required": [
+    "prompt",
+    "ratio",
+    "size",
+    "quality",
+    "format",
+    "moderation",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "RelayImageGenerator",
+  "output": [
+   "IMAGE",
+   "STRING",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "image",
+   "response",
+   "image_url"
+  ],
+  "output_node": false
+ },
+ "RelaySoundGenerator": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "continue_at": [
+     "FLOAT",
+     {
+      "default": 0.0,
+      "min": 0.0,
+      "step": 0.1
+     }
+    ],
+    "continue_clip_id": [
+     "STRING",
+     {
+      "default": "",
+      "placeholder": "填写上一次生成返回的 clip_id"
+     }
+    ],
+    "extend_mode": [
+     "BOOLEAN",
+     {
+      "default": false,
+      "label_off": "普通生成",
+      "label_on": "延长音乐"
+     }
+    ],
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ],
+    "negative_tags": [
+     "STRING",
+     {
+      "default": "",
+      "placeholder": "不想要的风格，可选"
+     }
+    ]
+   },
+   "required": {
+    "generation_mode": [
+     [
+      "描述模式",
+      "歌词定制模式"
+     ],
+     {
+      "default": "描述模式"
+     }
+    ],
+    "make_instrumental": [
+     "BOOLEAN",
+     {
+      "default": false,
+      "label_off": "带歌词",
+      "label_on": "纯音乐"
+     }
+    ],
+    "prompt": [
+     "STRING",
+     {
+      "default": "",
+      "multiline": true,
+      "placeholder": "描述模式填歌曲描述；歌词定制模式填歌词或完整创作提示词。"
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "max": 18446744073709551615,
+      "min": 0
+     }
+    ],
+    "tags": [
+     "STRING",
+     {
+      "default": "",
+      "placeholder": "pop, electronic, cinematic"
+     }
+    ],
+    "title": [
+     "STRING",
+     {
+      "default": ""
+     }
+    ],
+    "version": [
+     [
+      "V3",
+      "V3.5",
+      "V4",
+      "V4.5",
+      "V4.5+",
+      "V5",
+      "V5.5"
+     ],
+     {
+      "default": "V5"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info",
+    "negative_tags",
+    "extend_mode",
+    "continue_clip_id",
+    "continue_at"
+   ],
+   "required": [
+    "generation_mode",
+    "title",
+    "tags",
+    "prompt",
+    "make_instrumental",
+    "version",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "RelaySoundGenerator",
+  "output": [
+   "AUDIO",
+   "STRING",
+   "STRING",
+   "STRING",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "audio",
+   "clip_id",
+   "task_id",
+   "response",
+   "audio_url"
+  ],
+  "output_node": false
+ },
+ "RelayTextGenerator": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "image1": [
+     "IMAGE"
+    ],
+    "image2": [
+     "IMAGE"
+    ],
+    "image3": [
+     "IMAGE"
+    ],
+    "image4": [
+     "IMAGE"
+    ],
+    "image5": [
+     "IMAGE"
+    ],
+    "image6": [
+     "IMAGE"
+    ],
+    "image7": [
+     "IMAGE"
+    ],
+    "image8": [
+     "IMAGE"
+    ],
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "prompt": [
+     "STRING",
+     {
+      "default": "",
+      "multiline": true
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "max": 18446744073709551615,
+      "min": 0
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info",
+    "image1",
+    "image2",
+    "image3",
+    "image4",
+    "image5",
+    "image6",
+    "image7",
+    "image8"
+   ],
+   "required": [
+    "prompt",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "RelayTextGenerator",
+  "output": [
+   "STRING",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "text",
+   "response"
+  ],
+  "output_node": false
+ },
+ "RelayVideoGenerator": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "enable_HD": [
+     [
+      "true",
+      "false"
+     ],
+     {
+      "default": "false"
+     }
+    ],
+    "enhance_prompt": [
+     [
+      "true",
+      "false"
+     ],
+     {
+      "default": "true"
+     }
+    ],
+    "image1": [
+     "IMAGE"
+    ],
+    "image2": [
+     "IMAGE"
+    ],
+    "image3": [
+     "IMAGE"
+    ],
+    "image4": [
+     "IMAGE"
+    ],
+    "image5": [
+     "IMAGE"
+    ],
+    "image6": [
+     "IMAGE"
+    ],
+    "image7": [
+     "IMAGE"
+    ],
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ]
+   },
+   "required": {
+    "duration": [
+     [
+      "6",
+      "10",
+      "15",
+      "30",
+      "4",
+      "8"
+     ],
+     {
+      "default": "10"
+     }
+    ],
+    "prompt": [
+     "STRING",
+     {
+      "multiline": true
+     }
+    ],
+    "ratio": [
+     [
+      "auto",
+      "16:9",
+      "9:16",
+      "1:1",
+      "4:3",
+      "3:4",
+      "3:2",
+      "2:3"
+     ],
+     {
+      "default": "16:9"
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "max": 18446744073709551615,
+      "min": 0
+     }
+    ],
+    "size": [
+     [
+      "720P",
+      "1080P"
+     ],
+     {
+      "default": "720P"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "info",
+    "enhance_prompt",
+    "enable_HD",
+    "image1",
+    "image2",
+    "image3",
+    "image4",
+    "image5",
+    "image6",
+    "image7"
+   ],
+   "required": [
+    "prompt",
+    "ratio",
+    "size",
+    "duration",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "RelayVideoGenerator",
+  "output": [
+   "VIDEO",
+   "STRING",
+   "STRING",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "video",
+   "task_id",
+   "response",
+   "video_url"
+  ],
+  "output_node": false
+ },
+ "SaveAudioAdvanced": {
+  "api_node": false,
+  "deprecated": false,
+  "dev_only": false,
+  "essentials_category": null,
+  "experimental": false,
+  "has_intermediate_output": false,
+  "input": {
+   "hidden": {
+    "extra_pnginfo": [
+     "EXTRA_PNGINFO"
+    ],
+    "prompt": [
+     "PROMPT"
+    ]
+   },
+   "required": {
+    "audio": [
+     "AUDIO",
+     {
+      "tooltip": "The audio to save."
+     }
+    ],
+    "filename_prefix": [
+     "STRING",
+     {
+      "default": "audio/ComfyUI",
+      "multiline": false,
+      "tooltip": "The prefix for the file to save. May include formatting tokens such as %date:yyyy-MM-dd%."
+     }
+    ],
+    "format": [
+     "COMFY_DYNAMICCOMBO_V3",
+     {
+      "options": [
+       {
+        "inputs": {
+         "required": {}
+        },
+        "key": "flac"
+       },
+       {
+        "inputs": {
+         "required": {
+          "quality": [
+           "COMBO",
+           {
+            "default": "V0",
+            "multiselect": false,
+            "options": [
+             "V0",
+             "128k",
+             "320k"
+            ]
+           }
+          ]
+         }
+        },
+        "key": "mp3"
+       },
+       {
+        "inputs": {
+         "required": {
+          "quality": [
+           "COMBO",
+           {
+            "default": "128k",
+            "multiselect": false,
+            "options": [
+             "64k",
+             "96k",
+             "128k",
+             "192k",
+             "320k"
+            ]
+           }
+          ]
+         }
+        },
+        "key": "opus"
+       }
+      ],
+      "tooltip": "The file format in which to save the audio."
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "hidden": [
+    "prompt",
+    "extra_pnginfo"
+   ],
+   "required": [
+    "audio",
+    "filename_prefix",
+    "format"
+   ]
+  },
+  "is_input_list": false,
+  "name": "SaveAudioAdvanced",
+  "output": [
+   "AUDIO"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_matchtypes": null,
+  "output_name": [
+   "audio"
+  ],
+  "output_node": true,
+  "output_tooltips": [
+   null
+  ],
+  "price_badge": null
+ },
+ "SaveImage": {
+  "essentials_category": "Basics",
+  "has_intermediate_output": false,
+  "input": {
+   "hidden": {
+    "extra_pnginfo": "EXTRA_PNGINFO",
+    "prompt": "PROMPT"
+   },
+   "required": {
+    "filename_prefix": [
+     "STRING",
+     {
+      "default": "ComfyUI",
+      "tooltip": "The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes."
+     }
+    ],
+    "images": [
+     "IMAGE",
+     {
+      "tooltip": "The images to save."
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "hidden": [
+    "prompt",
+    "extra_pnginfo"
+   ],
+   "required": [
+    "images",
+    "filename_prefix"
+   ]
+  },
+  "is_input_list": false,
+  "name": "SaveImage",
+  "output": [
+   "IMAGE"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "images"
+  ],
+  "output_node": true
+ }
+}

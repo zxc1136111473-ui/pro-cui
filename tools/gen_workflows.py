@@ -109,6 +109,7 @@ class Graph:
         self.dy = 0   # top_block 把已有节点整体下移后，之后新增节点的 y 也自动加上，所以位置都可以按「下移前」的坐标写
         self.in_ids, self.out_ids, self.auto_ids = set(), set(), set()   # 角色覆盖：要用户填 / 要当结果看 / 其实是内部节点（见 tidy）
         self.app_inputs, self.app_outputs = [], []                       # 应用界面：右栏的控件 [节点 id, 控件名] / 结果节点 id（见 app_in / app_out）
+        self.app_description = ""                                         # 这个应用是干什么的（一两句话，AI 助手靠它选应用，见 app_desc）
 
     def add(self, nid, ntype, pos, size, widgets=None, title=None):
         ins, outs, _ = SPEC[ntype]
@@ -153,15 +154,22 @@ class Graph:
             inp["label"] = label
         self.app_inputs.append([nid, widget])
 
+    def app_desc(self, text):
+        """应用的用途描述（存进 extra.appDescription）：AI 助手（pro-chat）靠它决定用户的需求该用哪个应用，所以要写清能做什么、
+        有哪些模式、哪些东西必须由用户上传（图片 / 视频 / 音频）、有没有额度或费用上的注意点。"""
+        self.app_description = text
+
     def app_out(self, nid):
         """应用界面里显示的结果节点（必须是输出节点：保存图片 / 视频 / 音频、ProAppText）。"""
         self.app_outputs.append(nid)
 
     def build(self):
         assert self.app_inputs and self.app_outputs, "每个工作流都要登记应用界面的右栏控件和结果节点（g.app_in / g.app_out）"
+        assert self.app_description, "每个工作流都要写应用的用途描述（g.app_desc）"
         groups, extra = tidy(self)
         extra["linearMode"] = True          # 打开就是应用界面
         extra["linearData"] = {"inputs": self.app_inputs, "outputs": self.app_outputs}
+        extra["appDescription"] = self.app_description
         return {"last_node_id": max(n["id"] for n in self.nodes), "last_link_id": self._lid, "nodes": self.nodes,
                 "links": self.links, "groups": groups, "config": {}, "extra": extra, "version": 0.4}
 
@@ -418,6 +426,7 @@ def wf_text_to_image():       # 01 文生图（原 01 / 03 / 14）：改比例�
     g.app_in(77, "mode"); g.app_in(70, "idea")
     g.app_in(2, "ratio", "网关·比例"); g.app_in(3, "ratio", "阿里·比例"); g.app_in(3, "level", "阿里·清晰度")
     g.app_out(4); app_text(g, 70, "text", "AI 写的提示词"); app_text(g, 12, "out0", "出错信息", True)
+    g.app_desc("根据文字描述生成一张图片（通用出图，不需要上传图片）。引擎：网关 Gemini（自然、约 1K）或阿里 qwen-image（2K，中文字更准）；比例可选，做封面横图选 16:9。")
     return g.build()
 
 
@@ -449,6 +458,7 @@ def wf_poster():              # 02 海报（原 10 / 11 / 17）
     g.add(11, "PreviewAny", (1820, 500), (360, 110), title="结果 / 错误信息（出错时这里显示原因）"); g.connect(12, "out0", 11, "source")
     g.app_in(77, "mode"); g.app_in(70, "idea"); g.app_in(6, "image", "商品图（带图模式）"); g.app_in(5, "style", "风格")
     g.app_out(4); app_text(g, 70, "text", "AI 写的海报文案"); app_text(g, 12, "out0", "出错信息", True)
+    g.app_desc("生成电商促销海报：AI 按「标题 / 副标题 / 角标 / 画面元素」写文案，文字原样嵌进海报。可以不带商品图，也可以带上商品图（要上传商品图）；风格可选。")
     return g.build()
 
 
@@ -475,6 +485,7 @@ def wf_edit():                # 03 商品改图与合成（原 02 / 15 / 13）
     g.add(11, "PreviewAny", (1820, 500), (360, 110), title="结果 / 错误信息（出错时这里显示原因）"); g.connect(12, "out0", 11, "source")
     g.app_in(77, "mode"); g.app_in(70, "idea"); g.app_in(4, "image", "商品图"); g.app_in(5, "image", "场景图（合成模式）")
     g.app_out(8); app_text(g, 70, "text", "AI 写的改图指令"); app_text(g, 12, "out0", "出错信息", True)
+    g.app_desc("修改商品图（换背景、去水印、换色……商品保持原样），或把商品放进另一张场景图里。必须上传商品图；「放进场景图」模式还要再上传一张场景图。")
     return g.build()
 
 
@@ -501,6 +512,7 @@ def wf_sizes():               # 04 多尺寸套图：同一张商品图、同一
     app_text(g, 70, "text", "AI 写的提示词")
     for gid, (ratio, name) in zip((10, 11, 12, 13), [("1:1", "主图"), ("3:4", "小红书"), ("9:16", "抖音"), ("16:9", "封面")]):
         app_text(g, gid, "response", f"出错信息：{name} {ratio}", True)
+    g.app_desc("同一张商品图 + 一句话需求，一次生成 4 个平台尺寸（主图 1:1、小红书 3:4、抖音 9:16、封面 16:9），约 75 秒。必须上传商品图。")
     return g.build()
 
 
@@ -525,6 +537,7 @@ def wf_post_process():        # 05 图片后处理（原 06 / 24）：放大 2 �
     for k in (1, 2, 3):
         g.app_in(6, f"text{k}", f"标签 {k} 文字")
     g.app_out(8)
+    g.app_desc("不用 AI：把图片放大 2 倍，和 / 或贴最多 3 个促销标签（如「限时三天」，文字一字不差）。必须上传图片。")
     return g.build()
 
 
@@ -563,6 +576,7 @@ def wf_pipeline():            # 06 商品一条龙：一张商品图 → 白底�
     g.app_out(7); g.app_out(9)
     app_text(g, 10, "text", "标题 / 卖点文案"); app_text(g, 70, "text", "AI 写的场景指令")
     app_text(g, 4, "response", "出错信息：白底主图", True); app_text(g, 8, "response", "出错信息：场景图", True); app_text(g, 10, "response", "出错信息：文案", True)
+    g.app_desc("一张商品图一次出齐：白底主图（放大到 2048）+ 场景图 + 标题和卖点文案，约 1 分钟。必须上传商品图；只需要说想要的场景（场景一句话）。")
     return g.build()
 
 
@@ -592,6 +606,7 @@ def wf_copy():                # 07 文案（原 08 / 09 / 21）：写文案 / �
     g.connect(3, "IMAGE", 5, "image"); g.connect(6, "value", 70, "image")
     g.app_in(77, "mode"); g.app_in(70, "idea", "商品信息 / 原文"); g.app_in(3, "image", "商品图（看图模式）")
     app_text(g, 70, "text", "文案")
+    g.app_desc("写电商文案：文字写文案（按商品信息，3 条淘宝标题 + 5 条卖点）/ 看图写文案（要上传商品图）/ 把已有的中文文案翻译成英日韩西。")
     return g.build()
 
 
@@ -621,6 +636,7 @@ def wf_voice():               # 08 配音（原 16 / 25 / 26）：预置音色 /
     g.app_in(77, "mode"); g.app_in(3, "text", "要念的文字"); g.app_in(3, "voice", "音色（预置模式）")
     g.app_in(70, "idea", "声音描述（设计模式）"); g.app_in(6, "audio", "样音（克隆模式）")
     g.app_out(4); app_text(g, 10, "out0", "音色 id（可复制到别处）"); app_text(g, 10, "out1", "AI 写的音色描述")
+    g.app_desc("把文字念成语音（mp3）：预置音色（49 个，在「音色」里选）/ 设计新音色（用文字描述想要的声音）/ 克隆声音（要用户自己上传 10~60 秒清晰人声样音，聊天里传不了，要去「应用」里传）。")
     return g.build()
 
 
@@ -641,6 +657,7 @@ def wf_music():               # 09 音乐（原 05 / 07）：Gemini Lyria / Suno
     g.add(6, "PreviewAny", (1380, 380), (360, 110), title="结果 / 错误信息（出错时这里显示原因）"); g.connect(13, "out0", 6, "source")
     g.app_in(77, "mode"); g.app_in(70, "idea")
     g.app_out(5); app_text(g, 70, "text", "AI 写的音乐提示词"); app_text(g, 13, "out0", "出错信息", True)
+    g.app_desc("生成约 30 秒的纯音乐配乐：Gemini Lyria（默认，约 1 分钟，成功率约一半）或 Suno（需要先配好 Suno 渠道，没配就别选）。")
     return g.build()
 
 
@@ -666,6 +683,7 @@ def wf_text_to_video():       # 10 文生视频成片（原 04 / 20）：Veo 出
     status(g, 12, pos=(1100, 1080), title="状态：视频（Veo）")
     g.app_in(77, "mode"); g.app_in(70, "idea"); g.app_in(6, "value", "配音文案（配音模式）"); g.app_in(4, "audio", "背景音乐（配音模式）")
     g.app_out(5); app_text(g, 70, "text", "AI 写的视频提示词"); app_text(g, 12, "response", "出错信息：视频", True)
+    g.app_desc("用文字生成约 10 秒的视频（Veo，占每天约 3 个的额度，约 2~4 分钟）：只出视频（保留自带声音）/ 出视频再配音 + 烧字幕（配音文案要写）。")
     return g.build()
 
 
@@ -705,6 +723,7 @@ def wf_compose():             # 11 视频成片（原 19 / 22 / 23）：上传�
     g.app_in(4, "audio", "背景音乐")
     # 字幕文字不放进应用的结果：字幕已经烧进成片、也存了 .srt；应用界面默认显示「最后执行完的那一条」，字幕文字比成片晚几毫秒，会把成片挤到第二位
     g.app_out(5)
+    g.app_desc("用用户已有的素材合成成片：上传视频 + 配音文案（替换原声）/ 上传视频 + 听写字幕 / 多张图片轮播 + 配音文案。必须由用户自己上传视频或图片（视频聊天里传不了，要去「应用」里传）。")
     return g.build()
 
 
