@@ -2,7 +2,9 @@
 
 Key 与地址取自 Relay API Settings 节点的 info 输出（存在服务器 relay_config.json 的 node_settings[节点 id]，不进 git）。
 只允许把 Key 发往 *.aliyuncs.com，Settings 里地址配错时宁可报错也不外发。
-错误直接抛出（红色节点 + 阿里返回的原因），不重试：重试会重复计费（写提示词的文字请求几乎不花钱，只对「连不上」重试一次）。
+错误直接抛出（红色节点 + 阿里返回的原因）。计费请求（生图 / 改图 / 配音 / 听写 / 音色）只发一次、不重试：重试会重复计费。
+连接阶段单独处理：发请求前先用一个免费的 HEAD 把 TCP + TLS 连接建好（建不好就重试，这时什么都没发出去，不会计费），请求走这条已经连好的连接；
+结果下载是 GET，失败重试。写提示词的文字请求几乎不花钱，连不上（含超时）整个请求重试一次。
 """
 import base64
 import io
@@ -29,6 +31,9 @@ WRITER_MODEL = "qwen3.8-flash"
 CHAT_API = "/compatible-mode/v1/chat/completions"
 ASR_MAX_SECONDS = 300  # 阿里 qwen3-asr-flash 单次上限约 5 分钟
 DOWNLOAD_TIMEOUT = 60
+CONNECT_TIMEOUT = 3        # 连接 / 握手阶段的超时（正常不到 1 秒）：德国 → 北京的线路偶尔握手卡 10~25 秒后被重置，干等没用，换条新连接多半马上就好
+WARMUP_TRIES = 4           # 预热连接最多试几次
+POST_CONNECT_TIMEOUT = 10  # 请求自己（预热过的连接断了要重连时）的连接超时：线路彻底不通时别干等整个超时
 
 # 只放实测过可用的：音色逐个用 1 个字合成验证过（49 个全部可用）
 VOICES = ["Cherry", "Serena", "Ethan", "Chelsie", "Momo", "Vivian", "Moon", "Maia", "Kai", "Nofish", "Bella", "Jennifer",
@@ -73,12 +78,38 @@ def _creds(info):
     return key, f"https://{host}"
 
 
-def _post(base, key, body, timeout, what, path=GEN_API):
+def _open(base, what):
+    """开一个会话，并先对同一个主机发一个免费的 HEAD 把 TCP + TLS 连接建好（建不好就重试）。
+    这时还没有任何计费请求发出去，所以连接阶段的失败可以放心重试；之后的请求走这条连好的连接（keep-alive），不会再卡在握手上。
+    HEAD 不带 Key，返回什么状态码都行（阿里网关的 / 是 404）：只要连上、握手成功。"""
+    s = requests.Session()
+    last = None
+    for _ in range(WARMUP_TRIES):
+        try:
+            s.head(base + "/", timeout=(CONNECT_TIMEOUT, 6))
+            return s
+        except requests.RequestException as e:
+            last = e
+    s.close()
+    raise RuntimeError(f"[阿里 {what}] 连不上：{type(last).__name__}（连接 / 握手试了 {WARMUP_TRIES} 次都没成功，请求没有发出，不会计费）")
+
+
+def _send(base, key, path, body, timeout, what):
+    """（预热连接后）把 JSON 发给阿里，只发一次，返回 Response；连不上 / 等回复超时抛 RuntimeError。"""
+    s = _open(base, what)
     try:
-        r = requests.post(base + path, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
-                          json=body, timeout=timeout)
+        return s.post(base + path, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+                      json=body, timeout=(POST_CONNECT_TIMEOUT, timeout))
+    except requests.ReadTimeout:
+        raise RuntimeError(f"[阿里 {what}] 等了 {timeout} 秒没有回应：请求已经发出，阿里那边可能还在处理（可能已计费），先别连着重跑")
     except requests.RequestException as e:
         raise RuntimeError(f"[阿里 {what}] 连不上：{type(e).__name__}")
+    finally:
+        s.close()
+
+
+def _post(base, key, body, timeout, what, path=GEN_API):
+    r = _send(base, key, path, body, timeout, what)
     try:
         d = r.json()
     except Exception:
@@ -89,12 +120,20 @@ def _post(base, key, body, timeout, what, path=GEN_API):
 
 
 def _download(url, what):
-    try:
-        r = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
-        r.raise_for_status()
-    except requests.RequestException as e:
-        raise RuntimeError(f"[阿里 {what}] 下载结果失败：{type(e).__name__}")
-    return r.content
+    """下载生成结果（GET，可以放心重试：结果已经生成并计费了，下载失败不重试就白花钱）。4xx（链接过期之类）重试没用，直接报。"""
+    last = None
+    for _ in range(3):
+        try:
+            r = requests.get(url, timeout=(CONNECT_TIMEOUT * 2, DOWNLOAD_TIMEOUT))
+            r.raise_for_status()
+            return r.content
+        except requests.HTTPError as e:
+            last = e
+            if e.response is not None and e.response.status_code < 500:
+                break
+        except requests.RequestException as e:
+            last = e
+    raise RuntimeError(f"[阿里 {what}] 下载结果失败：{type(last).__name__}")
 
 
 def _to_tensor(img_bytes):
@@ -283,11 +322,7 @@ class ProAliASR:
                 "messages": [{"role": "user", "content": [{"type": "input_audio", "input_audio": {"data": "data:audio/wav;base64," + base64.b64encode(wav).decode()}}]}]}
         if language != "auto":
             body["asr_options"] = {"language": language}
-        try:
-            r = requests.post(base + "/compatible-mode/v1/chat/completions",
-                              headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"}, json=body, timeout=ASR_TIMEOUT)
-        except requests.RequestException as e:
-            raise RuntimeError(f"[阿里 语音识别] 连不上：{type(e).__name__}")
+        r = _send(base, key, CHAT_API, body, ASR_TIMEOUT, "语音识别")
         try:
             d = r.json()
         except Exception:
@@ -303,14 +338,14 @@ class ProAliASR:
 
 
 def _chat(base, key, body, timeout, what):
-    """OpenAI 兼容的 chat/completions。连不上（含超时）重试一次，HTTP 错误不重试；返回解析后的 JSON。"""
+    """OpenAI 兼容的 chat/completions。连不上（含超时）整个请求重试一次（文字请求几乎不花钱），HTTP 错误不重试；返回解析后的 JSON。"""
     for attempt in (1, 2):
         try:
-            r = requests.post(base + CHAT_API, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"}, json=body, timeout=timeout)
+            r = _send(base, key, CHAT_API, body, timeout, what)
             break
-        except requests.RequestException as e:
+        except RuntimeError:
             if attempt == 2:
-                raise RuntimeError(f"[阿里 {what}] 连不上：{type(e).__name__}")
+                raise
     try:
         d = r.json()
     except Exception:

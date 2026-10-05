@@ -1,4 +1,7 @@
+import http.server
 import json
+import threading
+import time
 import unittest
 from unittest import mock
 
@@ -83,6 +86,19 @@ class AliSize(unittest.TestCase):
             self.assertEqual((w % 16, h % 16), (0, 0), r)
 
 
+class FakeSession:
+    """顶替 ali._open 返回的会话：post 是测试给的 Mock。"""
+    def __init__(self, post):
+        self.post = post
+
+    def close(self):
+        pass
+
+
+def fake_session(post):
+    return mock.patch.object(ali, "_open", lambda base, what: FakeSession(post))
+
+
 class PromptWriter(unittest.TestCase):
     INFO = json.dumps({"apikey": "k", "custom_api_base": "https://dashscope.aliyuncs.com/compatible-mode"})
 
@@ -93,7 +109,7 @@ class PromptWriter(unittest.TestCase):
         return r
 
     def run_node(self, post, idea="一个红苹果", instruction="写提示词"):
-        with mock.patch.object(ali.requests, "post", post):
+        with fake_session(post):
             return ali.ProAliPromptWriter().run(idea, instruction, "", 0, self.INFO)
 
     def test_success_and_request_shape(self):
@@ -103,12 +119,14 @@ class PromptWriter(unittest.TestCase):
         self.assertEqual(json.loads(status)["code"], "success")
         url, kw = post.call_args[0][0], post.call_args[1]
         self.assertEqual(url, "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")
+        self.assertEqual(kw["timeout"], (ali.POST_CONNECT_TIMEOUT, ali.WRITER_TIMEOUT))                # 连接 / 等回复分开
+        self.assertEqual(kw["headers"]["Authorization"], "Bearer k")
         self.assertEqual(kw["json"]["messages"], [{"role": "system", "content": "写提示词"}, {"role": "user", "content": "一个红苹果"}])
         self.assertIs(kw["json"]["enable_thinking"], False)
 
     def test_image_goes_into_user_message(self):
         post = mock.Mock(return_value=self.resp(body={"choices": [{"message": {"content": "好"}}]}))
-        with mock.patch.object(ali, "_to_data_url", return_value="data:image/jpeg;base64,AAAA"), mock.patch.object(ali.requests, "post", post):
+        with mock.patch.object(ali, "_to_data_url", return_value="data:image/jpeg;base64,AAAA"), fake_session(post):
             ali.ProAliPromptWriter().run("补充信息", "写文案", "qwen3.8-omni-flash", 0, self.INFO, image=object())
         user = post.call_args[1]["json"]["messages"][1]["content"]
         self.assertEqual(user, [{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AAAA"}}, {"type": "text", "text": "补充信息"}])
@@ -142,6 +160,141 @@ class PromptWriter(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.run_node(post, idea, ins)
         post.assert_not_called()
+
+
+class _Srv(http.server.ThreadingHTTPServer):
+    """假的阿里：前 drop_first 个连接接受后直接关掉（客户端看到 Connection aborted，和握手被重置一样：什么都没处理）。"""
+    daemon_threads = True
+
+    def __init__(self, drop_first=0):
+        super().__init__(("127.0.0.1", 0), _Handler)
+        self.drop_first, self.conns, self.heads, self.posts, self.gets = drop_first, 0, 0, 0, 0
+        self.post_mode, self.get_codes, self.lock = "ok", [], threading.Lock()
+
+    def verify_request(self, request, client_address):
+        with self.lock:
+            self.conns += 1
+            return self.conns > self.drop_first
+
+
+class _Handler(http.server.BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"                         # keep-alive：预热的连接才能被请求复用
+
+    def log_message(self, *a):
+        pass
+
+    def reply(self, code, body=b"{}"):
+        self.send_response(code)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
+
+    def do_HEAD(self):
+        with self.server.lock:
+            self.server.heads += 1
+        self.reply(404)
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        with self.server.lock:
+            self.server.posts += 1
+        if self.server.post_mode == "drop":               # 收到了请求，不回就断开
+            self.close_connection = True
+            return
+        if self.server.post_mode == "slow":
+            time.sleep(1.0)
+        self.reply(200, b'{"output": {"x": 1}}')
+
+    def do_GET(self):
+        with self.server.lock:
+            self.server.gets += 1
+            code = self.server.get_codes.pop(0) if self.server.get_codes else 200
+        self.reply(code, b"DATA" if code == 200 else b"err")
+
+
+class AliConnect(unittest.TestCase):
+    """到阿里的连接阶段：预热连接（免费，失败可重试）+ 计费请求只发一次。真走 requests，对着本机的假服务。"""
+
+    def serve(self, **kw):
+        srv = _Srv(**kw)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)                       # 后加先跑：先停再关
+        return srv, f"http://127.0.0.1:{srv.server_address[1]}"
+
+    def test_the_connection_is_warmed_up_with_a_free_head_and_reused_by_the_request(self):
+        srv, base = self.serve()
+        self.assertEqual(ali._post(base, "k", {"a": 1}, 5, "测试", "/x"), {"output": {"x": 1}})
+        self.assertEqual((srv.heads, srv.posts, srv.conns), (1, 1, 1))                   # 同一条连接：预热一次、请求一次
+
+    def test_failed_connections_are_retried_before_anything_is_sent(self):
+        srv, base = self.serve(drop_first=2)
+        self.assertEqual(ali._post(base, "k", {}, 5, "测试", "/x"), {"output": {"x": 1}})
+        self.assertEqual((srv.posts, srv.conns), (1, 3))                                  # 前两个连接被掐了，第三个成功；计费请求只发了一次
+
+    def test_gives_up_after_the_warmup_tries_without_sending_the_request(self):
+        srv, base = self.serve(drop_first=99)
+        with self.assertRaisesRegex(RuntimeError, r"连不上.*没有发出，不会计费"):
+            ali._post(base, "k", {}, 5, "生图", "/x")
+        self.assertEqual((srv.posts, srv.conns), (0, ali.WARMUP_TRIES))
+        with self.assertRaisesRegex(RuntimeError, "没有发出"):                            # 端口根本没人听：同样，而且很快
+            ali._post("http://127.0.0.1:1", "k", {}, 5, "生图", "/x")
+
+    def test_the_billable_request_itself_is_never_resent(self):
+        srv, base = self.serve()
+        srv.post_mode = "drop"                                                           # 连上了、请求发出去了，对方不回就断开
+        with self.assertRaisesRegex(RuntimeError, "连不上"):
+            ali._post(base, "k", {}, 5, "配音", "/x")
+        self.assertEqual(srv.posts, 1)                                                   # 绝不重发：重发会重复计费
+
+    def test_read_timeout_says_the_request_was_already_sent(self):
+        srv, base = self.serve()
+        srv.post_mode = "slow"
+        with self.assertRaisesRegex(RuntimeError, "等了 0.3 秒没有回应：请求已经发出"):
+            ali._post(base, "k", {}, 0.3, "生图", "/x")
+        self.assertEqual(srv.posts, 1)
+
+    def test_the_key_is_not_sent_in_the_warmup(self):
+        seen = []
+        orig = ali.requests.Session.head
+        with mock.patch.object(ali.requests.Session, "head", lambda self, url, **kw: (seen.append((url, dict(self.headers), kw)), orig(self, url, **kw))[1]):
+            srv, base = self.serve()
+            ali._post(base, "sk-secret", {}, 5, "测试", "/x")
+        self.assertEqual(len(seen), 1)
+        self.assertNotIn("sk-secret", json.dumps(seen[0], default=str))
+        self.assertEqual(seen[0][2]["timeout"], (ali.CONNECT_TIMEOUT, 6))                # 连接阶段是短超时
+
+    def test_download_retries_server_errors_but_not_client_errors(self):
+        srv, base = self.serve()
+        srv.get_codes = [500, 502]
+        self.assertEqual(ali._download(base + "/f", "生图"), b"DATA")
+        self.assertEqual(srv.gets, 3)
+        srv.gets, srv.get_codes = 0, [404]
+        with self.assertRaisesRegex(RuntimeError, "下载结果失败：HTTPError"):
+            ali._download(base + "/f", "生图")
+        self.assertEqual(srv.gets, 1)                                                    # 404（链接过期之类）重试没用
+        srv.gets, srv.get_codes = 0, [500, 500, 500, 500]
+        with self.assertRaisesRegex(RuntimeError, "下载结果失败"):
+            ali._download(base + "/f", "生图")
+        self.assertEqual(srv.gets, 3)                                                    # 最多三次
+        with self.assertRaisesRegex(RuntimeError, "下载结果失败：ConnectionError"):
+            ali._download("http://127.0.0.1:1/f", "生图")
+
+    def test_asr_goes_through_the_same_single_send(self):
+        calls = []
+
+        def post(url, **kw):
+            calls.append((url, kw["timeout"]))
+            r = mock.Mock(status_code=200, text="{}")
+            r.json.return_value = {"choices": [{"message": {"content": " 你好 "}}], "usage": {"seconds": 2}}
+            return r
+
+        info = json.dumps({"apikey": "k"})
+        with mock.patch.object(ali, "_audio_to_wav16k", return_value=b"RIFF"), fake_session(post):
+            text, status = ali.ProAliASR().run({"waveform": None}, "auto", info)
+        self.assertEqual(text, "你好")
+        self.assertEqual(calls, [("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", (ali.POST_CONNECT_TIMEOUT, ali.ASR_TIMEOUT))])
 
 
 class LabelPlace(unittest.TestCase):
