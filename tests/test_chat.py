@@ -125,6 +125,16 @@ class Catalog(unittest.TestCase):
             keys = [*app["fields"], *app["images"], *(u["key"] for u in app["uploads"])]
             self.assertEqual(len(keys), len(set(keys)), app["id"])
 
+    def test_video_apps_expose_the_dubbing_voice_like_the_voice_app_does(self):
+        want = CAT["08"]["fields"]["3:voice"]["options"]
+        self.assertGreaterEqual(len(want), 40)
+        for app_id in ("10", "11"):
+            f = CAT[app_id]["fields"]["3:voice"]
+            self.assertEqual((f["kind"], f["label"]), ("choice", "配音音色（配音模式）"), app_id)
+            self.assertEqual(f["options"], want, app_id)                                    # 和 08 配音里是同一份音色
+            self.assertIn("Cherry", f["options"])
+            self.assertIn("默认 Cherry", CAT[app_id]["desc"])                               # 让模型知道默认是 Cherry、没说就别改
+
     def test_result_descriptions(self):
         self.assertEqual(CAT["04"]["results"][0], "图片 ×4")
         self.assertIn("文字「AI 写的提示词」", CAT["01"]["results"])
@@ -522,6 +532,18 @@ class Run(unittest.TestCase):
             for k, v in n["inputs"].items():
                 if isinstance(v, list):
                     self.assertEqual(a[nid]["inputs"][k], v, f"{nid}.{k} 是连线，不能被改")
+
+    def test_the_dubbing_voice_of_the_video_apps_can_be_changed_and_bad_voices_are_dropped(self):
+        for app_id in ("10", "11"):
+            base = run.convert(load_wf(app_id), OI)
+            self.assertEqual(base["3"]["inputs"]["voice"], "Cherry")                       # 默认音色
+            api, sel, warns = self.prep(app_id, {"fields": {"3:voice": "Ethan"}})
+            self.assertEqual((api["3"]["inputs"]["voice"], sel["fields"], warns), ("Ethan", {"3:voice": "Ethan"}, []), app_id)
+            api, sel, warns = self.prep(app_id, {"fields": {"3:voice": "不存在的音色"}})
+            self.assertEqual(api["3"]["inputs"]["voice"], "Cherry", app_id)                # 编的音色不进工作流，保持默认
+            self.assertEqual(sel["fields"], {})
+            self.assertTrue(warns)
+            self.assertEqual(api["3"]["inputs"]["model"], base["3"]["inputs"]["model"])    # 别的配音设置不受影响
 
     def test_the_client_cannot_change_anything_outside_the_catalog(self):
         base = run.convert(load_wf("01"), OI)

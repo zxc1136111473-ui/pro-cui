@@ -257,6 +257,20 @@ class Workflows(unittest.TestCase):
     APP_TEXT_EXEMPT = {"11": {20}}
     MEDIA_SAVERS = {"SaveImage", "SaveVideo", "SaveAudioAdvanced", "ProVideoDub"}
 
+    def test_dubbing_voice_is_selectable_in_every_app_with_a_dubbing_node(self):
+        """有「阿里 配音」节点的应用（08 / 10 / 11），右栏都要能选音色：音色是配音最常想换的东西，聊天里（pro-chat）也靠右栏登记的控件来设。"""
+        found = 0
+        for p in all_workflows():
+            name = os.path.basename(p)
+            with open(p, encoding="utf-8") as f:
+                wf = json.load(f)
+            inputs = [tuple(i) for i in wf["extra"]["linearData"]["inputs"]]
+            for n in wf["nodes"]:
+                if n["type"] == "ProAliTTS":
+                    found += 1
+                    self.assertIn((n["id"], "voice"), inputs, f"{name}: 配音节点 {n['id']} 的「音色」应该登记进应用右栏")
+        self.assertGreaterEqual(found, 3, "08 / 10 / 11 都有配音节点")
+
     @classmethod
     def widget_names(cls, node_type):
         """节点类型的控件名：pro-* 节点读 INPUT_TYPES（不是强制连线的输入），其余查 KNOWN_WIDGETS；都没有返回 None。"""

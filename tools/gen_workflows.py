@@ -681,9 +681,9 @@ def wf_text_to_video():       # 10 文生视频成片（原 04 / 20）：Veo 出
     gate(g, 22, (1100, 780), (77, "dub"), (4, "AUDIO"), title="背景音乐开关（跟模式走）"); g.connect(22, "value", 5, "bgm")
     gate(g, 23, (1100, 920), (77, "dub"), (7, "srt"), title="字幕开关（跟模式走）"); g.connect(23, "value", 5, "subtitles")
     status(g, 12, pos=(1100, 1080), title="状态：视频（Veo）")
-    g.app_in(77, "mode"); g.app_in(70, "idea"); g.app_in(6, "value", "配音文案（配音模式）"); g.app_in(4, "audio", "背景音乐（配音模式）")
+    g.app_in(77, "mode"); g.app_in(70, "idea"); g.app_in(6, "value", "配音文案（配音模式）"); g.app_in(3, "voice", "配音音色（配音模式）"); g.app_in(4, "audio", "背景音乐（配音模式）")
     g.app_out(5); app_text(g, 70, "text", "AI 写的视频提示词"); app_text(g, 12, "response", "出错信息：视频", True)
-    g.app_desc("用文字生成约 10 秒的视频（Veo，占每天约 3 个的额度，约 2~4 分钟）：只出视频（保留自带声音）/ 出视频再配音 + 烧字幕（配音文案要写）。")
+    g.app_desc("用文字生成约 10 秒的视频（Veo，占每天约 3 个的额度，约 2~4 分钟）：只出视频（保留自带声音）/ 出视频再配音 + 烧字幕（配音文案要写；配音音色可选，默认 Cherry，用户没指定音色就别改）。")
     return g.build()
 
 
@@ -717,13 +717,13 @@ def wf_compose():             # 11 视频成片（原 19 / 22 / 23）：上传�
     g.connect(16, "out0", 5, "video"); g.connect(17, "out0", 5, "subtitles"); g.connect(18, "value", 5, "voice"); g.connect(19, "value", 5, "bgm")
     g.connect(77, "keep_original", 5, "keep_original_audio")
     g.add(20, "PreviewAny", (1560, 1580), (440, 200), title="字幕文字（文案 / 听写结果）"); g.connect(17, "out1", 20, "source")
-    g.app_in(77, "mode"); g.app_in(2, "file", "上传视频"); g.app_in(6, "value", "配音文案（配音模式）")
+    g.app_in(77, "mode"); g.app_in(2, "file", "上传视频"); g.app_in(6, "value", "配音文案（配音模式）"); g.app_in(3, "voice", "配音音色（配音模式）")
     for k, nid in enumerate((12, 13, 14), 1):
         g.app_in(nid, "image", f"图片 {k}（轮播模式）")
     g.app_in(4, "audio", "背景音乐")
     # 字幕文字不放进应用的结果：字幕已经烧进成片、也存了 .srt；应用界面默认显示「最后执行完的那一条」，字幕文字比成片晚几毫秒，会把成片挤到第二位
     g.app_out(5)
-    g.app_desc("用用户已有的素材合成成片：上传视频 + 配音文案（替换原声）/ 上传视频 + 听写字幕 / 多张图片轮播 + 配音文案。必须由用户自己上传视频或图片（视频聊天里传不了，要去「应用」里传）。")
+    g.app_desc("用用户已有的素材合成成片：上传视频 + 配音文案（替换原声）/ 上传视频 + 听写字幕 / 多张图片轮播 + 配音文案（配音音色可选，默认 Cherry，用户没指定音色就别改）。必须由用户自己上传视频或图片（视频聊天里传不了，要去「应用」里传）。")
     return g.build()
 
 
