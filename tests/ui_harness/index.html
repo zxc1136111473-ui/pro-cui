@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><title>工作台假页面</title>
+<style>body{margin:0;background:#202020;color:#ddd;font-family:system-ui,sans-serif}#fake{padding:20px}</style></head>
+<body><div id="fake">（这里是假的 ComfyUI 画布）<button id="canvas-btn" onclick="window.__canvasClicks=(window.__canvasClicks||0)+1">画布按钮</button></div>
+<script>window.addEventListener("keydown", (e) => { window.__globalKeys = (window.__globalKeys || 0) + 1; if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) window.__queueKeys = (window.__queueKeys || 0) + 1; });</script>
+<script type="module" src="/extensions/pro-chat/pro-chat.js"></script></body></html>

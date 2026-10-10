@@ -52,6 +52,10 @@ RUN pip install -r /tmp/comfyui-manager-requirements.txt
 #   VideoHelperSuite：opencv-python-headless / imageio-ffmpeg（顶层 import cv2，缺了导入失败）
 RUN pip install google-genai xai_sdk dashscope opencv-python-headless imageio-ffmpeg
 
+# ★ pro-image 的「商品抠图」要 onnxruntime（只跑一个几十 MB 的 ONNX 小模型，模型文件第一次用时自己下载到 models/rembg/）。
+#   单独一层、放在上面那行后面：给已经建好的镜像加它时，上面那一层走缓存，那些包的版本不会被顺带升级
+RUN pip install onnxruntime
+
 # 工作目录挂载点：宿主机源码（数据目录由 deploy.sh 挂到 app/ 下）
 WORKDIR /opt/comfyui
 

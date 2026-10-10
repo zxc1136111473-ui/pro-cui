@@ -1,13 +1,13 @@
 {
   "last_node_id": 91,
-  "last_link_id": 22,
+  "last_link_id": 25,
   "nodes": [
     {
       "id": 11,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1114
+        1450
       ],
       "size": [
         400,
@@ -51,7 +51,7 @@
       "type": "RelayVideoGenerator",
       "pos": [
         440,
-        1050
+        1450
       ],
       "size": [
         420,
@@ -72,7 +72,7 @@
         {
           "name": "image1",
           "type": "IMAGE",
-          "link": null
+          "link": 5
         },
         {
           "name": "image2",
@@ -118,7 +118,7 @@
           "name": "video",
           "type": "VIDEO",
           "links": [
-            9
+            12
           ],
           "slot_index": 0
         },
@@ -132,8 +132,8 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            20,
-            22
+            23,
+            25
           ],
           "slot_index": 2
         },
@@ -157,7 +157,145 @@
         "false",
         "false"
       ],
-      "title": "① 文生视频（Veo）"
+      "title": "① 图生视频（Veo）"
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [
+        1160,
+        820
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "参考图"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            5,
+            6
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "上传参考图（作为视频的首帧 / 参考图）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1514
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1,
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-omni-flash"
+      ],
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 15,
+      "type": "ImageScaleToMaxDimension",
+      "pos": [
+        440,
+        2670
+      ],
+      "size": [
+        320,
+        90
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScaleToMaxDimension"
+      },
+      "widgets_values": [
+        "lanczos",
+        768
+      ],
+      "title": "缩到最长边 768（别删）"
     },
     {
       "id": 6,
@@ -171,7 +309,7 @@
         200
       ],
       "flags": {},
-      "order": 2,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {
@@ -189,8 +327,8 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            6,
-            7
+            9,
+            10
           ],
           "slot_index": 0
         }
@@ -210,20 +348,20 @@
       "type": "ProAliTTS",
       "pos": [
         440,
-        1730
+        2130
       ],
       "size": [
         440,
         460
       ],
       "flags": {},
-      "order": 3,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {
           "name": "info",
           "type": "STRING",
-          "link": 5,
+          "link": 8,
           "widget": {
             "name": "info"
           }
@@ -231,7 +369,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 6,
+          "link": 9,
           "widget": {
             "name": "text"
           }
@@ -251,8 +389,8 @@
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            8,
-            12
+            11,
+            15
           ],
           "slot_index": 0
         },
@@ -283,25 +421,25 @@
       "type": "ProSubtitles",
       "pos": [
         990,
-        1230
+        1630
       ],
       "size": [
         440,
         260
       ],
       "flags": {},
-      "order": 4,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {
           "name": "voice",
           "type": "AUDIO",
-          "link": 8
+          "link": 11
         },
         {
           "name": "text",
           "type": "STRING",
-          "link": 7,
+          "link": 10,
           "widget": {
             "name": "text"
           }
@@ -312,7 +450,7 @@
           "name": "srt",
           "type": "STRING",
           "links": [
-            18
+            21
           ],
           "slot_index": 0
         }
@@ -340,7 +478,7 @@
         200
       ],
       "flags": {},
-      "order": 5,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
@@ -358,7 +496,7 @@
           "name": "AUDIO",
           "type": "AUDIO",
           "links": [
-            15
+            18
           ],
           "slot_index": 0
         }
@@ -380,40 +518,40 @@
       "type": "ProVideoDub",
       "pos": [
         1940,
-        1050
+        1450
       ],
       "size": [
         420,
         480
       ],
       "flags": {},
-      "order": 6,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "name": "video",
           "type": "VIDEO",
-          "link": 9
+          "link": 12
         },
         {
           "name": "voice",
           "type": "AUDIO",
-          "link": 13
+          "link": 16
         },
         {
           "name": "bgm",
           "type": "AUDIO",
-          "link": 16
+          "link": 19
         },
         {
           "name": "subtitles",
           "type": "STRING",
-          "link": 19
+          "link": 22
         },
         {
           "name": "keep_original_audio",
           "type": "BOOLEAN",
-          "link": 10,
+          "link": 13,
           "widget": {
             "name": "keep_original_audio"
           }
@@ -456,7 +594,7 @@
         110
       ],
       "flags": {},
-      "order": 7,
+      "order": 10,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -464,9 +602,9 @@
           "name": "dub",
           "type": "BOOLEAN",
           "links": [
-            11,
             14,
-            17
+            17,
+            20
           ],
           "slot_index": 0
         },
@@ -474,7 +612,7 @@
           "name": "keep_original",
           "type": "BOOLEAN",
           "links": [
-            10
+            13
           ],
           "slot_index": 1
         }
@@ -490,51 +628,6 @@
       "bgcolor": "#353"
     },
     {
-      "id": 31,
-      "type": "RelayAPISettings",
-      "pos": [
-        60,
-        1050
-      ],
-      "size": [
-        400,
-        300
-      ],
-      "flags": {
-        "collapsed": true
-      },
-      "order": 8,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            1,
-            5
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "RelayAPISettings"
-      },
-      "widgets_values": [
-        "text",
-        "OpenaiText",
-        "v1/chat/completions",
-        "https://www.runninghub.cn",
-        "claude-opus-4-6",
-        "",
-        "https://dashscope.aliyuncs.com/compatible-mode",
-        "qwen3.8-flash"
-      ],
-      "title": "Key：阿里（填一次）",
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
       "id": 70,
       "type": "ProAliPromptWriter",
       "pos": [
@@ -546,7 +639,7 @@
         560
       ],
       "flags": {},
-      "order": 9,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
@@ -560,7 +653,7 @@
         {
           "name": "image",
           "type": "IMAGE",
-          "link": null
+          "link": 7
         }
       ],
       "outputs": [
@@ -570,7 +663,7 @@
           "links": [
             2,
             4,
-            21
+            24
           ],
           "slot_index": 0
         },
@@ -585,13 +678,13 @@
         "Node name for S&R": "ProAliPromptWriter"
       },
       "widgets_values": [
-        "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍",
-        "你是文生视频提示词写手。把下面的一句话需求扩写成一段中文视频提示词（60~120 字）：写清主体、动作、场景、镜头运动（如跟拍/推近/环绕）、光线和风格；只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。只输出提示词本身，不要解释，不要加引号或标题。",
-        "qwen3.8-flash",
+        "镜头缓慢推近，商品轻轻转动，光线柔和，画面自然流畅",
+        "你是图生视频提示词写手。你会看到一张图（视频的第一帧 / 参考图）和用户的一句话需求（想让画面怎么动）。请写成一段中文视频提示词（60~120 字）：先用一两句话写清图里有什么——主体的外观（形状、颜色、材质）、背景和光线，只写你看得到的，不要编造；再写画面怎么动——主体的动作、镜头运动（缓慢推近/环绕/平移/固定）；主体的外观和背景保持不变；只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。只输出提示词本身，不要解释，不要加引号或标题。",
+        "qwen3.8-omni-flash",
         1,
         "randomize"
       ],
-      "title": "★ 只填这里：一句话需求",
+      "title": "★ 只填这里：一句话需求（说想让画面怎么动；AI 会先看图，把图里的商品和背景写进提示词）",
       "color": "#232",
       "bgcolor": "#353"
     },
@@ -607,7 +700,7 @@
         300
       ],
       "flags": {},
-      "order": 10,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {
@@ -630,61 +723,14 @@
       "type": "ProGate",
       "pos": [
         990,
-        1050
+        1450
       ],
       "size": [
         260,
         100
       ],
       "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "value",
-          "type": "*",
-          "link": 12
-        },
-        {
-          "name": "enabled",
-          "type": "BOOLEAN",
-          "link": 11,
-          "widget": {
-            "name": "enabled"
-          }
-        }
-      ],
-      "outputs": [
-        {
-          "name": "value",
-          "type": "*",
-          "links": [
-            13
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "ProGate"
-      },
-      "widgets_values": [
-        true
-      ],
-      "title": "配音开关（跟模式走）"
-    },
-    {
-      "id": 22,
-      "type": "ProGate",
-      "pos": [
-        440,
-        1550
-      ],
-      "size": [
-        260,
-        100
-      ],
-      "flags": {},
-      "order": 12,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -717,21 +763,21 @@
       "widgets_values": [
         true
       ],
-      "title": "背景音乐开关（跟模式走）"
+      "title": "配音开关（跟模式走）"
     },
     {
-      "id": 23,
+      "id": 22,
       "type": "ProGate",
       "pos": [
-        1540,
-        1050
+        440,
+        1950
       ],
       "size": [
         260,
         100
       ],
       "flags": {},
-      "order": 13,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
@@ -764,6 +810,53 @@
       "widgets_values": [
         true
       ],
+      "title": "背景音乐开关（跟模式走）"
+    },
+    {
+      "id": 23,
+      "type": "ProGate",
+      "pos": [
+        1540,
+        1450
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 21
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 20,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            22
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
       "title": "字幕开关（跟模式走）"
     },
     {
@@ -771,20 +864,20 @@
       "type": "PreviewAny",
       "pos": [
         1940,
-        1600
+        2000
       ],
       "size": [
         360,
         110
       ],
       "flags": {},
-      "order": 14,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 20
+          "link": 23
         }
       ],
       "outputs": [],
@@ -801,7 +894,7 @@
       "type": "ProAppText",
       "pos": [
         1940,
-        1780
+        2180
       ],
       "size": [
         300,
@@ -810,13 +903,13 @@
       "flags": {
         "collapsed": true
       },
-      "order": 15,
+      "order": 17,
       "mode": 0,
       "inputs": [
         {
           "name": "text",
           "type": "STRING",
-          "link": 21
+          "link": 24
         }
       ],
       "outputs": [],
@@ -836,7 +929,7 @@
       "type": "ProAppText",
       "pos": [
         1940,
-        1860
+        2260
       ],
       "size": [
         300,
@@ -845,13 +938,13 @@
       "flags": {
         "collapsed": true
       },
-      "order": 16,
+      "order": 18,
       "mode": 0,
       "inputs": [
         {
           "name": "text",
           "type": "STRING",
-          "link": 22
+          "link": 25
         }
       ],
       "outputs": [],
@@ -902,6 +995,30 @@
     ],
     [
       5,
+      2,
+      0,
+      12,
+      1,
+      "IMAGE"
+    ],
+    [
+      6,
+      2,
+      0,
+      15,
+      0,
+      "IMAGE"
+    ],
+    [
+      7,
+      15,
+      0,
+      70,
+      1,
+      "IMAGE"
+    ],
+    [
+      8,
       31,
       0,
       3,
@@ -909,7 +1026,7 @@
       "STRING"
     ],
     [
-      6,
+      9,
       6,
       0,
       3,
@@ -917,7 +1034,7 @@
       "STRING"
     ],
     [
-      7,
+      10,
       6,
       0,
       7,
@@ -925,7 +1042,7 @@
       "STRING"
     ],
     [
-      8,
+      11,
       3,
       0,
       7,
@@ -933,7 +1050,7 @@
       "AUDIO"
     ],
     [
-      9,
+      12,
       12,
       0,
       5,
@@ -941,7 +1058,7 @@
       "VIDEO"
     ],
     [
-      10,
+      13,
       77,
       1,
       5,
@@ -949,7 +1066,7 @@
       "BOOLEAN"
     ],
     [
-      11,
+      14,
       77,
       0,
       21,
@@ -957,7 +1074,7 @@
       "BOOLEAN"
     ],
     [
-      12,
+      15,
       3,
       0,
       21,
@@ -965,7 +1082,7 @@
       "AUDIO"
     ],
     [
-      13,
+      16,
       21,
       0,
       5,
@@ -973,7 +1090,7 @@
       "*"
     ],
     [
-      14,
+      17,
       77,
       0,
       22,
@@ -981,7 +1098,7 @@
       "BOOLEAN"
     ],
     [
-      15,
+      18,
       4,
       0,
       22,
@@ -989,7 +1106,7 @@
       "AUDIO"
     ],
     [
-      16,
+      19,
       22,
       0,
       5,
@@ -997,7 +1114,7 @@
       "*"
     ],
     [
-      17,
+      20,
       77,
       0,
       23,
@@ -1005,7 +1122,7 @@
       "BOOLEAN"
     ],
     [
-      18,
+      21,
       7,
       0,
       23,
@@ -1013,7 +1130,7 @@
       "STRING"
     ],
     [
-      19,
+      22,
       23,
       0,
       5,
@@ -1021,7 +1138,7 @@
       "*"
     ],
     [
-      20,
+      23,
       12,
       2,
       78,
@@ -1029,7 +1146,7 @@
       "STRING"
     ],
     [
-      21,
+      24,
       70,
       0,
       90,
@@ -1037,7 +1154,7 @@
       "STRING"
     ],
     [
-      22,
+      25,
       12,
       2,
       91,
@@ -1053,7 +1170,7 @@
         30,
         -20,
         1600,
-        890
+        1290
       ],
       "color": "#3f7f4f",
       "font_size": 28,
@@ -1064,9 +1181,9 @@
       "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
       "bounding": [
         30,
-        940,
+        1340,
         1800,
-        1280
+        1450
       ],
       "color": "#6b6b6b",
       "font_size": 28,
@@ -1077,7 +1194,7 @@
       "title": "③ 结果在这里（出错时错误信息也在这里）",
       "bounding": [
         1910,
-        940,
+        1340,
         480,
         960
       ],
@@ -1107,6 +1224,10 @@
           "idea"
         ],
         [
+          2,
+          "image"
+        ],
+        [
           6,
           "value"
         ],
@@ -1125,7 +1246,7 @@
         91
       ]
     },
-    "appDescription": "用文字生成约 10 秒的视频（Veo，占每天约 3 个的额度，约 2~4 分钟）：只出视频（保留自带声音）/ 出视频再配音 + 烧字幕（配音文案要写；配音音色可选，默认 Cherry，用户没指定音色就别改）。",
+    "appDescription": "用一张图（用户上传的，或前面步骤做出来的）加一句话生成视频（Veo，约 2~4 分钟）：AI 先看图，把图里的商品、背景、光线写进视频提示词，同时把图当参考图发给 Veo；只出视频（保留自带声音）/ 出视频再配音 + 烧字幕（配音文案要写；配音音色可选，默认 Cherry，用户没指定音色就别改）。必须有一张图；一句话需求只写想让画面怎么动。",
     "appExtra": [
       [
         3,
@@ -1247,7 +1368,13 @@
         "正数是延后，负数是提前"
       ]
     ],
-    "appCost": "Veo 视频每天只有约 3 个额度，出一个要 2~4 分钟，约一半会失败（失败时再运行一次）；实测出来是 1280×720 横屏、约 10 秒。没明确要视频就别主动加这一步。"
+    "appCost": "Veo 视频每天只有约 3 个额度，出一个要 2~4 分钟，约一半会失败（失败时再运行一次）；实测出来是 1280×720 横屏、约 10 秒。没明确要视频就别主动加这一步。参考图有没有真的传给 Veo 没能证实：视频里的商品应该和图相近（写提示词的 AI 先看了图），但不保证和图一模一样。",
+    "appRequired": [
+      [
+        2,
+        "image"
+      ]
+    ]
   },
   "version": 0.4
 }

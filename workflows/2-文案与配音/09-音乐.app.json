@@ -847,7 +847,21 @@
         91
       ]
     },
-    "appDescription": "生成约 30 秒的纯音乐配乐：Gemini Lyria（默认，约 1 分钟，成功率约一半）或 Suno（需要先配好 Suno 渠道，没配就别选）。"
+    "appDescription": "生成约 30 秒的纯音乐配乐：Gemini Lyria（默认，约 1 分钟，成功率约一半）或 Suno（需要先配好 Suno 渠道，没配就别选）。",
+    "appAdvanced": [
+      [
+        22,
+        "tags",
+        "Suno 风格标签",
+        "英文逗号分隔，如 pop, electronic（只在 Suno 模式用）"
+      ],
+      [
+        22,
+        "make_instrumental",
+        "Suno 纯音乐（无人声）",
+        ""
+      ]
+    ]
   },
   "version": 0.4
 }

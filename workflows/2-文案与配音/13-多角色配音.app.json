@@ -1,0 +1,505 @@
+{
+  "last_node_id": 91,
+  "last_link_id": 4,
+  "nodes": [
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1400
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-flash"
+      ],
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 3,
+      "type": "ProAliDialogue",
+      "pos": [
+        60,
+        90
+      ],
+      "size": [
+        560,
+        1100
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "script",
+          "type": "STRING",
+          "widget": {
+            "name": "script"
+          },
+          "link": null,
+          "label": "对白脚本（每行：角色：台词）"
+        },
+        {
+          "name": "role1_name",
+          "type": "STRING",
+          "widget": {
+            "name": "role1_name"
+          },
+          "link": null,
+          "label": "角色 1 名字"
+        },
+        {
+          "name": "role1_voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "role1_voice"
+          },
+          "link": null,
+          "label": "角色 1 音色"
+        },
+        {
+          "name": "role2_name",
+          "type": "STRING",
+          "widget": {
+            "name": "role2_name"
+          },
+          "link": null,
+          "label": "角色 2 名字"
+        },
+        {
+          "name": "role2_voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "role2_voice"
+          },
+          "link": null,
+          "label": "角色 2 音色"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": [
+            3
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "report",
+          "type": "STRING",
+          "links": [
+            4
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliDialogue"
+      },
+      "widgets_values": [
+        "小美：老板，这个苹果怎么卖呀？\n阿强：新到的红富士，脆甜多汁，今天只要九块九一斤。\n小美：那我先来五斤，再帮我挑几个大的。\n阿强：好嘞，马上给你装好！",
+        "小美",
+        "Cherry · 女 · 阳光亲切",
+        "阿强",
+        "Ethan · 男 · 朝气温暖，带北方口音",
+        "",
+        "Serena · 女 · 温柔",
+        "",
+        "Ryan · 男 · 节奏感强、戏感足",
+        "Neil · 男 · 新闻主播式播报",
+        "qwen3-tts-flash",
+        "Chinese",
+        1.0,
+        0.35,
+        true,
+        16,
+        true,
+        0.0,
+        "subtitles/对白字幕",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "title": "多角色对白（脚本、角色、音色都在这里）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4,
+      "type": "SaveAudioAdvanced",
+      "pos": [
+        480,
+        1400
+      ],
+      "size": [
+        340,
+        200
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 2
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveAudioAdvanced"
+      },
+      "widgets_values": [
+        "audio/对白",
+        "mp3",
+        "V0"
+      ],
+      "title": "保存对白配音",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 90,
+      "type": "ProAppText",
+      "pos": [
+        480,
+        1670
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 3
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "字幕（SRT，带角色名）",
+        false
+      ],
+      "title": "应用界面 · 字幕（SRT，带角色名）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 91,
+      "type": "ProAppText",
+      "pos": [
+        480,
+        1750
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 4
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "对白说明",
+        false
+      ],
+      "title": "应用界面 · 对白说明",
+      "color": "#223",
+      "bgcolor": "#335"
+    }
+  ],
+  "links": [
+    [
+      1,
+      31,
+      0,
+      3,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      3,
+      0,
+      4,
+      0,
+      "AUDIO"
+    ],
+    [
+      3,
+      3,
+      1,
+      90,
+      0,
+      "STRING"
+    ],
+    [
+      4,
+      3,
+      2,
+      91,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 先填这里：调参数",
+      "bounding": [
+        30,
+        -20,
+        620,
+        1240
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        1290,
+        340,
+        150
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        450,
+        1290,
+        400,
+        500
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        205
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          3,
+          "script"
+        ],
+        [
+          3,
+          "role1_name"
+        ],
+        [
+          3,
+          "role1_voice"
+        ],
+        [
+          3,
+          "role2_name"
+        ],
+        [
+          3,
+          "role2_voice"
+        ]
+      ],
+      "outputs": [
+        4,
+        90,
+        91
+      ]
+    },
+    "appDescription": "把一段多角色对话念成语音（mp3）并给出带角色名的字幕（SRT）。脚本每行写「角色：台词」，最多 4 个角色（另有「旁白：」），每个角色选一个音色（音色名后面写着性别和特点，按人物的性别 / 年龄 / 性格挑，两个角色别用同一个音色）。用户只说想要什么对话时，由你把对白脚本写出来填进「对白脚本」（口语化、每句 20 字以内、两三个来回就够），脚本里的角色名要和「角色 N 名字」一字不差。要把对白配到视频上，用「对白成片」。",
+    "appExtra": [
+      [
+        3,
+        "role3_name",
+        "角色 3 名字",
+        "没有第 3 个角色就留空；脚本里用到就必须填，和脚本里的名字一字不差"
+      ],
+      [
+        3,
+        "role3_voice",
+        "角色 3 音色",
+        "按人物的性别 / 年龄 / 性格从列表里挑，别和别的角色用同一个"
+      ],
+      [
+        3,
+        "role4_name",
+        "角色 4 名字",
+        "没有第 4 个角色就留空"
+      ],
+      [
+        3,
+        "role4_voice",
+        "角色 4 音色",
+        ""
+      ],
+      [
+        3,
+        "narrator_voice",
+        "旁白音色",
+        "脚本里写了「旁白：」或没写角色的行，用这个音色念"
+      ],
+      [
+        3,
+        "speed",
+        "对白语速",
+        "1 是正常；慢一点 0.85，快一点 1.2"
+      ]
+    ],
+    "appAdvanced": [
+      [
+        3,
+        "gap_s",
+        "句与句之间的停顿（秒）",
+        "默认 0.35"
+      ],
+      [
+        3,
+        "show_names",
+        "字幕里写角色名",
+        "关掉就只显示台词"
+      ],
+      [
+        3,
+        "max_chars",
+        "字幕每行最多字数",
+        ""
+      ],
+      [
+        3,
+        "language",
+        "对白语种",
+        "念什么语言就选什么，默认 Chinese；方言音色选 Chinese 说的就是方言"
+      ],
+      [
+        3,
+        "model",
+        "配音模型",
+        "要用「语气指令」必须选 qwen3-tts-instruct-flash"
+      ],
+      [
+        3,
+        "role1_style",
+        "角色 1 语气指令",
+        "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+      ],
+      [
+        3,
+        "role2_style",
+        "角色 2 语气指令",
+        "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+      ],
+      [
+        3,
+        "role3_style",
+        "角色 3 语气指令",
+        "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+      ],
+      [
+        3,
+        "role4_style",
+        "角色 4 语气指令",
+        "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+      ],
+      [
+        3,
+        "volume_db",
+        "对白音量增减（dB）",
+        "0 是不变，+3 大一点，-3 小一点"
+      ],
+      [
+        3,
+        "reuse",
+        "没改的句子直接用上次的",
+        "关掉就全部重新合成（会重新计费）"
+      ]
+    ],
+    "appCost": "每句台词调用一次阿里配音（按字数计费，很便宜）；一次最多 40 句 / 1500 个字；改了几句再运行，只重新合成改过的句子，没改的用上次的。"
+  },
+  "version": 0.4
+}

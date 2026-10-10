@@ -1,47 +1,41 @@
-// AI 助手：ComfyUI 左侧栏的聊天标签页（后端见 ../__init__.py）。
-// 说一句话（可以附商品图）→ AI 选应用、选模式、写好字段，给出「方案卡片」→ 你可以改 → 点「生成」→ 后端把工作流提交到队列，
-// 结果显示在对话里。不碰你的画布；想接着手动调，点「在应用里打开」。
-// 纯函数在 pro-chat-lib.js（node 里有测试）；这里只管界面和接 ComfyUI。所有文字都用 textContent 写进页面，模型的输出不会被当成 HTML。
+// AI 工作台：ComfyUI 里的大窗口（后端见 ../__init__.py，界面见 pro-chat-ui.js，纯函数见 pro-chat-lib.js）。
+// 说一句话（可以附商品图 / 视频 / 音频）→ AI 排出一步或几步方案（每步 = 一个应用）→ 每步的设置都能改 → 一键跑完：
+// 每一步的结果自动放进素材库，下一步直接用；改了哪一步只重跑哪一步。不碰你的画布，节点图在后面（右上角按钮回去）。
+// 这个文件只管接 ComfyUI（页面对象、网络、队列、侧栏图标）和运行流程；所有文字都经 pro-chat-ui.js 用 textContent 写进页面。
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import * as lib from "./pro-chat-lib.js";
+import { createView } from "./pro-chat-ui.js";
 
-const STORE_KEY = "proChat.v1";
+const STORE_KEY = `proChat.v${lib.STORE_VERSION}`;
+const UI_KEY = "proChat.ui";
+const LOCK_KEY = "proChat.runLock";            // localStorage 里的运行记录：谁正在运行。别的标签页靠它知道「有人在跑」（决定存不存档、跟不跟着更新）；没有 Web Locks 的浏览器里它还是唯一的锁
+const RUN_LOCK = "proChat.run";                // Web Locks 的锁名
+const LOCK_TTL_MS = 90000;                     // 放在后台的标签页定时器可能被浏览器降到每分钟一次，所以记录要留够时间；代价是（没有 Web Locks 时）运行的标签页崩了，另一个要等这么久才接手
+const LOCK_BEAT_MS = 5000;
 const HISTORY_POLL_MS = 2000;
 const RUN_TIMEOUT_MS = 15 * 60 * 1000;
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_BYTES = { image: 20 * 1024 * 1024, video: 150 * 1024 * 1024, audio: 50 * 1024 * 1024 };
+const TAB_ID = "pro-chat";                     // 侧栏标签页的 id
 const EXAMPLES = [
-  "帮我写一段红苹果的淘宝标题和卖点",
+  "给红苹果做一张淘宝主图，再用这张图做一条视频，配上配音和字幕",
   "做一张夏日清凉节促销海报，满199减50，限时三天",
+  "帮我写一段红苹果的淘宝标题和卖点",
+  "（先点「附件」传一张商品图）把这张图的背景换成纯白色，再用它做一条视频",
+  "把「夏日清凉，限时三天」念成语音，声音温暖一点，语速慢一点",
   "给我 30 秒舒缓钢琴配乐，适合产品视频",
-  "把「夏日清凉，限时三天」念成语音，声音温暖一点",
-  "一只橘猫在草地上奔跑的视频，配上配音和字幕",
-  "（先点「附图」传一张商品图）把这张图的背景换成纯白色",
 ];
 
-const state = { messages: [], images: [], plan: null, draft: [], busy: false, running: null };
+const state = { messages: [], assets: [], plan: null, draft: [], chain: null, busy: false, running: null };
+// 这个网页的标识（每次加载都不同）。不能存进 sessionStorage 当「标签页」的标识：浏览器的「复制标签页」会把 sessionStorage 一起复制，
+// 两个标签页就成了同一个，运行锁对它们不起作用；刷新网页后接手自己上一次没做完的运行靠的是 Web Locks / 刷新前放掉的记录，不靠这个标识
+const INSTANCE = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 let seq = 0;
-const nextId = () => `${Date.now().toString(36)}-${++seq}`;
-let root, listEl, inputEl, sendBtn, draftEl, statusEl, fileInput, tickTimer, saveTimer, busyTimer;
-let sendToken = 0;
-
-// ── 小工具 ───────────────────────────────────────────────────────────────────────────────────────────
-function h(tag, props, ...kids) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(props || {})) {
-    if (v == null || v === false) continue;
-    if (k === "class") el.className = v;
-    else if (k === "text") el.textContent = v;
-    else if (k === "value") el.value = v;
-    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);
-    else el.setAttribute(k, v === true ? "" : v);
-  }
-  for (const kid of kids.flat()) {
-    if (kid == null || kid === false) continue;
-    el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
-  }
-  return el;
-}
+const nextId = () => `${INSTANCE}-${++seq}`;
+let view, saveTimer, tickTimer, lockTimer, sendToken = 0, catalogApps = null, ui = { open: true };
+let driving = false;                           // 这个标签页正在拿运行锁 / 运行（拿锁要等一下，这期间也不能再开始别的）
+let lostLock = false;                          // 没有 Web Locks 时：运行记录被别的标签页写了，这里已经不是持有的那个
+let releaseWeb = null;                         // 持有 Web Locks 的锁时：调用它放锁
 
 const url = (path) => api.apiURL(path);
 const post = (route, body) => api.fetchApi(route, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -52,11 +46,72 @@ async function readJson(r) {
   return d;
 }
 
+// ── 存档 / 多标签页 ──────────────────────────────────────────────────────────────────────────────────
+function lockedByOther() {
+  try {
+    const l = JSON.parse(localStorage.getItem(LOCK_KEY) || "null");
+    return !!l && l.tab !== INSTANCE && Date.now() - l.t < LOCK_TTL_MS;
+  } catch (e) { return false; }
+}
+
+function holdLock() {
+  try { localStorage.setItem(LOCK_KEY, JSON.stringify({ tab: INSTANCE, t: Date.now() })); } catch (e) { /* 存不了就算了 */ }
+}
+
+function releaseLock() {
+  try {
+    const l = JSON.parse(localStorage.getItem(LOCK_KEY) || "null");
+    if (l && l.tab === INSTANCE) localStorage.removeItem(LOCK_KEY);
+  } catch (e) { /* 同上 */ }
+}
+
+function beat() {
+  if (lockedByOther()) lostLock = true;                    // 记录被别的标签页写了（Web Locks 下不会发生）：别再往下提交
+  else holdLock();
+}
+
+// 拿运行锁：同一个浏览器里同一时刻只让一个标签页去提交 / 续跑，不然会重复提交（视频要占额度）。拿到返回「放锁」的函数，拿不到返回 null。
+// 优先用 Web Locks：独占、拿锁是原子的，标签页关了 / 崩了浏览器自己放，复制出来的标签页也各算各的。
+// 用不了的（页面不是 https / localhost）退回 localStorage 里的记录 + 心跳：先看有没有别人的、再写自己的、稍等一下再确认一次（两个标签页同时写，后写的算数）
+async function takeLock() {
+  let viaWeb = false;
+  if (navigator.locks && typeof navigator.locks.request === "function") {
+    try {
+      viaWeb = await new Promise((resolve, reject) => {
+        navigator.locks.request(RUN_LOCK, { ifAvailable: true }, (lock) => {
+          if (!lock) { resolve(false); return undefined; }
+          return new Promise((release) => { releaseWeb = release; resolve(true); });    // 这个 Promise 不结束就一直占着，放锁时才结束
+        }).catch(reject);
+      });
+      if (!viaWeb) return null;
+    } catch (e) { viaWeb = false; }                        // Web Locks 报错（比如页面不是安全环境）：退回记录
+  }
+  if (!viaWeb) {
+    if (lockedByOther()) return null;
+    holdLock();
+    await new Promise((r) => setTimeout(r, 150));
+    if (lockedByOther()) return null;
+  }
+  lostLock = false;
+  holdLock();
+  clearInterval(lockTimer);
+  lockTimer = setInterval(beat, LOCK_BEAT_MS);
+  return () => {
+    clearInterval(lockTimer);
+    if (releaseWeb) { releaseWeb(); releaseWeb = null; }
+    releaseLock();
+  };
+}
+
+function saveNow() {
+  clearTimeout(saveTimer);
+  if (lockedByOther()) return;                 // 别的标签页正在运行：它存的才是最新的，别用这里（可能是旧的）去覆盖
+  try { localStorage.setItem(STORE_KEY, lib.toStorage(state)); } catch (e) { /* 隐私模式 / 配额：不存就不存 */ }
+}
+
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try { localStorage.setItem(STORE_KEY, lib.toStorage(state)); } catch (e) { /* 隐私模式 / 配额：不存就不存 */ }
-  }, 300);
+  saveTimer = setTimeout(saveNow, 300);
 }
 
 function load() {
@@ -64,327 +119,234 @@ function load() {
     const d = lib.fromStorage(localStorage.getItem(STORE_KEY));
     if (d) Object.assign(state, d);
   } catch (e) { /* 读不了就从空白开始 */ }
+  try {
+    const u = JSON.parse(localStorage.getItem(UI_KEY) || "null");
+    if (u && typeof u === "object") ui = { ...ui, ...u };
+  } catch (e) { /* 默认打开 */ }
 }
 
-// ── 样式 ─────────────────────────────────────────────────────────────────────────────────────────────
-const CSS = `
-.pc-root{display:flex;flex-direction:column;height:100%;min-height:0;font-size:13px;color:var(--fg-color,#ddd)}
-.pc-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border-color,#4e4e4e)}
-.pc-head b{font-size:14px}
-.pc-link{background:none;border:none;color:var(--fg-color,#bbb);opacity:.7;cursor:pointer;font-size:12px}
-.pc-link:hover{opacity:1;text-decoration:underline}
-.pc-list{flex:1;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
-.pc-msg{max-width:94%;padding:8px 10px;border-radius:10px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
-.pc-user{align-self:flex-end;background:var(--p-primary-color,#3b82f6);color:#fff}
-.pc-ai{align-self:flex-start;background:var(--comfy-input-bg,#2a2a2a);border:1px solid var(--border-color,#4e4e4e)}
-.pc-err{color:#ff6b6b}
-.pc-muted{opacity:.65;font-size:12px}
-.pc-warn{opacity:.7;font-size:12px;color:#e0b050}
-.pc-imgs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.pc-thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color,#4e4e4e)}
-.pc-plan{margin-top:8px;padding:8px;border:1px solid var(--p-primary-color,#3b82f6);border-radius:8px;background:rgba(59,130,246,.07);white-space:normal}
-.pc-plan-title{font-weight:600;margin-bottom:2px}
-.pc-plan-note{opacity:.75;font-size:12px;margin-bottom:6px}
-.pc-label{display:block;margin:8px 0 3px;font-size:12px;opacity:.8}
-.pc-plan textarea,.pc-plan select{width:100%;box-sizing:border-box;background:var(--comfy-input-bg,#222);color:var(--input-text,#ddd);border:1px solid var(--border-color,#4e4e4e);border-radius:6px;padding:5px 6px;font:inherit}
-.pc-plan textarea{resize:vertical;min-height:44px}
-.pc-plan details{margin-top:8px}
-.pc-plan summary{cursor:pointer;opacity:.75;font-size:12px}
-.pc-btns{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
-.pc-btn{padding:5px 14px;border-radius:6px;border:1px solid var(--border-color,#4e4e4e);background:var(--comfy-input-bg,#2a2a2a);color:inherit;cursor:pointer;font:inherit}
-.pc-btn:hover{filter:brightness(1.2)}
-.pc-btn[disabled]{opacity:.45;cursor:not-allowed}
-.pc-btn-primary{background:var(--p-primary-color,#3b82f6);border-color:transparent;color:#fff}
-.pc-status{font-size:12px;opacity:.85}
-.pc-result{align-self:stretch;padding:8px 10px;border:1px solid var(--border-color,#4e4e4e);border-radius:10px;background:var(--comfy-input-bg,#222)}
-.pc-result h4{margin:0 0 6px;font-size:13px}
-.pc-img{display:block;width:100%;max-height:480px;object-fit:contain;border-radius:6px;margin:6px 0;cursor:zoom-in}
-.pc-media{display:block;width:100%;max-height:480px;margin:6px 0;border-radius:6px;background:#000}
-.pc-text{margin:6px 0;padding:6px 8px;border-radius:6px;background:rgba(127,127,127,.12)}
-.pc-text .pc-tl{display:flex;justify-content:space-between;align-items:center;font-size:12px;opacity:.8;margin-bottom:2px}
-.pc-text pre{margin:0;white-space:pre-wrap;word-break:break-word;font:inherit}
-.pc-empty{opacity:.85;line-height:1.7}
-.pc-chips{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-.pc-chip{text-align:left;padding:6px 10px;border-radius:8px;border:1px dashed var(--border-color,#666);background:none;color:inherit;cursor:pointer;font:inherit}
-.pc-chip:hover{background:rgba(127,127,127,.15)}
-.pc-input{border-top:1px solid var(--border-color,#4e4e4e);padding:8px 10px}
-.pc-drafts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
-.pc-draft{position:relative}
-.pc-draft button{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:9px;border:none;background:#555;color:#fff;cursor:pointer;line-height:16px;padding:0;font-size:12px}
-.pc-row{display:flex;gap:6px;align-items:flex-end}
-.pc-row textarea{flex:1;box-sizing:border-box;resize:none;max-height:140px;background:var(--comfy-input-bg,#222);color:var(--input-text,#ddd);border:1px solid var(--border-color,#4e4e4e);border-radius:8px;padding:7px 8px;font:inherit}
-.pc-drop{outline:2px dashed var(--p-primary-color,#3b82f6);outline-offset:-4px}
-.pc-handle{position:fixed;left:56px;top:34%;z-index:900;display:none;writing-mode:vertical-rl;letter-spacing:2px;padding:14px 7px;border:none;border-radius:0 8px 8px 0;background:var(--p-primary-color,#3b82f6);color:#fff;cursor:pointer;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.pc-handle:hover{filter:brightness(1.15)}
-`;
-
-// ── 界面 ─────────────────────────────────────────────────────────────────────────────────────────────
-function build() {
-  if (!document.getElementById("pro-chat-style")) {
-    const st = document.createElement("style");
-    st.id = "pro-chat-style";
-    st.textContent = CSS;
-    document.head.append(st);
-  }
-  listEl = h("div", { class: "pc-list" });
-  draftEl = h("div", { class: "pc-drafts" });
-  statusEl = h("div", { class: "pc-muted", style: "min-height:16px;margin:0 0 4px" });
-  inputEl = h("textarea", { rows: "2", placeholder: "说你想做什么，比如：做一张夏日促销海报，满199减50", onkeydown: (e) => { if (lib.isEnterToSend(e)) { e.preventDefault(); send(); } }, oninput: autoGrow, onpaste: onPaste });
-  sendBtn = h("button", { class: "pc-btn pc-btn-primary", text: "发送", onclick: () => send() });
-  fileInput = h("input", { type: "file", accept: "image/*", multiple: true, style: "display:none", onchange: () => { attach([...fileInput.files]); fileInput.value = ""; } });
-  const attachBtn = h("button", { class: "pc-btn", title: "附图：上传商品图等（可多张，也可以直接粘贴 / 拖进来）", text: "附图", onclick: () => fileInput.click() });
-  root = h("div", { class: "pc-root", ondragover: (e) => { e.preventDefault(); e.stopPropagation(); root.classList.add("pc-drop"); }, ondragleave: () => root.classList.remove("pc-drop"), ondrop: onDrop },
-    h("div", { class: "pc-head" }, h("b", { text: "AI 助手" }),
-      h("span", null, h("button", { class: "pc-link", text: "清空对话", onclick: clearAll }), h("button", { class: "pc-link", style: "margin-left:10px", text: "收起", title: "关闭这个面板（应用模式下左边没有图标可点）", onclick: toggleTab }))),
-    listEl,
-    h("div", { class: "pc-input" }, draftEl, statusEl, h("div", { class: "pc-row" }, inputEl, h("div", { style: "display:flex;flex-direction:column;gap:6px" }, attachBtn, sendBtn)), fileInput));
-  renderList();
+// 用存档里的状态换掉这里的（消息 / 素材库 / 方案）：另一个标签页在运行时，这里靠它跟着更新
+function adoptStored(text) {
+  const d = lib.fromStorage(text);
+  if (!d) return false;
+  Object.assign(state, { messages: d.messages, assets: d.assets, plan: d.plan });
+  view.renderAll();
+  return true;
 }
 
-function autoGrow() {
-  inputEl.style.height = "auto";
-  inputEl.style.height = Math.min(140, inputEl.scrollHeight) + "px";
+// 另一个标签页在运行时，它每次存档这里都跟着更新界面（这个标签页自己闲着时才跟，忙着的不去动）
+function onStorage(e) {
+  if (e.key !== STORE_KEY || !e.newValue || planLocked() || !lockedByOther()) return;
+  adoptStored(e.newValue);
 }
 
-// 等 AI 回复：显示已等了多久（到阿里的线路偶尔会卡十几秒，没有计时看起来像死了）
-function setBusy(on) {
-  state.busy = on;
-  sendBtn.disabled = on;
-  clearInterval(busyTimer);
-  if (!on) { statusEl.textContent = ""; return; }
-  const t0 = Date.now();
-  const draw = () => { statusEl.textContent = `AI 正在想… ${lib.elapsedText(Date.now() - t0)}`; };
-  draw();
-  busyTimer = setInterval(draw, 1000);
-}
-
-function stickToBottom(fn) {
-  const near = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 80;
-  fn();
-  if (near) listEl.scrollTop = listEl.scrollHeight;
-}
-
-function renderList() {
-  stickToBottom(() => {
-    listEl.replaceChildren();
-    if (!state.messages.length) {
-      listEl.append(h("div", { class: "pc-empty" },
-        h("div", { text: "你好，我是 AI 助手。说一句话，我来选工作流、写好各项设置，你确认后一键生成，结果直接显示在这里。可以附商品图。" }),
-        h("div", { class: "pc-chips" }, EXAMPLES.map((t) => h("button", { class: "pc-chip", text: t, onclick: () => { inputEl.value = t.replace(/^（先点「附图」传一张商品图）/, ""); autoGrow(); inputEl.focus(); } })))));
+// 步骤还停在「运行中」、但这个标签页没在运行它：刷新网页时还在跑的（接着做），或者另一个标签页的运行没了（关了 / 崩了；也可能是它跑完了、这里当时在后台没收到最后的存档）。
+// 拿到运行锁才能接手：别的标签页还活着就拿不到，由它负责，这里靠存档事件跟着更新。拿到之后以存档里的为准（上一个运行的标签页最后存的才是最新的，包括「运行全部」还是「只跑这一步」）：
+// 已经拿到 prompt_id 的接着等结果；提交到一半（有 run_id 没有 prompt_id）的用同一个 run_id 再提交（后端同一个 run_id 只会真的提交一次）；然后按原来的模式继续。
+// 两样都没有的在 toStorage / fromStorage 里已经标成已中断
+async function resumeRunning() {
+  if (planLocked()) return;
+  if (!state.plan || !state.plan.steps.some((s) => s.state === "running")) { state.chain = null; return; }
+  driving = true;
+  let release = null;
+  try {
+    release = await takeLock();
+    if (!release) return;
+    try {
+      const d = lib.fromStorage(localStorage.getItem(STORE_KEY));
+      if (d) { Object.assign(state, { messages: d.messages, assets: d.assets, plan: d.plan, chain: d.chain }); view.renderAll(); }
+    } catch (e) { /* 读不了就按这里的状态来 */ }
+    const i = state.plan ? state.plan.steps.findIndex((s) => s.state === "running") : -1;
+    if (i < 0) { state.chain = null; return; }             // 已经跑完了：用存档里的结果，别再处理一遍
+    const run = state.plan.steps[i].run;
+    if (!run || !(run.promptId || run.runId)) {
+      for (const s of state.plan.steps) if (s.state === "running") { s.state = "interrupted"; delete s.run; }
+      state.chain = null;
+      view.renderPlan();
+      save();
+      return;
     }
-    for (const m of state.messages) listEl.append(renderMessage(m));
-  });
-}
-
-function renderMessage(m) {
-  if (m.role === "user") {
-    return h("div", { class: "pc-msg pc-user" }, m.text, (m.images || []).length ? h("div", { class: "pc-imgs" }, m.images.map((n) => h("img", { class: "pc-thumb", src: url(lib.inputImagePath(n)), loading: "lazy" }))) : null);
-  }
-  if (m.role === "error") return h("div", { class: "pc-msg pc-ai pc-err" }, m.text);
-  if (m.role === "note") return h("div", { class: "pc-muted", style: "align-self:center", text: m.text });
-  if (m.role === "result") return renderResult(m);
-  return h("div", { class: "pc-msg pc-ai" }, m.text, (m.warnings || []).map((w) => h("div", { class: "pc-warn", text: "（" + w + "）" })), m.plan ? renderPlan(m) : null);
-}
-
-function renderPlan(m) {
-  const p = m.plan, sc = p.schema || {};
-  const live = lib.isLivePlanState(m.planState);           // 等确认的，以及上次没成功 / 被停止 / 刷新时没跟上的（可以改了再试）
-  const retry = live && !!m.planState && m.planState !== "open";
-  const frozen = !live;
-  p.fields = p.fields || {};
-  p.images = p.images || {};
-  const box = h("div", { class: "pc-plan" }, h("div", { class: "pc-plan-title", text: `应用 ${p.workflow}「${p.name}」` }), p.note ? h("div", { class: "pc-plan-note", text: p.note }) : null);
-  const body = h("div");                                   // 设置区；方案不再有效（已生成 / 放弃…）后折叠起来，免得对话越来越长
-  if (sc.mode) {
-    const sel = h("select", { disabled: frozen, onchange: () => { p.mode = sel.value; save(); } },
-      sc.mode.options.map((o) => h("option", { value: o, text: o, selected: o === (p.mode || sc.mode.default) })));
-    body.append(h("label", { class: "pc-label", text: sc.mode.label || "模式" }), sel);
-  }
-  const editor = (f) => {
-    const wrap = document.createDocumentFragment();
-    wrap.append(h("label", { class: "pc-label", text: f.label }));
-    if (f.kind === "choice") {
-      const sel = h("select", { disabled: frozen, onchange: () => { if (sel.value) p.fields[f.key] = sel.value; else delete p.fields[f.key]; save(); } },
-        h("option", { value: "", text: "（默认）" }), f.options.map((o) => h("option", { value: o, text: o, selected: o === p.fields[f.key] })));
-      wrap.append(sel);
-    } else {
-      const ta = h("textarea", { rows: "2", disabled: frozen, placeholder: "（用应用里的默认）", value: p.fields[f.key] || "", oninput: () => { if (ta.value.trim()) p.fields[f.key] = ta.value; else delete p.fields[f.key]; save(); } });
-      wrap.append(ta);
-    }
-    return wrap;
-  };
-  const imageEditor = (im) => {
-    const pic = h("img", { class: "pc-thumb", style: "margin-top:4px" });
-    const show = () => { if (p.images[im.key]) { pic.src = url(lib.inputImagePath(p.images[im.key])); pic.style.display = ""; } else pic.style.display = "none"; };
-    const sel = h("select", { disabled: frozen, onchange: () => { if (sel.value) p.images[im.key] = sel.value; else delete p.images[im.key]; show(); save(); } },
-      h("option", { value: "", text: "（用默认演示图）" }), state.images.map((n) => h("option", { value: n, text: n.split("/").pop(), selected: n === p.images[im.key] })));
-    show();
-    const wrap = document.createDocumentFragment();
-    wrap.append(h("label", { class: "pc-label", text: im.label }), sel, pic);
-    return wrap;
-  };
-  // AI 填了的先摆出来；没填的（包括这次用不到的图片位）收进「更多设置」
-  const fields = Object.values(sc.fields || {});
-  const images = Object.values(sc.images || {});
-  fields.filter((f) => f.key in p.fields).forEach((f) => body.append(editor(f)));
-  images.filter((im) => im.key in p.images).forEach((im) => body.append(imageEditor(im)));
-  const more = [...fields.filter((f) => !(f.key in p.fields)).map(editor), ...images.filter((im) => !(im.key in p.images)).map(imageEditor)];
-  if (more.length) body.append(h("details", null, h("summary", { text: "更多设置（不改就用默认）" }), more));
-  if ((sc.uploads || []).length) {
-    body.append(h("div", { class: "pc-warn", style: "margin-top:8px", text: "聊天里传不了" + sc.uploads.map((u) => `「${u.label}」`).join("、") + "，用的是应用里的默认文件；要用自己的，请点「在应用里打开」上传。" }));
-  }
-  box.append(frozen ? h("details", null, h("summary", { text: "查看当时的设置" }), body) : body);
-  const status = h("span", { class: "pc-status" });
-  const btns = h("div", { class: "pc-btns" });
-  if (live) {
-    btns.append(h("button", { class: "pc-btn pc-btn-primary", text: retry ? "再试一次" : "生成", disabled: !!state.running, onclick: () => runPlan(m) }),
-      h("button", { class: "pc-btn", text: "在应用里打开", onclick: () => openInApp(p) }),
-      h("button", { class: "pc-btn", text: "放弃", onclick: () => dismiss(m) }));
-    if (retry) { status.textContent = { failed: "上次没有成功", stopped: "上次已停止", interrupted: "页面刷新时没跟上" }[m.planState] || ""; btns.append(status); }
-  } else if (m.planState === "running") {
-    if (state.running && state.running.msgId === m.id) state.running.statusEl = status;
-    btns.append(status, h("button", { class: "pc-btn", text: "停止", onclick: stopRun }));
+    state.running = { stepIdx: i, start: run.started, node: "", promptId: run.promptId || null };
     tick();
-  } else {
-    status.textContent = { done: "已生成", failed: "没有成功", stopped: "已停止", dismissed: "已放弃", superseded: "已被新方案替代", interrupted: "页面刷新时中断了" }[m.planState] || "";
-    btns.append(status);
+    await runChain(i, (state.chain && state.chain.mode) || "one", run.promptId ? "wait" : "resubmit");
+  } finally {
+    if (release) release();
+    driving = false;
+    view.refreshSend();
   }
-  box.append(btns);
-  return box;
 }
 
-function renderResult(m) {
-  const box = h("div", { class: "pc-result" }, h("h4", { text: `结果 · ${m.name}${m.elapsed ? "（用时 " + lib.elapsedText(m.elapsed) + "）" : ""}` }));
-  for (const it of m.items || []) {
-    const src = url(lib.viewPath(it.file));
-    if (it.kind === "image") box.append(h("img", { class: "pc-img", src, loading: "lazy", onclick: () => window.open(src, "_blank") }));
-    else if (it.kind === "video") box.append(h("video", { class: "pc-media", src, controls: true, preload: "metadata" }));
-    else if (it.kind === "audio") box.append(h("audio", { class: "pc-media", src, controls: true, preload: "metadata" }));
-    else if (it.kind === "text") {
-      const pre = h("pre", { text: it.text != null ? it.text : "加载中…" });
-      const copy = navigator.clipboard && !it.isError ? h("button", { class: "pc-link", text: "复制", onclick: (e) => copyText(pre.textContent, e.target) }) : null;
-      box.append(h("div", { class: "pc-text" + (it.isError ? " pc-err" : "") }, it.label || copy ? h("div", { class: "pc-tl" }, h("span", { text: it.label || "" }), copy) : null, pre));
-      if (it.text == null) {
-        fetch(src).then((r) => r.text()).then((t) => { it.text = t; pre.textContent = t; save(); }).catch(() => { pre.textContent = "（读取失败）"; });
-      }
+// ── 应用目录（手动加步骤用；也用它刷新存在浏览器里的旧方案的设置项）──────────────────────────────────
+async function loadCatalog() {
+  try {
+    const d = await readJson(await api.fetchApi("/pro/catalog"));
+    catalogApps = d.apps || [];
+    for (const st of state.plan ? state.plan.steps : []) {
+      const a = catalogApps.find((x) => x.workflow === st.workflow);
+      if (a) { st.schema = a.schema; st.name = a.name; st.path = a.path; }
     }
-  }
-  if (m.error) box.append(h("div", { class: "pc-err", text: m.error }));
-  if (!(m.items || []).length && !m.error) box.append(h("div", { class: "pc-muted", text: "没有产出结果（可能被跳过了）；可以在「应用里打开」看看。" }));
-  (m.warnings || []).forEach((w) => box.append(h("div", { class: "pc-warn", text: "（" + w + "）" })));
-  const src = state.messages.find((x) => x.id === m.planMsgId);
-  if (src && src.plan) {
-    box.append(h("div", { class: "pc-btns" },
-      h("button", { class: "pc-btn", text: "再来一次", disabled: !!state.running, onclick: () => runPlan(src) }),
-      h("button", { class: "pc-btn", text: "在应用里打开", onclick: () => openInApp(src.plan) })));
-  }
-  return box;
+    view.renderPlan();
+  } catch (e) { /* 目录读不到：只是不能手动加步骤，聊天不受影响 */ }
 }
 
-function copyText(text, btn) {
-  navigator.clipboard.writeText(text).then(() => { btn.textContent = "已复制"; }, () => { btn.textContent = "复制失败"; }).finally(() => setTimeout(() => { btn.textContent = "复制"; }, 1500));
-}
-
-// ── 动作 ─────────────────────────────────────────────────────────────────────────────────────────────
+// ── 消息 ─────────────────────────────────────────────────────────────────────────────────────────────
 function addMessage(m) {
   m.id = m.id || nextId();
   state.messages.push(m);
-  renderList();
-  listEl.scrollTop = listEl.scrollHeight;
+  view.renderChat();
+  view.scrollChat();
   save();
   return m;
 }
 
-function clearAll() {
-  if (state.running) return;
-  sendToken++;                                             // 还在等的 AI 回复作废
-  setBusy(false);
-  state.messages = []; state.images = []; state.plan = null; state.draft = [];
-  renderList(); renderDrafts(); save();
+function changed() {
+  save();
+  view.refreshStatus();
 }
 
-function dismiss(m) {
-  m.planState = "dismissed";
-  if (state.plan === m.plan) state.plan = null;
-  renderList(); save();
+function adoptPlan(plan) {
+  state.plan = lib.adoptPlan(state.plan, plan);
+  view.renderPlan();
+  save();
 }
+
+// 等 AI 回复的时候、以及有步骤在运行 / 正在拿运行锁的时候，方案都不让改（回复一到整个方案会被换掉；运行中的步骤被换掉会卡住）
+const planLocked = () => !!(state.running || state.busy || driving);
 
 async function send() {
-  const text = inputEl.value.trim();
-  if ((!text && !state.draft.length) || state.busy) return;
+  const text = view.inputText();
+  if ((!text && !state.draft.length) || planLocked()) return;
   const attached = state.draft.splice(0);
-  const { images, newIdx } = lib.addImages(state.images, attached.map((a) => a.name));
-  state.images = images;
-  inputEl.value = ""; autoGrow(); renderDrafts();
-  addMessage({ role: "user", text: text || "（附了图片）", images: attached.map((a) => a.name) });
+  const nums = attached.map((a) => lib.addAsset(state.assets, a).n);
+  const kept = nums.filter((n) => n > 0);
+  view.clearInput();
+  view.renderDrafts();
+  view.renderAssets();
+  addMessage({ role: "user", text: text || "（附了素材）", attachments: kept });
+  if (kept.length < nums.length) addMessage({ role: "note", text: `素材库满了（最多 ${lib.MAX_ASSETS} 个），有 ${nums.length - kept.length} 个没放进去；可以先「清空全部」再继续` });
   const token = ++sendToken;
-  setBusy(true);
+  view.setBusy(true);
   try {
-    const d = await readJson(await post("/pro/chat", { messages: lib.apiMessages(state.messages, state.images), images: state.images, new_images: newIdx, plan: lib.serverPlan(state.plan) }));
-    if (token !== sendToken) return;                       // 等回复的时候点了「清空对话」：这条回复不要了
-    const m = { role: "assistant", text: d.reply, plan: d.plan || null, planState: d.plan ? "open" : undefined, warnings: d.warnings || [] };
-    if (d.plan) {
-      for (const o of state.messages) if (o.plan && lib.isLivePlanState(o.planState)) o.planState = "superseded";
-      state.plan = d.plan;
+    const d = await readJson(await post("/pro/chat", {
+      messages: lib.apiMessages(state.messages), assets: state.assets.map((a) => ({ name: a.name, label: a.label })), new_assets: kept, plan: lib.serverPlan(state.plan),
+    }));
+    if (token !== sendToken) return;                       // 等回复的时候点了「清空全部」：这条回复不要了
+    if (d.plan && !Array.isArray(d.plan.steps)) throw new Error("服务器上的助手后端还是旧版本（方案格式对不上）：重启一下 ComfyUI 容器（deploy.sh --sync）再刷新网页");
+    const m = { role: "assistant", text: d.reply, warnings: d.warnings || [] };
+    if (d.plan && state.running) {                         // 正常到不了这里（运行中不让发消息）；万一别的标签页在跑，别把运行中的步骤换掉
+      m.warnings.push("有步骤正在运行，这个新方案没有应用；跑完后再说一次");
+    } else if (d.plan) {
+      adoptPlan(d.plan);
+      m.snap = lib.snapshotPlan(state.plan);
+      m.planText = lib.planSummary(state.plan);
     }
     addMessage(m);
   } catch (e) {
     if (token === sendToken) addMessage({ role: "error", text: "出错了：" + (e.message || e) });
   } finally {
-    if (token === sendToken) setBusy(false);
+    if (token === sendToken) view.setBusy(false);
   }
 }
 
-// 附图：先上传到 input/助手/，成功后才出现在输入框上方
+// ── 上传：先传到 input/助手/，成功后才出现在输入框上方 / 用在步骤里 ───────────────────────────────────
+async function uploadFile(f) {
+  const kind = lib.fileKind(f.name);
+  if (!lib.MEDIA_KINDS.includes(kind)) throw new Error(`「${f.name}」不是图片 / 视频 / 音频文件`);
+  if (f.size > MAX_BYTES[kind]) throw new Error(`「${f.name}」太大（${lib.KIND_LABEL[kind]}最大 ${MAX_BYTES[kind] >> 20}MB）`);
+  const body = new FormData();
+  body.append("image", f, f.name || "image.png");
+  body.append("type", "input");
+  body.append("subfolder", "助手");
+  body.append("overwrite", "false");
+  const d = await readJson(await api.fetchApi("/upload/image", { method: "POST", body }));
+  return { name: d.subfolder ? `${d.subfolder}/${d.name}` : d.name, kind, label: `上传的${lib.KIND_LABEL[kind]}：${f.name || d.name}` };
+}
+
 async function attach(files) {
   for (const f of files) {
-    if (!f.type.startsWith("image/")) { statusEl.textContent = `「${f.name}」不是图片，已跳过`; continue; }
-    if (f.size > MAX_IMAGE_BYTES) { statusEl.textContent = `「${f.name}」超过 20MB，已跳过`; continue; }
-    statusEl.textContent = `正在上传 ${f.name || "图片"} …`;
+    view.setStatus(`正在上传 ${f.name || "文件"} …`);
     try {
-      const body = new FormData();
-      body.append("image", f, f.name || "image.png");
-      body.append("type", "input");
-      body.append("subfolder", "助手");
-      body.append("overwrite", "false");
-      const d = await readJson(await api.fetchApi("/upload/image", { method: "POST", body }));
-      state.draft.push({ name: d.subfolder ? `${d.subfolder}/${d.name}` : d.name });
-      statusEl.textContent = "";
+      state.draft.push(await uploadFile(f));
+      view.setStatus("");
     } catch (e) {
-      statusEl.textContent = "上传失败：" + (e.message || e);
+      view.setStatus("上传失败：" + (e.message || e));
     }
   }
-  renderDrafts();
+  view.renderDrafts();
 }
 
-function renderDrafts() {
-  draftEl.replaceChildren(...state.draft.map((d, i) => h("div", { class: "pc-draft" }, h("img", { class: "pc-thumb", src: url(lib.inputImagePath(d.name)) }),
-    h("button", { title: "移除", text: "×", onclick: () => { state.draft.splice(i, 1); renderDrafts(); } }))));
+// 在某一步的文件控件里直接上传：放进素材库，并用在这一步
+async function uploadForField(i, key, kind, file) {
+  if (planLocked()) return;
+  try {
+    const up = await uploadFile(file);
+    if (up.kind !== kind) throw new Error(`这里要${lib.KIND_LABEL[kind]}，「${file.name}」是${lib.KIND_LABEL[up.kind]}`);
+    const { n } = lib.addAsset(state.assets, up);
+    if (!n) throw new Error(`素材库满了（最多 ${lib.MAX_ASSETS} 个）`);
+    if (planLocked() || !state.plan || !state.plan.steps[i]) return;       // 上传的时候方案被换了 / 开始运行了：文件留在素材库里，不往方案里放
+    state.plan.steps[i].files[key] = { asset: n };
+    view.renderAssets();
+    view.renderPlan();
+    changed();
+  } catch (e) {
+    addMessage({ role: "error", text: "上传失败：" + (e.message || e) });
+  }
 }
 
+// 粘贴：有图片 / 视频 / 音频文件就当附件；焦点不在输入框时（点了一下工作台的空白处）的粘贴也不能漏给 ComfyUI（它会把图粘成画布上的节点）
 function onPaste(e) {
-  const files = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/"));
-  if (files.length) { e.preventDefault(); e.stopPropagation(); attach(files); }
+  const files = [...(e.clipboardData?.files || [])].filter((f) => lib.MEDIA_KINDS.includes(lib.fileKind(f.name)) || f.type.startsWith("image/"));
+  if (files.length) { e.preventDefault(); e.stopPropagation(); attach(files); return; }
+  const t = e.target;
+  if (!(t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT"))) e.stopPropagation();
 }
 
 function onDrop(e) {
   e.preventDefault();
-  e.stopPropagation();                      // 拖进聊天面板的文件只给聊天用，不让别的拖入处理（ComfyUI / 其他扩展）再处理一遍
-  root.classList.remove("pc-drop");
+  e.stopPropagation();                      // 拖进工作台的文件只给工作台用，不让别的拖入处理（ComfyUI / 其他扩展）再处理一遍
   attach([...(e.dataTransfer?.files || [])]);
 }
 
-// 运行：后端提交到队列 → 等 /history 里出现结果（事件 + 轮询）→ 结果卡片
+// ── 方案：增删 ───────────────────────────────────────────────────────────────────────────────────────
+function addStep(workflow) {
+  const a = (catalogApps || []).find((x) => x.workflow === workflow);
+  if (!a || planLocked()) return;
+  const plan = lib.appendStep(state.plan, lib.newStep(a));
+  if (!plan) { addMessage({ role: "note", text: `一个方案最多 ${lib.MAX_STEPS} 步` }); return; }
+  state.plan = plan;
+  view.renderPlan();
+  save();
+}
+
+function removeStep(i) {
+  if (planLocked() || !state.plan) return;
+  const plan = lib.removeStep(state.plan, i);
+  state.plan = plan.steps.length ? plan : null;
+  view.renderPlan();
+  save();
+}
+
+function clearPlan() {
+  if (planLocked()) return;
+  state.plan = null;
+  view.renderPlan();
+  save();
+}
+
+function clearAll() {
+  if (state.running) return;
+  sendToken++;                                             // 还在等的 AI 回复作废
+  view.setBusy(false);
+  state.messages = []; state.assets = []; state.plan = null; state.draft = []; state.chain = null;
+  view.renderAll();
+  save();
+}
+
+// ── 运行：后端提交到队列 → 等 /history 里出现结果（事件 + 轮询）→ 结果放进素材库 ───────────────────────
 function tick() {
   clearInterval(tickTimer);
-  const r = state.running;
-  if (!r) return;
-  const draw = () => {
-    if (!state.running) { clearInterval(tickTimer); return; }
-    if (r.statusEl && r.statusEl.isConnected) r.statusEl.textContent = `生成中… 已 ${lib.elapsedText(Date.now() - r.start)}${r.node ? " · " + lib.shortTitle(r.node) : ""}`;
-  };
-  draw();
-  tickTimer = setInterval(draw, 1000);
+  if (!state.running) return;
+  tickTimer = setInterval(() => { if (!state.running) clearInterval(tickTimer); else view.tickRunning(); }, 1000);
 }
 
 function waitFinished(promptId) {
@@ -414,93 +376,198 @@ function waitFinished(promptId) {
   });
 }
 
-async function runPlan(m) {
-  if (state.running) return;
-  const started = Date.now();
-  state.running = { msgId: m.id, start: started, node: "", promptId: null, info: null, statusEl: null };
-  m.planState = "running";
-  renderList();
-  try {
-    const d = await readJson(await post("/pro/run", lib.runPayload(m.plan, api.clientId)));
-    // 提交成功就把 prompt_id 记进消息：这时刷新网页也能接着等（resumeRun），长任务（视频要几分钟）不会因为刷新丢结果
-    m.run = { promptId: d.prompt_id, name: d.name, outputs: d.outputs, titles: d.titles, warnings: d.warnings || [], started };
-    Object.assign(state.running, { promptId: d.prompt_id, info: m.run });
-    save();
-  } catch (e) {
-    state.running = null;
-    m.planState = "failed";
-    addMessage({ role: "error", text: "运行失败：" + (e.message || e) + `（用时 ${lib.elapsedText(Date.now() - started)}）` });
-    renderList();
-    save();
-    return;
-  }
-  await finishRun(m);
-}
-
-// 等这次运行出结果，把结果（或停止 / 失败）记进对话。m.run 里有 prompt_id 和结果节点 id。
-async function finishRun(m) {
-  const run = m.run;
-  try {
-    const entry = await waitFinished(run.promptId);
-    state.running = null;
-    if (lib.wasInterrupted(entry)) {
-      m.planState = "stopped";
-      addMessage({ role: "note", text: `已停止「${run.name}」（用时 ${lib.elapsedText(Date.now() - run.started)}）` });
-    } else {
-      const items = lib.historyItems(entry, run.outputs);
-      const error = lib.historyError(entry, run.titles);
-      m.planState = lib.runOutcome(items, error);
-      addMessage({ role: "result", planMsgId: m.id, name: run.name, items, error, warnings: run.warnings || [], elapsed: Date.now() - run.started });
-    }
-  } catch (e) {
-    state.running = null;
-    m.planState = "failed";
-    addMessage({ role: "error", text: "运行失败：" + (e.message || e) + `（用时 ${lib.elapsedText(Date.now() - run.started)}）` });
-  }
-  delete m.run;
-  renderList();
+function failStep(i, message) {
+  const step = state.plan.steps[i];
+  step.state = "failed";
+  step.result = { items: [], error: message, warnings: (step.run && step.run.warnings) || [], elapsed: step.run ? Date.now() - step.run.started : 0, byKind: {} };
+  delete step.run;
+  state.running = null;
+  addMessage({ role: "error", text: `步骤 ${i + 1}「${step.name}」没有成功：${message}` });
+  view.renderPlan();
+  view.refreshSend();
   save();
 }
 
-// 刷新网页时还在跑的方案（已经拿到 prompt_id）：接着等结果；没拿到的（提交那一刻刷新了）标成已中断
-function resumeRun() {
-  const running = state.messages.filter((m) => m.planState === "running");
-  const keep = running.filter((m) => m.run && m.run.promptId).pop();
-  for (const m of running) if (m !== keep) { m.planState = "interrupted"; delete m.run; }
-  if (!keep) return;
-  state.running = { msgId: keep.id, start: keep.run.started, node: "", promptId: keep.run.promptId, info: keep.run, statusEl: null };
-  renderList();
-  finishRun(keep);
-}
-
-async function stopRun() {
-  const r = state.running;
-  if (!r || !r.promptId) return;
-  try { await post("/interrupt", { prompt_id: r.promptId }); } catch (e) { /* 已经结束了 */ }
-}
-
-// 「在应用里打开」：把这个应用载入成一个新标签页，并把方案里的设置填进去，方便接着手动调 / 上传自己的视频音频
-async function openInApp(p) {
-  try {
-    const wf = await readJson(await api.fetchApi("/userdata/" + encodeURIComponent("workflows/" + p.path)));
-    await app.loadGraphData(wf, true, true, `助手 · ${p.name}`);
-    const set = (key, value) => {
-      const i = key.indexOf(":");
-      const node = app.graph.getNodeById(Number(key.slice(0, i)));
-      const w = node && node.widgets && node.widgets.find((x) => x.name === key.slice(i + 1));
-      if (!w) return;
-      const vals = w.options && w.options.values;
-      if (Array.isArray(vals) && !vals.includes(value)) w.options.values = [...vals, value];   // 聊天里传的图在 input/助手/ 下，不在下拉里；补进去，前端才不会提示「缺少媒体」
-      w.value = value;
-      if (w.callback) w.callback(value);
-    };
-    if (p.mode && p.schema && p.schema.mode) set(p.schema.mode.key, p.mode);
-    Object.entries(p.fields || {}).forEach(([k, v]) => set(k, v));
-    Object.entries(p.images || {}).forEach(([k, v]) => set(k, v));
-    app.graph.setDirtyCanvas(true, true);
-  } catch (e) {
-    addMessage({ role: "error", text: "打开失败：" + (e.message || e) });
+// 把这一步产出的图片 / 视频 / 音频从输出目录复制到素材库（input/助手/），返回 {image: [编号…], video: […], audio: […]}；放不进去的写进 warnings
+async function stageResults(i, items, warnings) {
+  const step = state.plan.steps[i];
+  const byKind = { image: [], video: [], audio: [] };
+  for (const it of lib.stageable(items)) {
+    try {
+      const d = await readJson(await post("/pro/stage", { filename: it.file.filename, subfolder: it.file.subfolder || "", type: it.file.type || "output" }));
+      const k = byKind[d.kind].length + 1;
+      const { n } = lib.addAsset(state.assets, { name: d.name, kind: d.kind, label: `步骤 ${i + 1}「${step.name}」的第 ${k} 个${lib.KIND_LABEL[d.kind]}` });
+      if (!n) { warnings.push("素材库满了，有结果没放进素材库（后面的步骤用不了它）"); continue; }
+      it.asset = n;
+      byKind[d.kind].push(n);
+    } catch (e) {
+      warnings.push(`「${it.file.filename}」没能放进素材库（${e.message || e}），后面的步骤用不了它`);
+    }
   }
+  view.renderAssets();
+  return byKind;
+}
+
+// 等这一步出结果，把结果（或停止 / 失败）记进方案。步骤里的 run 有 prompt_id、结果节点 id 和开始时的设置。返回 true = 成功完成。
+async function finishStep(i) {
+  const step = state.plan.steps[i];
+  const run = step.run;
+  let ok = false;
+  try {
+    const entry = await waitFinished(run.promptId);
+    const elapsed = Date.now() - run.started;
+    if (lib.wasInterrupted(entry)) {
+      step.state = "stopped";
+      addMessage({ role: "note", text: `已停止步骤 ${i + 1}「${step.name}」（用时 ${lib.elapsedText(elapsed)}）` });
+    } else {
+      const items = lib.historyItems(entry, run.outputs);
+      const error = lib.historyError(entry, run.titles);
+      const warnings = [...(run.warnings || [])];
+      const byKind = await stageResults(i, items, warnings);
+      step.result = { items, error, warnings, elapsed, byKind };
+      if (lib.runOutcome(items, error) === "done") {
+        step.state = "done";
+        step.runs = (step.runs || 0) + 1;
+        step.ran = run.snap ? run.snap.parts : undefined;       // 没有开始时的记录（老存档）：当作设置改过，下次会提示重跑
+        step.usedRuns = run.snap ? run.snap.usedRuns : {};
+        ok = true;
+      } else {
+        step.state = "failed";
+        addMessage({ role: "error", text: `步骤 ${i + 1}「${step.name}」没有成功${error ? "：" + error : "（看右边的出错信息）"}` });
+      }
+    }
+  } catch (e) {
+    state.running = null;
+    failStep(i, (e.message || String(e)) + `（用时 ${lib.elapsedText(Date.now() - run.started)}）`);
+    return false;
+  }
+  delete step.run;
+  state.running = null;
+  view.renderPlan();
+  view.refreshSend();
+  save();
+  return ok;
+}
+
+// 提交一步并等它跑完；返回 true = 成功完成。resubmit = 刷新网页时这一步提交到一半：用存档里的 run_id 再提交一次（后端同一个 run_id 只会真的提交一次，
+// 上次已经提交成功的话拿到的就是上次的 prompt_id，不会重复花钱）
+async function executeStep(i, resubmit = false) {
+  const plan = state.plan, step = plan.steps[i];
+  const { files, missing, deps } = lib.resolveStepFiles(plan, state.assets, i);
+  if (missing.length) { failStep(i, missing.join("；")); return false; }
+  if (!resubmit) {
+    step.state = "running";
+    step.run = { started: Date.now(), snap: lib.runSnapshot(plan, i, deps), runId: step.lostRunId || `${nextId()}-${Date.now().toString(36)}`.slice(-80) };
+    delete step.lostRunId;
+  }
+  const run = step.run;
+  state.running = { stepIdx: i, start: run.started, node: "", promptId: null };
+  view.renderPlan();
+  view.refreshSend();
+  tick();
+  saveNow();                                                // 先把 run_id 存下来，再去提交：提交到一半刷新了，才知道用哪个 run_id 接着来
+  // 网络层失败（fetch 抛 TypeError：网页正在刷新 / 连接断了）时不能算这一步失败：服务器没回话，不知道有没有收到；带着同一个 run_id 再来是安全的（同一个 run_id 只会真的提交一次）。
+  // 刷新网页时这个请求会被掐断，如果这里直接记失败，刷新后的页面读到的就是「没成功」，没法接着做了
+  let d = null, lastErr = null;
+  for (let attempt = 1; attempt <= 3 && !d; attempt++) {
+    try {
+      d = await readJson(await post("/pro/run", lib.runPayload(step, files, api.clientId, run.runId)));
+    } catch (e) {
+      lastErr = e;
+      if (!(e instanceof TypeError) || attempt === 3) break;
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
+    }
+  }
+  if (!d) {
+    const noReply = lastErr instanceof TypeError;
+    if (noReply) step.lostRunId = run.runId;               // 服务器一直没回话，不知道它到底收到没有：下次再运行这一步沿用这个 run_id，收到过的话拿到的就是上次那一次，不会再提交一遍
+    failStep(i, (noReply ? "连不上服务器，不知道这次请求有没有送到（网络断了？）。再点一次会带着同一个编号重试：服务器已经收到的，不会重复提交" : (lastErr && lastErr.message) || String(lastErr)) + `（用时 ${lib.elapsedText(Date.now() - run.started)}）`);
+    return false;
+  }
+  // 提交成功就把 prompt_id 记进步骤：这时刷新网页也能接着等（resumeRunning），长任务（视频要几分钟）不会因为刷新丢结果
+  const warnings = [...(d.warnings || [])];
+  if (d.repeated) warnings.push("服务器上已经有这一次提交的记录（上次网页没拿到回复），这次直接接上它，没有重复提交");
+  Object.assign(run, { promptId: d.prompt_id, name: d.name, outputs: d.outputs, titles: d.titles, warnings });
+  state.running.promptId = d.prompt_id;
+  save();
+  if (state.running.stopRequested) interrupt(d.prompt_id);     // 提交的时候点了「停止」：拿到 prompt_id 马上中断
+  return finishStep(i);
+}
+
+// 用户点了运行：先拿运行锁（同一个浏览器里只有一个标签页能运行），拿不到说明另一个标签页（包括复制出来的）在跑；拿到了就开始
+async function drive(i, mode) {
+  if (driving) return;
+  driving = true;
+  let release = null;
+  try {
+    release = await takeLock();
+    if (!release) {
+      addMessage({ role: "note", text: "另一个标签页正在运行这个方案，等它跑完（或关掉它）再来" });
+      return;
+    }
+    await runChain(i, mode, "new");
+  } finally {
+    if (release) release();                                // runChain 已经把最终状态存好了，再放锁：另一个标签页收到存档时锁还在，才会跟着更新
+    driving = false;
+    view.refreshSend();
+  }
+}
+
+// 拿到运行锁之后，从第 i 步开始跑；mode "all" = 跑完这一步接着跑后面需要运行的（设置改过 / 前面重跑过 / 还没跑的），"one" = 只跑这一步。
+// how: "new" 正常提交；"wait" 刷新网页后接着等已经提交的那一步；"resubmit" 刷新网页后这一步提交到一半，用同一个 run_id 再来一次。
+// 中途失败 / 停止就停下，后面的步骤不动。
+async function runChain(i, mode, how) {
+  state.chain = { mode, cursor: i };
+  saveNow();
+  let cur = i;
+  try {
+    for (;;) {
+      const ok = how === "wait" ? await finishStep(cur) : await executeStep(cur, how === "resubmit");
+      how = "new";
+      if (!ok || !state.chain || state.chain.mode !== "all" || state.chain.stopped) break;
+      if (lostLock) { addMessage({ role: "note", text: "运行锁被另一个标签页拿走了，这里不再提交后面的步骤（让它接着做）" }); break; }
+      const next = lib.nextToRun(state.plan, cur);
+      if (next < 0) break;
+      cur = next;
+      state.chain.cursor = cur;
+      save();
+    }
+  } catch (e) {                                            // 不该发生的意外：别把步骤卡在「运行中」、别让界面一直锁着
+    const step = state.plan && state.plan.steps[cur];
+    if (step && step.state === "running") failStep(cur, "意外出错：" + (e.message || e));
+    else addMessage({ role: "error", text: "运行出错了：" + (e.message || e) });
+    state.running = null;
+  } finally {
+    state.chain = null;
+    view.renderPlan();
+    view.refreshSend();
+    saveNow();                                             // 最终状态存好；放锁在调用的地方（drive / resumeRunning）
+  }
+}
+
+function runStep(i) {
+  if (planLocked() || !state.plan) return;
+  drive(i, "one");
+}
+
+function runAll() {
+  if (planLocked() || !state.plan) return;
+  const i = lib.nextToRun(state.plan, -1);
+  if (i >= 0) drive(i, "all");
+}
+
+// 中断正在跑的这一步：ComfyUI 的 /interrupt 只对正在执行的有用，还在排队的要从队列里删掉
+async function interrupt(promptId) {
+  try { await post("/interrupt", { prompt_id: promptId }); } catch (e) { /* 已经结束了 */ }
+  try { await post("/queue", { delete: [promptId] }); } catch (e) { /* 不在队列里了 */ }
+}
+
+async function stop() {
+  const r = state.running;
+  if (!r) return;
+  if (state.chain) state.chain.stopped = true;
+  if (!r.promptId) { r.stopRequested = true; return; }     // 还在提交：拿到 prompt_id 后马上中断（executeStep 里）
+  await interrupt(r.promptId);
 }
 
 function onExecuting(e) {
@@ -510,62 +577,142 @@ function onExecuting(e) {
   const nid = d && typeof d === "object" ? d.node : d;
   const pid = d && typeof d === "object" ? d.prompt_id : null;
   if (pid && r.promptId && pid !== r.promptId) return;
-  if (nid && r.info) r.node = (r.info.titles || {})[String(nid)] || "";
+  const run = state.plan && state.plan.steps[r.stepIdx] && state.plan.steps[r.stepIdx].run;
+  if (nid && run) r.node = (run.titles || {})[String(nid)] || "";
 }
 
-// ── 挂载位置 ─────────────────────────────────────────────────────────────────────────────────────────
-// 根节点只建一次，但 ComfyUI 会先后（有时同时）给我们几个容器：画布模式的侧栏、应用模式的左栏。
-// 记下所有容器，哪个看得见就放进哪个；切换模式后旧容器被销毁，自动换到还在的那个。
-const hosts = new Set();
-const visible = (el) => el.isConnected && el.getClientRects().length > 0;
-const TAB_ID = "pro-chat";
-const toggleTab = () => app.extensionManager.sidebarTab.toggleSidebarTab(TAB_ID);
-let handle;
-
-function place() {
-  if (visible(root)) return;
-  for (const el of [...hosts].reverse()) {
-    if (!el.isConnected) hosts.delete(el);
-    else if (visible(el)) { el.append(root); listEl.scrollTop = listEl.scrollHeight; return; }
+// 「在应用里打开」：把这一步的应用载入成一个新标签页，并把方案里的设置填进去，方便接着手动调
+async function openInApp(i) {
+  if (planLocked()) return;
+  const step = state.plan.steps[i];
+  try {
+    const wf = await readJson(await api.fetchApi("/userdata/" + encodeURIComponent("workflows/" + step.path)));
+    await app.loadGraphData(wf, true, true, `工作台 · ${step.name}`);
+    const set = (key, value) => {
+      const k = key.indexOf(":");
+      const node = app.graph.getNodeById(Number(key.slice(0, k)));
+      const w = node && node.widgets && node.widgets.find((x) => x.name === key.slice(k + 1));
+      if (!w) return;
+      const vals = w.options && w.options.values;
+      if (Array.isArray(vals) && !vals.includes(value)) w.options.values = [...vals, value];   // 素材在 input/助手/ 下，不在下拉里；补进去，前端才不会提示「缺少媒体」
+      w.value = value;
+      if (w.callback) w.callback(value);
+    };
+    const sc = step.schema || {};
+    if (step.mode && sc.mode) set(sc.mode.key, step.mode);
+    Object.entries(step.fields || {}).forEach(([k, v]) => {
+      const f = (sc.fields || {})[k];
+      const cast = f && f.cast === "int" ? Number.parseInt(v, 10) : f && f.cast === "float" ? Number.parseFloat(v) : v;   // 数字下拉：节点里的选项是数字
+      set(k, cast);
+    });
+    Object.entries(lib.resolveStepFiles(state.plan, state.assets, i).files).forEach(([k, v]) => set(k, v));
+    app.graph.setDirtyCanvas(true, true);
+    close();
+  } catch (e) {
+    addMessage({ role: "error", text: "打开失败：" + (e.message || e) });
   }
 }
 
-// 应用模式下前端把左侧图标栏写死成只有「素材」「应用」，看不到我们的标签页，所以那时在左边缘放一个按钮；
-// 画布模式左栏里有我们的图标，不需要。应用模式的判断：画布容器被隐藏了。
-function syncHandle() {
-  const canvas = document.querySelector(".graph-canvas-container");
-  const appMode = !!canvas && canvas.getClientRects().length === 0;
-  const open = !!app.extensionManager.sidebarTab.activeSidebarTabId;
-  handle.style.display = appMode && !open ? "block" : "none";
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => { btn.textContent = "已复制"; }, () => { btn.textContent = "复制失败"; }).finally(() => setTimeout(() => { btn.textContent = "复制"; }, 1500));
 }
 
-// ── 注册侧栏标签页 ───────────────────────────────────────────────────────────────────────────────────
+// 文字结果（AI 写的提示词 / 文案）在输出目录里是 .txt，要读出来显示
+function loadText(it, src, done) {
+  fetch(src).then((r) => r.text()).then((t) => { it.text = t; done(t); save(); }).catch(() => done("（读取失败）"));
+}
+
+// ── 打开 / 关闭 ──────────────────────────────────────────────────────────────────────────────────────
+function persistUi() {
+  try { localStorage.setItem(UI_KEY, JSON.stringify(ui)); } catch (e) { /* 不存就不存 */ }
+}
+
+function open() {
+  ui.open = true;
+  persistUi();
+  view.setOpen(true);
+  view.focusInput();                                       // 焦点放进工作台：打开后直接打字；不然焦点还停在刚点的图标 / 页面上，按键会落到 ComfyUI 的快捷键上
+  if (!catalogApps) loadCatalog();
+}
+
+// 工作台开着、焦点却在工作台外面时按 Ctrl+Enter：那是 ComfyUI 的「排队运行」，会把后面那张节点图（可能是你自己的工作流，可能要花钱）跑起来。拦下来
+function guardQueueKey(e) {
+  if (!view || !view.isOpen() || e.key !== "Enter" || !(e.ctrlKey || e.metaKey) || (e.target instanceof Node && view.root.contains(e.target))) return;
+  e.stopPropagation();
+  e.preventDefault();
+}
+
+function close() {
+  ui.open = false;
+  persistUi();
+  view.setOpen(false);
+}
+
+const toggleTab = () => app.extensionManager.sidebarTab.toggleSidebarTab(TAB_ID);
+
+// 左边图标栏里的「AI 工作台」图标：点一下 = 打开大窗口（侧栏面板里只放一个说明，打开后立刻收起面板）
+function launcher(el) {
+  el.style.height = "100%";
+  el.replaceChildren();
+  const box = document.createElement("div");
+  box.style.cssText = "padding:14px;display:flex;flex-direction:column;gap:10px;font-size:13px";
+  const p = document.createElement("div");
+  p.textContent = "AI 工作台已经改成大窗口：说一句话排好步骤，每步的设置都能改，一键跑完。";
+  const b = document.createElement("button");
+  b.textContent = "打开工作台";
+  b.style.cssText = "padding:6px 14px;border-radius:6px;border:none;background:var(--p-primary-color,#3b82f6);color:#fff;cursor:pointer;font:inherit";
+  const openAndCollapse = () => { open(); if (app.extensionManager.sidebarTab.activeSidebarTabId === TAB_ID) toggleTab(); view.focusInput(); };       // 收起侧栏面板会把焦点带走，最后再放回输入框
+  b.onclick = openAndCollapse;
+  box.append(p, b);
+  el.append(box);
+  setTimeout(openAndCollapse, 60);
+}
+
+// ── 注册 ─────────────────────────────────────────────────────────────────────────────────────────────
+const actions = {
+  examples: EXAMPLES,
+  send, attach, onPaste, onDrop, uploadForField, changed, open, close, clearAll, clearPlan, runAll, runStep, stop, addStep, removeStep, openInApp, copyText, loadText,
+  mention: (n) => { view.insertText(`素材 ${n} `); },
+};
+
+function buildView() {
+  document.querySelectorAll(".pcw, .pcw-handle").forEach((el) => el.remove());      // 重试时别留下上一次建到一半的界面
+  view = createView({ state, url, actions, catalog: () => catalogApps });
+  view.renderAll();
+}
+
 app.registerExtension({
   name: "Pro.Chat",
   async setup() {
     load();
-    build();
+    try {
+      buildView();
+    } catch (e) {                                           // 存档里的数据不对头把界面画崩了：丢掉存档、从空白开始，别让工作台一直打不开
+      console.error("[pro-chat] 存档数据有问题，已清掉重来：", e);
+      try { localStorage.removeItem(STORE_KEY); } catch (e2) { /* 同上 */ }
+      Object.assign(state, { messages: [], assets: [], plan: null, draft: [], chain: null, busy: false, running: null });
+      buildView();
+    }
     api.addEventListener("executing", onExecuting);
-    resumeRun();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("keydown", guardQueueKey, true);
+    window.addEventListener("pagehide", () => { saveNow(); releaseLock(); });            // 刚改完就刷新 / 关页面：存档有 300 毫秒的延迟，这里立刻补存；运行记录也马上放掉（Web Locks 的锁浏览器会自己放；没有它时，别的标签页不用干等记录过期）
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveNow(); });
+    resumeRunning();
+    setInterval(resumeRunning, 7000);                       // 另一个标签页在跑却突然没了（关了 / 崩了）：它的锁一放，这里接手，免得步骤一直卡在「运行中」
     app.extensionManager.registerSidebarTab({
       id: TAB_ID,
       icon: "pi pi-comments",
-      title: "AI 助手",
-      tooltip: "AI 助手：说一句话，自动选工作流并运行",
+      title: "AI 工作台",
+      tooltip: "AI 工作台：说一句话排好步骤，一键出图 / 视频 / 配音 / 成片",
       type: "custom",
-      render: (el) => {
-        el.style.height = "100%";
-        hosts.add(el);
-        el.append(root);
-        listEl.scrollTop = listEl.scrollHeight;
-        setTimeout(place, 300);                // 同时有两个容器时，最后一个可能是看不见的那个
-      },
+      render: launcher,
     });
-    handle = h("button", { class: "pc-handle", text: "AI 助手", title: "AI 助手：说一句话，自动选工作流并运行", onclick: toggleTab });
-    document.body.append(handle);
-    setInterval(() => { place(); syncHandle(); }, 500);
+    view.setOpen(ui.open !== false);
+    if (ui.open !== false && (!document.activeElement || document.activeElement === document.body)) view.focusInput();      // 默认打开：焦点还在空白处就放进输入框；已经在别处（比如 ComfyUI 的对话框）就不去抢
+    loadCatalog();
   },
 });
 
 // 给测试 / 调试用：控制台里可以 window.__proChat.state 看状态
-window.__proChat = { state, send, attach, runPlan, openInApp, lib };
+window.__proChat = { state, view: () => view, actions, lib };

@@ -1,7 +1,7 @@
 """运行一个方案：校验 → 工作流转 API 格式 → 填值 → 提交到 ComfyUI 队列。
 
 运行在后端做，不碰用户的画布 / 标签页；做法和 tools/batch_run.py 一样（转换用同一份 api_convert.py）。
-前端传来的 mode / fields / images 一律用目录重新校验：目录之外的控件改不了，图片只能是 input/助手/ 里真实存在的文件。
+前端传来的 mode / fields / files 一律用目录重新校验：目录之外的控件改不了，数字收回范围、开关只认开 / 关，文件只能是 input/助手/ 里真实存在、类型对得上的素材。
 """
 import random
 
@@ -10,15 +10,19 @@ from .api_convert import convert
 from .chat import ChatError
 
 
-def prepare_run(app, wf, oi, payload, image_exists):
-    """校验 payload（{mode, fields, images}）并生成 API prompt。返回 (api_prompt, selection, warnings)。"""
-    def resolve(ref):
-        name = cat_mod.safe_image_name(ref)
-        return name if name and image_exists(name) else None
+def prepare_run(app, wf, oi, payload, asset_exists):
+    """校验 payload（{mode, fields, files}）并生成 API prompt。返回 (api_prompt, selection, warnings)。
+    文件控件的值必须是「助手/文件名」、扩展名对得上这个控件要的类型，并且 asset_exists(名字) 为真，不然当没给。"""
+    def resolve(key, ref, kind):
+        name = cat_mod.safe_asset_name(ref)
+        return name if name and cat_mod.file_kind(name) == kind and asset_exists(name) else None
 
-    sel, warns = cat_mod.clean_selection(app, payload.get("mode"), payload.get("fields"), payload.get("images"), resolve)
+    sel, warns = cat_mod.clean_selection(app, payload.get("mode"), payload.get("fields"), payload.get("files"), resolve, cast=True)
+    for f in cat_mod.required_files(app, sel["mode"]):      # 必填的文件没给：不让运行（不然会悄悄用工作流里的演示文件）；有的文件只在某个模式必填
+        if f["key"] not in sel["files"]:
+            raise ChatError(400, f"「{f['label']}」必须指定一个{cat_mod.KIND_LABEL[f['kind']]}（先上传，或用前面步骤做出来的）")
     api = convert(wf, oi)
-    values = dict(sel["fields"], **sel["images"])
+    values = dict(sel["fields"], **sel["files"])
     if sel["mode"] is not None:
         values[app["mode"]["key"]] = sel["mode"]
     for key, val in values.items():

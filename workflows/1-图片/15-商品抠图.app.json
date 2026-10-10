@@ -1,0 +1,264 @@
+{
+  "last_node_id": 4,
+  "last_link_id": 3,
+  "nodes": [
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        90
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "商品图"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "① 上传商品图（照片，背景越干净抠得越准）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3,
+      "type": "ProMatte",
+      "pos": [
+        60,
+        720
+      ],
+      "size": [
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "links": [
+            3
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProMatte"
+      },
+      "widgets_values": [
+        "通用（u2net，约 176MB：只抠画面里最主要的那一个）",
+        "标准（去掉白边）"
+      ],
+      "title": "商品抠图（本地模型）"
+    },
+    {
+      "id": 4,
+      "type": "ProSaveCutout",
+      "pos": [
+        640,
+        720
+      ],
+      "size": [
+        360,
+        200
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 2
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "link": 3
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProSaveCutout"
+      },
+      "widgets_values": [
+        true,
+        "商品抠图/商品"
+      ],
+      "title": "保存抠好的商品（透明底 PNG）",
+      "color": "#223",
+      "bgcolor": "#335"
+    }
+  ],
+  "links": [
+    [
+      1,
+      2,
+      0,
+      3,
+      0,
+      "IMAGE"
+    ],
+    [
+      2,
+      3,
+      0,
+      4,
+      0,
+      "IMAGE"
+    ],
+    [
+      3,
+      3,
+      1,
+      4,
+      1,
+      "MASK"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 先填这里：传素材",
+      "bounding": [
+        30,
+        -20,
+        460,
+        560
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）",
+      "bounding": [
+        30,
+        610,
+        500,
+        340
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        610,
+        610,
+        420,
+        340
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        205
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          2,
+          "image"
+        ]
+      ],
+      "outputs": [
+        4
+      ]
+    },
+    "appDescription": "把商品从照片里抠出来，存成透明底的 PNG（本地小模型，不调接口、不花钱）。商品的像素原样保留（不像 AI 改图会重画），可以交给「图层合成」放到别的背景上。必须有一张商品图（用户上传的，或前面步骤做出来的）；一张图里有好几件东西时只抠最主要的那一个。背景干净的商品照抠得最准；透明 / 反光 / 毛发这类边缘复杂的商品不会很完美。",
+    "appExtra": [
+      [
+        3,
+        "model",
+        "抠图模型",
+        "默认通用就够用；商品边缘很细、通用抠不干净再换「更利落」（更占内存，画面里别的物体也会留下）"
+      ]
+    ],
+    "appAdvanced": [
+      [
+        3,
+        "edge",
+        "边缘处理",
+        "叠到别的背景上发现有一圈白边 / 灰边，选「强」；边缘被吃掉太多，选「轻」"
+      ],
+      [
+        4,
+        "trim",
+        "裁掉四周的透明空白",
+        "开着，抠出来的图只剩商品那一块；关掉就和原图一样大"
+      ]
+    ],
+    "appCost": "第一次用要先下载抠图模型（约 176MB），那一次会多等十几秒；之后一张几秒。",
+    "appRequired": [
+      [
+        2,
+        "image"
+      ]
+    ]
+  },
+  "version": 0.4
+}

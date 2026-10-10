@@ -1,0 +1,459 @@
+{
+  "last_node_id": 77,
+  "last_link_id": 5,
+  "nodes": [
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        280
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "抠好的商品"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            3
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": [
+            4
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "① 上传抠好的商品（透明底 PNG，可用「商品抠图」做）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        770
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "背景图（背景图模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "② 上传背景图（只在「放到背景图上」模式用）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 5,
+      "type": "ProLayerCompose",
+      "pos": [
+        460,
+        1400
+      ],
+      "size": [
+        520,
+        760
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "product",
+          "type": "IMAGE",
+          "link": 3
+        },
+        {
+          "name": "product_mask",
+          "type": "MASK",
+          "link": 4
+        },
+        {
+          "name": "background",
+          "type": "IMAGE",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": null,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProLayerCompose"
+      },
+      "widgets_values": [
+        "正中",
+        60.0,
+        4.0,
+        0.0,
+        0.0,
+        "地面接触阴影",
+        0.35,
+        1.0,
+        "#FFFFFF",
+        "1:1",
+        1024,
+        false,
+        "图层合成/商品"
+      ],
+      "title": "图层合成（商品 + 背景 + 阴影）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 77,
+      "type": "ProModeLayer",
+      "pos": [
+        60,
+        90
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "use_bg",
+          "type": "BOOLEAN",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeLayer"
+      },
+      "widgets_values": [
+        "放到背景图上"
+      ],
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 21,
+      "type": "ProGate",
+      "pos": [
+        60,
+        1400
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 2
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 1,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            5
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "背景图开关（跟模式走）"
+    }
+  ],
+  "links": [
+    [
+      1,
+      77,
+      0,
+      21,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      2,
+      3,
+      0,
+      21,
+      0,
+      "IMAGE"
+    ],
+    [
+      3,
+      2,
+      0,
+      5,
+      0,
+      "IMAGE"
+    ],
+    [
+      4,
+      2,
+      1,
+      5,
+      1,
+      "MASK"
+    ],
+    [
+      5,
+      21,
+      0,
+      5,
+      2,
+      "*"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "① 先填这里：选模式 → 传素材",
+      "bounding": [
+        30,
+        -20,
+        580,
+        1240
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "② 自动处理，不用管（想调比例 / 参数，改这里的节点）",
+      "bounding": [
+        30,
+        1290,
+        320,
+        240
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        430,
+        1290,
+        580,
+        900
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        205
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          77,
+          "mode"
+        ],
+        [
+          2,
+          "image"
+        ],
+        [
+          3,
+          "image"
+        ]
+      ],
+      "outputs": [
+        5
+      ]
+    },
+    "appDescription": "把抠好的商品（透明底 PNG）放到背景图或纯色背景上，加阴影、调位置和大小（纯本地合成，一两秒，不花钱）；商品的像素原样不变（不像 AI 改图会重画）。商品要先用「商品抠图」做成透明底（前面步骤的结果也行），背景图可以是用户上传的，或用「文生图」等做出来的（只写背景、不要写商品）。合成之后要加促销标签，再接「图片后处理」。想让 AI 把商品和场景的光影融在一起，用「商品改图与合成」。",
+    "appExtra": [
+      [
+        5,
+        "position",
+        "商品放在哪",
+        "正中 / 下中 / 上中 / 左中 / 右中 / 四个角"
+      ],
+      [
+        5,
+        "scale_pct",
+        "商品大小（占画面的百分比）",
+        "商品的外框放进画面宽高的这个百分比里，默认 60"
+      ],
+      [
+        5,
+        "shadow",
+        "阴影",
+        "地面接触阴影（商品放在地面 / 桌面上）/ 柔和投影（商品悬空）/ 没有阴影"
+      ],
+      [
+        5,
+        "bg_color",
+        "纯色背景的颜色",
+        "只在「放到纯色背景上」模式用，如 #FFFFFF（白）、#F5F0E6（米色）"
+      ],
+      [
+        5,
+        "ratio",
+        "纯色背景的比例",
+        "只在「放到纯色背景上」模式用；放到背景图上时画面大小就是背景图的大小"
+      ]
+    ],
+    "appAdvanced": [
+      [
+        5,
+        "offset_x_pct",
+        "再往右挪（占画面宽度的百分比）",
+        "负数往左"
+      ],
+      [
+        5,
+        "offset_y_pct",
+        "再往下挪（占画面高度的百分比）",
+        "负数往上"
+      ],
+      [
+        5,
+        "margin_pct",
+        "靠边时离边多远（%）",
+        "选了左上 / 右下这类靠边的位置才用"
+      ],
+      [
+        5,
+        "shadow_strength",
+        "阴影浓度",
+        "0~1，默认 0.35"
+      ],
+      [
+        5,
+        "shadow_softness",
+        "阴影边缘有多虚",
+        "1 是默认，越大越虚"
+      ],
+      [
+        5,
+        "short_side",
+        "纯色背景的短边像素",
+        ""
+      ],
+      [
+        5,
+        "save_layers",
+        "同时存分层 PNG",
+        "合成图之外再存「背景层 / 商品层 / 阴影层」三张同样大小的 PNG，可以在别的软件里按原位置叠回去再改"
+      ]
+    ],
+    "appRequired": [
+      [
+        2,
+        "image"
+      ],
+      [
+        3,
+        "image",
+        [
+          1
+        ]
+      ]
+    ]
+  },
+  "version": 0.4
+}
