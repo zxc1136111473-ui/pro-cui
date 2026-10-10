@@ -54,6 +54,11 @@ def output_dir():
     return folder_paths.get_output_directory()
 
 
+def models_dir():
+    import folder_paths
+    return folder_paths.models_dir
+
+
 def comfy_port():
     try:
         from comfy.cli_args import args
@@ -125,7 +130,7 @@ def image_data_url(name):
 def handle_chat(payload, post=None):
     if not isinstance(payload, dict):
         raise ChatError(400, "请求格式不对")
-    cat = cat_mod.build_catalog(workflows_dir(), object_info())
+    cat = cat_mod.build_catalog(workflows_dir(), object_info(), models_dir())
     assets = chat.normalize_assets(payload.get("assets"))
     new = []                                                 # 这一轮新附的素材编号（客户端传来的，什么类型都可能有：只收在范围内的整数，去重）
     for i in payload.get("new_assets") if isinstance(payload.get("new_assets"), list) else []:
@@ -184,7 +189,7 @@ def handle_run(payload, post=None):
 
 
 def _run_once(payload, post=None):
-    cat = cat_mod.build_catalog(workflows_dir(), object_info())
+    cat = cat_mod.build_catalog(workflows_dir(), object_info(), models_dir())
     app = cat.get(str(payload.get("workflow", "")).strip())
     if app is None:
         raise ChatError(404, f"没有编号为「{payload.get('workflow')}」的应用")
@@ -241,7 +246,7 @@ def handle_stage(payload):
 
 def handle_catalog(_payload=None):
     """应用目录（给工作台手动加步骤用）：每个应用的编号、名字、用途、能改什么。"""
-    cat = cat_mod.build_catalog(workflows_dir(), object_info())
+    cat = cat_mod.build_catalog(workflows_dir(), object_info(), models_dir())
     return {"apps": [{"workflow": a["id"], "name": a["name"], "path": a["path"], "desc": a["desc"], "schema": cat_mod.schema(a)} for a in cat.values()]}
 
 

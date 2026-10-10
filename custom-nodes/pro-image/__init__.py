@@ -284,7 +284,7 @@ class ProMatte:
         first = next(iter(MATTE_LABELS))
         return {"required": {
             "image": ("IMAGE",),
-            "model": (list(MATTE_LABELS), {"default": first, "tooltip": "第一次用某个模型要先下载它（约几十到一百多 MB），之后不用再下"}),
+            "model": (list(MATTE_LABELS), {"default": first, "tooltip": "默认通用就够用；商品边缘很细、通用抠不干净再换「更利落」（更占内存，画面里别的物体也会留下）。第一次用某个模型要先下载它（约几十到一百多 MB），之后不用再下"}),
             "edge": (list(MATTE_EDGES), {"default": "标准（去掉白边）", "tooltip": "模型抠出来的边缘是软的，叠到别的背景上会有一圈白边 / 灰边；标准会把边缘收紧一点点"})}}
 
     RETURN_TYPES = ("IMAGE", "MASK")
@@ -329,16 +329,16 @@ class ProLayerCompose:
     def INPUT_TYPES(cls):
         return {"required": {
             "product": ("IMAGE",), "product_mask": ("MASK",),
-            "position": (COMPOSE_POSITIONS, {"default": "正中"}),
-            "scale_pct": ("FLOAT", {"default": 60.0, "min": 5.0, "max": 100.0, "step": 1.0, "tooltip": "商品占画面的大小：商品的外框放进画面宽高的这个百分比里"}),
+            "position": (COMPOSE_POSITIONS, {"default": "正中", "tooltip": "商品放在画面的哪里：正中 / 下中 / 上中 / 左中 / 右中 / 四个角"}),
+            "scale_pct": ("FLOAT", {"default": 60.0, "min": 5.0, "max": 100.0, "step": 1.0, "tooltip": "商品占画面的大小：商品的外框放进画面宽高的这个百分比里，默认 60"}),
             "margin_pct": ("FLOAT", {"default": 4.0, "min": 0.0, "max": 30.0, "step": 0.5, "tooltip": "靠边的位置（左上、右下……）离边多远，占画面宽度的百分比；正中不用"}),
             "offset_x_pct": ("FLOAT", {"default": 0.0, "min": -50.0, "max": 50.0, "step": 1.0, "tooltip": "在选好的位置上再往右挪（负数往左），占画面宽度的百分比"}),
             "offset_y_pct": ("FLOAT", {"default": 0.0, "min": -50.0, "max": 50.0, "step": 1.0, "tooltip": "在选好的位置上再往下挪（负数往上），占画面高度的百分比"}),
-            "shadow": (SHADOWS, {"default": "地面接触阴影"}),
+            "shadow": (SHADOWS, {"default": "地面接触阴影", "tooltip": "地面接触阴影（商品放在地面 / 桌面上）/ 柔和投影（商品悬空）/ 没有阴影"}),
             "shadow_strength": ("FLOAT", {"default": 0.35, "min": 0.0, "max": 1.0, "step": 0.05}),
             "shadow_softness": ("FLOAT", {"default": 1.0, "min": 0.2, "max": 3.0, "step": 0.1, "tooltip": "阴影边缘有多虚，1 是默认"}),
-            "bg_color": ("STRING", {"default": "#FFFFFF", "multiline": False, "tooltip": "没有背景图时用的纯色，如 #FFFFFF（白）、#F5F0E6（米色）"}),
-            "ratio": (list(RATIOS), {"default": "1:1", "tooltip": "没有背景图时画面的比例"}),
+            "bg_color": ("STRING", {"default": "#FFFFFF", "multiline": False, "tooltip": "纯色背景的颜色，只在「放到纯色背景上」模式用，如 #FFFFFF（白）、#F5F0E6（米色）"}),
+            "ratio": (list(RATIOS), {"default": "1:1", "tooltip": "纯色背景的比例，只在「放到纯色背景上」模式用；放到背景图上时画面大小就是背景图的大小"}),
             "short_side": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 64, "tooltip": "没有背景图时画面短边的像素；背景图太大（最长边超过 4096）会先缩到 4096 再合成"}),
             "save_layers": ("BOOLEAN", {"default": False, "label_on": "同时存分层 PNG", "label_off": "只存合成图",
                                         "tooltip": "合成图之外再存背景层 / 商品层 / 阴影层（和合成图一样大）。合成图是第一张；ComfyUI 自带的应用界面会把最后存的那张当主图，所以会先看到阴影层，在工作台里没有这个问题"}),

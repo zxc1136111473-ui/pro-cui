@@ -33,6 +33,7 @@ const INSTANCE = `${Date.now().toString(36)}-${Math.random().toString(36).slice(
 let seq = 0;
 const nextId = () => `${INSTANCE}-${++seq}`;
 let view, saveTimer, tickTimer, lockTimer, sendToken = 0, catalogApps = null, ui = { open: true };
+let catalogStatus = "loading", catalogFails = 0, catalogLoading = null;       // 应用目录：loading（加载中）/ ready / failed（没读到）
 let driving = false;                           // 这个标签页正在拿运行锁 / 运行（拿锁要等一下，这期间也不能再开始别的）
 let lostLock = false;                          // 没有 Web Locks 时：运行记录被别的标签页写了，这里已经不是持有的那个
 let releaseWeb = null;                         // 持有 Web Locks 的锁时：调用它放锁
@@ -177,16 +178,38 @@ async function resumeRunning() {
 }
 
 // ── 应用目录（手动加步骤用；也用它刷新存在浏览器里的旧方案的设置项）──────────────────────────────────
-async function loadCatalog() {
-  try {
-    const d = await readJson(await api.fetchApi("/pro/catalog"));
-    catalogApps = d.apps || [];
+function fetchCatalog() {
+  return api.fetchApi("/pro/catalog").then(readJson).then((d) => d.apps || []).catch(() => null);
+}
+// 模块一加载就把请求发出去：setup() 要等 ComfyUI 把整个页面准备好才会被调用（慢的时候是十几二十秒以后），下拉能早一点可以用
+let firstCatalog = fetchCatalog();
+
+function loadCatalog() {
+  if (catalogLoading) return catalogLoading;
+  catalogStatus = "loading";
+  if (view) view.refreshStatus();
+  catalogLoading = (async () => {
+    const pending = firstCatalog || fetchCatalog();
+    firstCatalog = null;
+    const apps = await pending;
+    catalogLoading = null;
+    if (!apps) {                                           // 目录读不到：只是不能手动加步骤，聊天不受影响；前两次自动再试，之后点一下「添加一步」的下拉再试
+      catalogStatus = "failed";
+      catalogFails += 1;
+      if (view) view.refreshStatus();
+      if (catalogFails < 3) setTimeout(loadCatalog, 2500 * catalogFails);
+      return;
+    }
+    catalogApps = apps;
+    catalogStatus = "ready";
+    catalogFails = 0;
     for (const st of state.plan ? state.plan.steps : []) {
       const a = catalogApps.find((x) => x.workflow === st.workflow);
       if (a) { st.schema = a.schema; st.name = a.name; st.path = a.path; }
     }
-    view.renderPlan();
-  } catch (e) { /* 目录读不到：只是不能手动加步骤，聊天不受影响 */ }
+    if (view) view.renderPlan();
+  })();
+  return catalogLoading;
 }
 
 // ── 消息 ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -672,12 +695,13 @@ function launcher(el) {
 const actions = {
   examples: EXAMPLES,
   send, attach, onPaste, onDrop, uploadForField, changed, open, close, clearAll, clearPlan, runAll, runStep, stop, addStep, removeStep, openInApp, copyText, loadText,
+  reloadCatalog: () => { catalogFails = 0; return loadCatalog(); },
   mention: (n) => { view.insertText(`素材 ${n} `); },
 };
 
 function buildView() {
   document.querySelectorAll(".pcw, .pcw-handle").forEach((el) => el.remove());      // 重试时别留下上一次建到一半的界面
-  view = createView({ state, url, actions, catalog: () => catalogApps });
+  view = createView({ state, url, actions, catalog: () => catalogApps, catalogStatus: () => catalogStatus });
   view.renderAll();
 }
 
@@ -715,4 +739,4 @@ app.registerExtension({
 });
 
 // 给测试 / 调试用：控制台里可以 window.__proChat.state 看状态
-window.__proChat = { state, view: () => view, actions, lib };
+window.__proChat = { state, view: () => view, actions, lib, catalog: () => ({ apps: catalogApps ? catalogApps.length : 0, status: catalogStatus, fails: catalogFails }) };

@@ -187,9 +187,12 @@ class Graph:
             assert modes and all(isinstance(m, int) and m >= 1 for m in modes), f"{nid}.{widget}：模式编号要是从 1 数的整数列表，现在是 {modes}"
             self.app_required_files.append([nid, widget, sorted(set(modes))])
 
-    def app_cost(self, text):
-        """费用 / 额度 / 注意事项（存进 extra.appCost）：AI 助手选到这个应用时会提醒用户（比如视频每天只有约 3 个额度）。"""
+    def app_cost(self, text, unless_model_file=None):
+        """费用 / 额度 / 注意事项（存进 extra.appCost）：AI 助手选到这个应用时会提醒用户（比如视频每天只有约 3 个额度）。
+        unless_model_file = 相对 ComfyUI 的 models/ 目录的文件路径（如 "rembg/u2net.onnx"）：这个文件已经在了，提醒就不再显示
+        （存进 extra.appCostUnlessModelFile；给「第一次用要先下载模型」这类只有第一次才需要的提醒用，下好之后别一直吓人）。"""
         self.app_cost_text = text
+        self.app_cost_unless_model_file = unless_model_file
 
     def app_out(self, nid):
         """应用界面里显示的结果节点（必须是输出节点：保存图片 / 视频 / 音频、ProAppText）。"""
@@ -210,6 +213,8 @@ class Graph:
         for key, val in (("appExtra", self.app_extras), ("appAdvanced", self.app_advanced), ("appCost", self.app_cost_text), ("appRequired", self.app_required_files)):
             if val:
                 extra[key] = val
+        if self.app_cost_text and getattr(self, "app_cost_unless_model_file", None):
+            extra["appCostUnlessModelFile"] = self.app_cost_unless_model_file
         return {"last_node_id": max(n["id"] for n in self.nodes), "last_link_id": self._lid, "nodes": self.nodes,
                 "links": self.links, "groups": groups, "config": {}, "extra": extra, "version": 0.4}
 
@@ -374,7 +379,8 @@ DIALOGUE_WIDGETS = ["小美：老板，这个苹果怎么卖呀？\n阿强：新
 # app_in 给控件起名时要在节点里补一个 inputs 条目，需要知道控件类型（按控件名查；这些名字在各节点里含义一致）
 APP_WIDGET_TYPES = {"mode": "COMBO", "image": "COMBO", "audio": "COMBO", "file": "COMBO", "ratio": "COMBO", "level": "COMBO", "style": "COMBO", "voice": "COMBO",
                     "idea": "STRING", "value": "STRING", "text": "STRING", "text1": "STRING", "text2": "STRING", "text3": "STRING", "script": "STRING",
-                    **{f"role{i}_name": "STRING" for i in (1, 2, 3, 4)}, **{f"role{i}_voice": "COMBO" for i in (1, 2, 3, 4)}}
+                    **{f"role{i}_name": "STRING" for i in (1, 2, 3, 4)}, **{f"role{i}_voice": "COMBO" for i in (1, 2, 3, 4)},
+                    "model": "COMBO", "position": "COMBO", "shadow": "COMBO", "scale_pct": "FLOAT", "bg_color": "STRING"}
 
 
 def app_text(g, src, out, label, only_on_error=False):
@@ -969,13 +975,12 @@ def wf_matte():               # 15 商品抠图：商品照片 → 透明底的�
     g.add(3, "ProMatte", (520, 120), (440, 200), ["通用（u2net，约 176MB：只抠画面里最主要的那一个）", "标准（去掉白边）"], title="商品抠图（本地模型）")
     g.add(4, "ProSaveCutout", (1020, 120), (360, 200), [True, "商品抠图/商品"], title="保存抠好的商品（透明底 PNG）")
     g.connect(2, "IMAGE", 3, "image"); g.connect(3, "image", 4, "image"); g.connect(3, "mask", 4, "mask")
-    g.app_in(2, "image", "商品图")
+    g.app_in(2, "image", "商品图"); g.app_in(3, "model", "抠图模型")
     g.app_required(2, "image")
     g.app_out(4)
-    g.app_extra(3, "model", "抠图模型", "默认通用就够用；商品边缘很细、通用抠不干净再换「更利落」（更占内存，画面里别的物体也会留下）")
     g.app_extra(3, "edge", "边缘处理", "叠到别的背景上发现有一圈白边 / 灰边，选「强」；边缘被吃掉太多，选「轻」", advanced=True)
     g.app_extra(4, "trim", "裁掉四周的透明空白", "开着，抠出来的图只剩商品那一块；关掉就和原图一样大", advanced=True)
-    g.app_cost("第一次用要先下载抠图模型（约 176MB），那一次会多等十几秒；之后一张几秒。")
+    g.app_cost("第一次用要先下载抠图模型（约 176MB），那一次会多等十几秒；之后一张几秒。", unless_model_file="rembg/u2net.onnx")
     g.app_desc("把商品从照片里抠出来，存成透明底的 PNG（本地小模型，不调接口、不花钱）。商品的像素原样保留（不像 AI 改图会重画），可以交给「图层合成」放到别的背景上。"
                "必须有一张商品图（用户上传的，或前面步骤做出来的）；一张图里有好几件东西时只抠最主要的那一个。背景干净的商品照抠得最准；透明 / 反光 / 毛发这类边缘复杂的商品不会很完美。")
     return g.build()
@@ -986,19 +991,16 @@ def wf_layers():              # 16 图层合成：抠好的商品 + 背景图（
     g.add(2, "LoadImage", (60, 120), (400, 420), DEMO, title="① 上传抠好的商品（透明底 PNG，可用「商品抠图」做）")
     g.add(3, "LoadImage", (60, 620), (400, 420), DEMO, title="② 上传背景图（只在「放到背景图上」模式用）")
     g.add(5, "ProLayerCompose", (620, 120), (520, 760),
-          ["正中", 60.0, 4.0, 0.0, 0.0, "地面接触阴影", 0.35, 1.0, "#FFFFFF", "1:1", 1024, False, "图层合成/商品"], title="图层合成（商品 + 背景 + 阴影）")
+          ["正中", 60.0, 4.0, 0.0, 0.0, "地面接触阴影", 0.35, 1.0, "#FFFFFF", "1:1", 1024, False, "图层合成/商品"], title="图层合成（商品要是透明底）")   # 自带应用界面出错时卡片上只有这个节点名和一句通用的话：把最常见的原因写进名字里
     top_block(g, mode="ProModeLayer")
     gate(g, 21, (620, 920), (77, "use_bg"), (3, "IMAGE"), title="背景图开关（跟模式走）")
     g.connect(2, "IMAGE", 5, "product"); g.connect(2, "MASK", 5, "product_mask"); g.connect(21, "value", 5, "background")
-    g.app_in(77, "mode"); g.app_in(2, "image", "抠好的商品"); g.app_in(3, "image", "背景图（背景图模式）")
+    g.app_in(77, "mode"); g.app_in(2, "image", "抠好的商品（透明底）"); g.app_in(3, "image", "背景图（背景图模式）")
+    g.app_in(5, "position", "商品放在哪"); g.app_in(5, "scale_pct", "商品大小（%）"); g.app_in(5, "shadow", "阴影")
+    g.app_in(5, "bg_color", "纯色背景的颜色"); g.app_in(5, "ratio", "纯色背景的比例")        # 常用的几项也放进 ComfyUI 自带的应用右栏（说明在节点控件的 tooltip 里）
     g.app_required(2, "image")
     g.app_required(3, "image", modes=[1])        # 「放到背景图上」要背景图；纯色模式不要
     g.app_out(5)
-    g.app_extra(5, "position", "商品放在哪", "正中 / 下中 / 上中 / 左中 / 右中 / 四个角")
-    g.app_extra(5, "scale_pct", "商品大小（占画面的百分比）", "商品的外框放进画面宽高的这个百分比里，默认 60")
-    g.app_extra(5, "shadow", "阴影", "地面接触阴影（商品放在地面 / 桌面上）/ 柔和投影（商品悬空）/ 没有阴影")
-    g.app_extra(5, "bg_color", "纯色背景的颜色", "只在「放到纯色背景上」模式用，如 #FFFFFF（白）、#F5F0E6（米色）")
-    g.app_extra(5, "ratio", "纯色背景的比例", "只在「放到纯色背景上」模式用；放到背景图上时画面大小就是背景图的大小")
     g.app_extra(5, "offset_x_pct", "再往右挪（占画面宽度的百分比）", "负数往左", advanced=True)
     g.app_extra(5, "offset_y_pct", "再往下挪（占画面高度的百分比）", "负数往上", advanced=True)
     g.app_extra(5, "margin_pct", "靠边时离边多远（%）", "选了左上 / 右下这类靠边的位置才用", advanced=True)

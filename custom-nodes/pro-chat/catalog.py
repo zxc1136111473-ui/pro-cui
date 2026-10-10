@@ -8,7 +8,8 @@
 - files：能放文件的控件（LoadImage / LoadVideo / LoadAudio），带文件类型 image / video / audio；extra.appRequired 里的是必须有的：
   [节点 id, 控件名] = 不管什么模式都必须有（required）；[节点 id, 控件名, [模式编号…]] = 只在这几个模式必须有（required_modes，编号从 1 数）
 - outputs / results / produces：结果节点 id、人话描述、会产出哪几类文件（后一步可以拿来当输入）
-- cost：费用 / 额度说明（extra.appCost）
+- cost：费用 / 额度说明（extra.appCost）；extra.appCostUnlessModelFile = 相对 models/ 的文件路径，这个文件已经在了就不再显示这条说明
+  （「第一次用要先下载模型」这类只有第一次才需要的提醒：模型下好了就别一直提醒）
 应用的用途描述来自 extra.appDescription（tools/gen_workflows.py 里每个工作流写一句）。
 用户自己存的 *.app.json 只要有 extra.linearData 也会进目录（没有描述就只靠文件名和控件名）。只用标准库。
 """
@@ -35,6 +36,9 @@ LONG_OPTIONS = 8             # 选项多于这个数的下拉，目录里同一�
 IMAGE_DIR = "助手"          # 聊天里上传 / 中转的素材放在 input/助手/ 下，只允许用这个目录里的
 # 给模型看的字段说明：写提示词节点自己的 tooltip 提到「下面的扩写指令」，在目录里读起来会把模型带偏，换成这句
 FIELD_HINTS = {("ProAliPromptWriter", "idea"): "写 1~2 句具体的中文描述，系统会再自动扩写成完整提示词"}
+# 下拉控件一般不拿节点的 tooltip 当说明（别家节点的下拉 tooltip 是写给节点图看的，进目录只会多出一堆字）；
+# 这几个自带节点的下拉，说明就是节点控件的 tooltip（图层合成的位置 / 阴影 / 比例，抠图的模型）：只写一处，工作台、AI 提示词、节点图里的悬停提示是同一句
+TOOLTIP_HINTS = {("ProLayerCompose", "position"), ("ProLayerCompose", "shadow"), ("ProLayerCompose", "ratio"), ("ProMatte", "model")}
 
 
 def file_kind(name):
@@ -155,7 +159,7 @@ def load_app(wf, rel, oi):
         defaults = {}
     app_id, name = app_id_name(rel)
     app = {"id": app_id, "name": name, "path": rel.replace(os.sep, "/"), "desc": str(ex.get("appDescription") or "").strip(),
-           "cost": str(ex.get("appCost") or "").strip(), "mode": None, "fields": {}, "files": {}, "outputs": [], "results": [], "produces": [],
+           "cost": str(ex.get("appCost") or "").strip(), "cost_unless_model_file": str(ex.get("appCostUnlessModelFile") or "").strip(), "mode": None, "fields": {}, "files": {}, "outputs": [], "results": [], "produces": [],
            "titles": {str(n["id"]): (n.get("title") or n["type"]) for n in wf.get("nodes", [])}}
     entries = [(nid, widget, "", "", False, None) for nid, widget in ins]
     for sect, adv in (("appExtra", False), ("appAdvanced", True)):
@@ -194,8 +198,9 @@ def load_app(wf, rel, oi):
             cast = option_cast(raw_options(spec))
             if cast:
                 f["cast"] = cast
-            if hint_set:
-                f["hint"] = hint_set
+            choice_hint = hint_set or (str(meta.get("tooltip") or "") if (n["type"], widget) in TOOLTIP_HINTS else "")
+            if choice_hint:
+                f["hint"] = choice_hint
         elif kind in NUMBER_KINDS:
             lo, hi = _num(meta.get("min")), _num(meta.get("max"))
             f = {"key": key, "label": label, "kind": kind, "min": lo, "max": hi, "step": _num(meta.get("step")),
@@ -233,8 +238,16 @@ def load_app(wf, rel, oi):
     return app
 
 
-def build_catalog(workflows_dir, oi):
-    """目录：{应用编号: 应用条目}，按文件路径排序；读不了的文件跳过。"""
+def model_present(models_dir, rel):
+    """相对 models/ 的路径 rel 指向的文件在不在（下载是先写 .part 再改名，所以在 = 下完了）。路径不合规（绝对路径、..）当不在。"""
+    if not models_dir or not rel or os.path.isabs(rel) or ".." in rel.replace("\\", "/").split("/"):
+        return False
+    return os.path.isfile(os.path.join(models_dir, rel))
+
+
+def build_catalog(workflows_dir, oi, models_dir=None):
+    """目录：{应用编号: 应用条目}，按文件路径排序；读不了的文件跳过。
+    models_dir（ComfyUI 的 models 目录）给了的话，「模型已经下好就不用再提醒」的费用说明会在这里去掉：每次现读，下好之后下一次请求就没有了。"""
     cat = {}
     for p in sorted(glob.glob(os.path.join(workflows_dir, "**", "*.app.json"), recursive=True)):
         try:
@@ -244,6 +257,8 @@ def build_catalog(workflows_dir, oi):
         except Exception:
             continue
         if app and app["id"] not in cat:
+            if app["cost"] and model_present(models_dir, app["cost_unless_model_file"]):
+                app["cost"] = ""
             cat[app["id"]] = app
     add_labels(cat)
     return cat

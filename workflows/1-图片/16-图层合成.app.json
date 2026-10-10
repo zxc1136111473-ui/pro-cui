@@ -24,7 +24,7 @@
             "name": "image"
           },
           "link": null,
-          "label": "抠好的商品"
+          "label": "抠好的商品（透明底）"
         }
       ],
       "outputs": [
@@ -137,6 +137,51 @@
           "name": "background",
           "type": "IMAGE",
           "link": 5
+        },
+        {
+          "name": "position",
+          "type": "COMBO",
+          "widget": {
+            "name": "position"
+          },
+          "link": null,
+          "label": "商品放在哪"
+        },
+        {
+          "name": "scale_pct",
+          "type": "FLOAT",
+          "widget": {
+            "name": "scale_pct"
+          },
+          "link": null,
+          "label": "商品大小（%）"
+        },
+        {
+          "name": "shadow",
+          "type": "COMBO",
+          "widget": {
+            "name": "shadow"
+          },
+          "link": null,
+          "label": "阴影"
+        },
+        {
+          "name": "bg_color",
+          "type": "STRING",
+          "widget": {
+            "name": "bg_color"
+          },
+          "link": null,
+          "label": "纯色背景的颜色"
+        },
+        {
+          "name": "ratio",
+          "type": "COMBO",
+          "widget": {
+            "name": "ratio"
+          },
+          "link": null,
+          "label": "纯色背景的比例"
         }
       ],
       "outputs": [
@@ -165,7 +210,7 @@
         false,
         "图层合成/商品"
       ],
-      "title": "图层合成（商品 + 背景 + 阴影）",
+      "title": "图层合成（商品要是透明底）",
       "color": "#223",
       "bgcolor": "#335"
     },
@@ -358,6 +403,26 @@
         [
           3,
           "image"
+        ],
+        [
+          5,
+          "position"
+        ],
+        [
+          5,
+          "scale_pct"
+        ],
+        [
+          5,
+          "shadow"
+        ],
+        [
+          5,
+          "bg_color"
+        ],
+        [
+          5,
+          "ratio"
         ]
       ],
       "outputs": [
@@ -365,38 +430,6 @@
       ]
     },
     "appDescription": "把抠好的商品（透明底 PNG）放到背景图或纯色背景上，加阴影、调位置和大小（纯本地合成，一两秒，不花钱）；商品的像素原样不变（不像 AI 改图会重画）。商品要先用「商品抠图」做成透明底（前面步骤的结果也行），背景图可以是用户上传的，或用「文生图」等做出来的（只写背景、不要写商品）。合成之后要加促销标签，再接「图片后处理」。想让 AI 把商品和场景的光影融在一起，用「商品改图与合成」。",
-    "appExtra": [
-      [
-        5,
-        "position",
-        "商品放在哪",
-        "正中 / 下中 / 上中 / 左中 / 右中 / 四个角"
-      ],
-      [
-        5,
-        "scale_pct",
-        "商品大小（占画面的百分比）",
-        "商品的外框放进画面宽高的这个百分比里，默认 60"
-      ],
-      [
-        5,
-        "shadow",
-        "阴影",
-        "地面接触阴影（商品放在地面 / 桌面上）/ 柔和投影（商品悬空）/ 没有阴影"
-      ],
-      [
-        5,
-        "bg_color",
-        "纯色背景的颜色",
-        "只在「放到纯色背景上」模式用，如 #FFFFFF（白）、#F5F0E6（米色）"
-      ],
-      [
-        5,
-        "ratio",
-        "纯色背景的比例",
-        "只在「放到纯色背景上」模式用；放到背景图上时画面大小就是背景图的大小"
-      ]
-    ],
     "appAdvanced": [
       [
         5,

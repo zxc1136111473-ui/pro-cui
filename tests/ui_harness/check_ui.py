@@ -563,6 +563,19 @@ def main():
         check("合成这一步有 4 张图：合成图在最前，后面是背景层 / 商品层 / 阴影层", st3(pg, "s.plan.steps[1].result.items.filter((i) => i.kind === 'image').length") == 4, str(st3(pg, "s.plan.steps[1].result.items.map((i) => i.kind)")))
         check("抠图那一步只有 1 张图（透明底）", st3(pg, "s.plan.steps[0].result.items.filter((i) => i.kind === 'image').length") == 1)
 
+        # 透明底的抠图结果垫浅灰棋盘格：透明的地方不能是黑的（看着像没抠干净）
+        from PIL import Image as PILImage
+        import io as _io
+        cut_img = pg.locator(".pcw-step").nth(0).locator(".pcw-res img").first
+        cut_img.scroll_into_view_if_needed()
+        pg.wait_for_function("(() => { const i = document.querySelector('.pcw-step .pcw-res img'); return i && i.complete && i.naturalWidth > 0; })()")
+        shot = PILImage.open(_io.BytesIO(cut_img.screenshot())).convert("RGB")
+        a, b = shot.getpixel((9, 9)), shot.getpixel((16, 9))              # 抠图图四角是透明的：相邻的两个格子（每格 7 像素，避开圆角）
+        check("抠图结果的透明处是浅灰棋盘格，不是黑底", min(a) > 150 and min(b) > 150, f"{a} {b}")
+        check("棋盘格相邻两格深浅不一样", a != b, f"{a} {b}")
+        check("素材库缩略图也垫了棋盘格（透明的抠图在那里也不显示成黑块）", "gradient" in pg.evaluate("getComputedStyle(document.querySelector('.pcw-assets .pcw-thumb, .pcw-asset .pcw-thumb')).backgroundImage"))
+        check("视频的底还是黑的（只有图片垫棋盘格）", pg.evaluate("(() => { const v = document.createElement('video'); const d = document.createElement('div'); d.className = 'pcw-res'; d.append(v); document.querySelector('.pcw').append(d); const c = getComputedStyle(v).backgroundColor; d.remove(); return c; })()") == "rgb(0, 0, 0)")
+
         # 只在某个模式才必填的文件：16 默认「放到背景图上」要背景图，换成纯色模式就不要了；商品图两个模式都要
         pg.click("text=清空方案")
         pg.locator(".pcw-bar select").select_option("16")
@@ -802,6 +815,65 @@ def main():
         time.sleep(1.5)
         check("[没有 Web Locks] 同一瞬间拿锁、自己的记录被别人盖掉：稍等确认后退出，没有提交，提示另一个标签页正在运行",
               len(h.comfy.runs) == n0 and "另一个标签页正在运行" in a.locator(".pcw-list").inner_text() and bd3(a)[0].startswith("还没运行"), f"{len(h.comfy.runs) - n0} {bd3(a)}")
+        cx.close()
+
+        # 应用目录：还在加载 → 写「加载中」；读不到 → 自动再试两次，还不行写「没加载出来，点这里重试」，点一下就再试
+        cx = browser.new_context(viewport={"width": 1440, "height": 900})
+        cat_mode, held = {"m": "hold"}, []
+
+        def catalog_route(route):
+            if cat_mode["m"] == "hold":
+                held.append(route)                    # 请求先扣住，测试里手动放行
+            elif cat_mode["m"] == "fail":
+                route.abort()
+            else:
+                route.continue_()
+        cp = cx.new_page()
+        cp.route("**/pro/catalog", catalog_route)
+        cp.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
+        cp.goto(base)
+        cp.wait_for_selector(".pcw-bar select")
+        cp.wait_for_timeout(1000)
+        holder = cp.locator(".pcw-bar select option").first.inner_text()
+        check("目录请求还没回来：下拉写着「加载中」", "加载中" in holder and cp.locator(".pcw-bar select option").count() == 1 and len(held) >= 1, f"{holder} {len(held)}")
+        check("这时手动加步骤的下拉里还没有应用，聊天输入框照常能用", cp.locator(".pcw-row textarea").is_enabled())
+        for r in held:
+            r.continue_()
+        cp.wait_for_function("document.querySelectorAll('.pcw-bar select option').length > 5", timeout=20000)
+        check("目录回来后下拉里有 16 个应用，提示变成「＋ 添加一步…」", cp.locator(".pcw-bar select option").count() == 17 and cp.locator(".pcw-bar select option").first.inner_text() == "＋ 添加一步…", cp.locator(".pcw-bar select option").first.inner_text())
+        cp.close()
+        # 只有第一次请求失败：自动再试，不用点
+        cat_mode["m"] = "first_fails"
+        seen = [0]
+
+        def flaky(route):
+            seen[0] += 1
+            route.abort() if seen[0] == 1 else route.continue_()
+        cp = cx.new_page()
+        cp.route("**/pro/catalog", flaky)
+        cp.goto(base)
+        cp.wait_for_selector(".pcw-bar select")
+        cp.wait_for_function("document.querySelectorAll('.pcw-bar select option').length > 5", timeout=20000)
+        check("第一次读目录失败：过几秒自己再试，应用就出来了（不用点）", cp.locator(".pcw-bar select option").count() == 17 and seen[0] == 2, f"请求 {seen[0]} 次")
+        cp.close()
+        # 一直读不到：自动再试到次数用完，写「没加载出来，点这里重试」，点一下才再试
+        cat_mode["m"] = "fail"
+        cp = cx.new_page()
+        cp.route("**/pro/catalog", catalog_route)
+        cp.goto(base)
+        cp.wait_for_selector(".pcw-bar select")
+        try:
+            cp.wait_for_function("window.__proChat.catalog().fails >= 3 && window.__proChat.catalog().status === 'failed'", timeout=40000)
+        except PWTimeout:
+            pass
+        shown = cp.locator(".pcw-bar select option").first.inner_text()
+        check("目录一直读不到：自动再试 3 次后写「没加载出来，点这里重试」，聊天输入框照常能用", "点这里重试" in shown and cp.locator(".pcw-row textarea").is_enabled(), shown)
+        cat_mode["m"] = "ok"
+        cp.wait_for_timeout(6000)                                        # 比最长的重试间隔（5 秒）还久：要是还在自己重试，这时目录早就读到了（要用 Playwright 自己的等待：time.sleep 会让拦截请求的处理函数停着不跑）
+        check("自动重试用完以后不会自己再试（要点一下）", cp.locator(".pcw-bar select option").count() == 1)
+        cp.locator(".pcw-bar select").dispatch_event("mousedown")
+        cp.wait_for_function("document.querySelectorAll('.pcw-bar select option').length > 5", timeout=20000)
+        check("网络好了、点一下下拉：目录重新读到，应用都出来了", cp.locator(".pcw-bar select option").count() == 17 and cp.locator(".pcw-bar select option").first.inner_text() == "＋ 添加一步…")
         cx.close()
 
         # 汇总

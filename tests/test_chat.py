@@ -315,6 +315,38 @@ class Catalog(unittest.TestCase):
         self.assertIn("应用 15「商品抠图」", text)
         self.assertIn("应用 16「图层合成」", text)
 
+    def test_the_main_settings_of_the_new_apps_are_in_the_native_app_panel(self):
+        """ComfyUI 自带的应用界面右栏就是 extra.linearData：15 要能选抠图模型，16 要能调位置 / 大小 / 阴影 / 纯色背景的颜色和比例。
+        只登记在 appExtra / appAdvanced 里的设置只有工作台能改，自带的应用界面里改不了。"""
+        ex15, ex16 = load_wf("15")["extra"], load_wf("16")["extra"]
+        self.assertEqual(ex15["linearData"]["inputs"], [[2, "image"], [3, "model"]])
+        self.assertEqual(ex16["linearData"]["inputs"], [[77, "mode"], [2, "image"], [3, "image"], [5, "position"], [5, "scale_pct"], [5, "shadow"], [5, "bg_color"], [5, "ratio"]])
+        self.assertEqual({e[1] for e in ex16["appAdvanced"]}, {"offset_x_pct", "offset_y_pct", "margin_pct", "shadow_strength", "shadow_softness", "short_side", "save_layers"})   # 偏移 / 边距 / 阴影细节 / 分层存档留在工作台的高级设置
+        self.assertEqual((ex15.get("appExtra", []), ex16.get("appExtra", [])), ([], []))
+        f = CAT["16"]["fields"]
+        for key in ("5:position", "5:scale_pct", "5:shadow", "5:bg_color", "5:ratio"):
+            self.assertFalse(f[key].get("advanced"), key)
+            self.assertTrue(f[key]["hint"], f"{key} 在工作台里没有说明（说明来自节点控件的 tooltip）")
+        self.assertIn("放到纯色背景上", f["5:bg_color"]["hint"])                        # AI 靠说明知道这两项只在纯色模式用
+        self.assertIn("放到纯色背景上", f["5:ratio"]["hint"])
+        self.assertTrue(CAT["15"]["fields"]["3:model"]["hint"] and not CAT["15"]["fields"]["3:model"].get("advanced"))
+        for node_type, widget in cat_mod.TOOLTIP_HINTS:                                       # 下拉的说明直接取节点控件的 tooltip：每一项都要真有 tooltip，目录里的字和它一样
+            tip = OI[node_type]["input"]["required"][widget][1].get("tooltip")
+            self.assertTrue(tip, f"{node_type}.{widget} 没有 tooltip")
+            app = CAT["15"] if node_type == "ProMatte" else CAT["16"]
+            key = next(k for k in app["fields"] if k.endswith(":" + widget))
+            self.assertEqual(app["fields"][key]["hint"], tip)
+        self.assertEqual(CAT["16"]["files"]["2:image"]["label"], "抠好的商品（透明底）")      # 右栏里一眼看出要透明底：没抠过的照片放进来会报错，而自带界面的报错只有一句通用的话
+
+    def test_the_first_download_note_is_tied_to_the_real_default_model_file(self):
+        """15 的「第一次用要先下载」提醒靠 extra.appCostUnlessModelFile 判断模型下好没有：它写的路径必须就是引擎默认模型真正存放的位置。"""
+        image = _load.load("pro-image")
+        default = image.MATTE_LABELS[next(iter(image.MATTE_LABELS))]
+        self.assertEqual(load_wf("15")["extra"]["appCostUnlessModelFile"], "rembg/" + image.MATTE_MODELS[default]["file"])
+        self.assertEqual(os.path.basename(image.engine._model_dir()), "rembg")                       # 引擎默认放在 models/rembg/
+        for app_id in ("10", "12", "01"):                                                            # 别的应用的费用说明不带这个条件
+            self.assertNotIn("appCostUnlessModelFile", load_wf(app_id)["extra"])
+
     def test_plain_voice_dropdowns_borrow_the_descriptions_but_keep_plain_values(self):
         for app_id in ("08", "10", "11", "12"):
             f = CAT[app_id]["fields"]["3:voice"]
@@ -1254,8 +1286,10 @@ class Glue(unittest.TestCase):
         write_text(os.path.join(self.tmp, "secret.txt"), "机密")
         self.cfg = os.path.join(self.tmp, "relay_config.json")
         write_text(self.cfg, json.dumps({"node_settings": {"31": {"api_key": "sk-glue-key-999"}, "1": {"api_key": "sk-gateway-key"}}}))
-        self.saved = {k: getattr(pc, k) for k in ("workflows_dir", "input_dir", "output_dir", "comfy_port", "relay_config_path", "object_info")}
+        self.models = os.path.join(self.tmp, "models")
+        self.saved = {k: getattr(pc, k) for k in ("workflows_dir", "input_dir", "output_dir", "models_dir", "comfy_port", "relay_config_path", "object_info")}
         pc.workflows_dir, pc.input_dir, pc.output_dir, pc.comfy_port = (lambda: WF_DIR), (lambda: self.inp), (lambda: self.out), (lambda: 8188)
+        pc.models_dir = lambda: self.models
         pc.relay_config_path, pc.object_info = (lambda: self.cfg), (lambda: OI)
 
     def tearDown(self):
@@ -1273,6 +1307,30 @@ class Glue(unittest.TestCase):
         os.remove(self.cfg)
         with self.assertRaises(ChatError):
             pc.ali_key()
+
+    def test_the_first_download_note_goes_away_once_the_model_file_is_there(self):
+        def cost(app_id):
+            return next(a["schema"]["cost"] for a in pc.handle_catalog()["apps"] if a["workflow"] == app_id)
+        self.assertIn("第一次用要先下载抠图模型", cost("15"))                                          # 模型还没下：提醒着
+        os.makedirs(os.path.join(self.models, "rembg"))
+        part = os.path.join(self.models, "rembg", "u2net.onnx.part")
+        write_text(part, "只下了一半")
+        self.assertIn("第一次用要先下载抠图模型", cost("15"))                                          # 下到一半（.part）不算下好
+        os.replace(part, os.path.join(self.models, "rembg", "u2net.onnx"))
+        self.assertEqual(cost("15"), "")                                                              # 下好了：下一次读目录就没有这句了
+        self.assertTrue(cost("10"))                                                                   # 别的应用的提醒（Veo 额度）不受影响
+        self.assertNotIn("第一次用要先下载抠图模型", cat_mod.catalog_text(cat_mod.build_catalog(WF_DIR, OI, self.models)))      # 给 AI 看的目录里也没有了
+        self.assertIn("第一次用要先下载抠图模型", cat_mod.catalog_text(cat_mod.build_catalog(WF_DIR, OI)))                        # 没告诉它模型目录时，保守地留着提醒
+        # 聊天那条路（给 AI 的系统提示词）也要带上模型目录：模型下好之后，AI 看到的目录里没有这句，就不会再跟用户念叨
+        def system_prompt():
+            post = FakePost(llm({"reply": "好", "plan": None}))
+            pc.handle_chat({"messages": [{"role": "user", "content": "把这张商品图抠出来"}]}, post=post)
+            return post.calls[0]["json"]["messages"][0]["content"]
+        self.assertNotIn("第一次用要先下载抠图模型", system_prompt())
+        os.remove(os.path.join(self.models, "rembg", "u2net.onnx"))
+        self.assertIn("第一次用要先下载抠图模型", system_prompt())                                       # 模型文件没了（比如被清掉）：提醒又出来
+        for bad in ("../secret.txt", "/etc/passwd", "rembg/../../secret.txt", "", None):                # 路径不合规的标记一律当「没下好」（这几个路径指到的文件真的存在，只是在 models/ 外面）
+            self.assertFalse(cat_mod.model_present(self.models, bad), bad)
 
     def test_asset_paths_are_confined_to_the_assistant_folder(self):
         self.assertTrue(pc.asset_exists("助手/a.png"))

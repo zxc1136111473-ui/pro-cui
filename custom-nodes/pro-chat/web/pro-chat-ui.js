@@ -50,7 +50,7 @@ export const CSS = `
 .pcw-planchip{margin-top:6px;padding:4px 8px;border-radius:6px;background:rgba(59,130,246,.15);font-size:12px;white-space:normal}
 .pcw-atts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .pcw-att{position:relative;display:inline-block}
-.pcw-thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color,#4e4e4e);background:#000}
+.pcw-thumb{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color,#4e4e4e)}
 .pcw-filechip{display:inline-flex;align-items:center;gap:4px;max-width:180px;padding:6px 8px;border-radius:6px;border:1px solid var(--border-color,#4e4e4e);background:rgba(127,127,127,.15);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pcw-tag{position:absolute;left:2px;top:2px;padding:0 5px;border-radius:4px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;line-height:16px}
 .pcw-empty{opacity:.9;line-height:1.7}
@@ -102,8 +102,10 @@ export const CSS = `
 .pcw-filepic{margin-top:4px;align-self:flex-start;max-height:96px;max-width:100%;border-radius:6px;border:1px solid var(--border-color,#4e4e4e)}
 .pcw-results{margin-top:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
 .pcw-res{position:relative;max-width:100%}
-.pcw-res img{display:block;max-width:100%;max-height:280px;border-radius:6px;cursor:zoom-in;background:#000}
+.pcw-res img{display:block;max-width:100%;max-height:280px;border-radius:6px;cursor:zoom-in}
 .pcw-res video{display:block;max-width:100%;max-height:360px;border-radius:6px;background:#000}
+/* 抠图的结果是透明底：垫一层灰白棋盘格（常见的透明提示），不然透明的地方显示成黑底，看着像没抠干净 */
+.pcw-thumb,.pcw-res img,.pcw-filepic{background:#e8e8e8 repeating-conic-gradient(#c6c6c6 0% 25%, #e8e8e8 0% 50%) 0 0 / 14px 14px}
 .pcw-res audio{display:block;width:280px;max-width:100%}
 .pcw-resbar{display:flex;gap:8px;align-items:center;margin-top:3px;font-size:12px;opacity:.85}
 .pcw-text{flex:1 1 100%;padding:6px 8px;border-radius:6px;background:rgba(127,127,127,.12)}
@@ -122,7 +124,7 @@ export const CSS = `
 
 const KIND_ICON = { video: "▶", audio: "♪", image: "▣", other: "▫" };
 
-export function createView({ state, url, actions, catalog }) {
+export function createView({ state, url, actions, catalog, catalogStatus }) {
   let root, listEl, inputEl, sendBtn, draftEl, statusEl, fileInput, stepsEl, barEl, noticeEl, assetsEl, handle;
   let busyTimer;
   const stepEls = [];
@@ -401,16 +403,17 @@ export function createView({ state, url, actions, catalog }) {
 
   // 只更新每张卡的状态标签和按钮（改设置时「要重跑」会变，不用重画控件）
   function refreshStatus() {
-    if (!hasPlan()) return;
-    stepEls.forEach((el, i) => {
-      if (!el || !state.plan.steps[i]) return;
-      const step = state.plan.steps[i];
-      const st = lib.stepStatus(state.plan, i);
-      el._badge.className = `pcw-badge pcw-b-${st.kind}`;
-      el._badge.textContent = badgeText(step, st);
-      updateButtons(el._buttons, st);
-    });
-    updateBar();
+    if (hasPlan()) {
+      stepEls.forEach((el, i) => {
+        if (!el || !state.plan.steps[i]) return;
+        const step = state.plan.steps[i];
+        const st = lib.stepStatus(state.plan, i);
+        el._badge.className = `pcw-badge pcw-b-${st.kind}`;
+        el._badge.textContent = badgeText(step, st);
+        updateButtons(el._buttons, st);
+      });
+    }
+    if (runBtn) updateBar();                                                // 没有方案时也要更新：顶上「添加一步」的下拉写着应用目录是加载中 / 没读到
   }
 
   // 每秒更新一次：正在运行的那一步的「已 N 秒」
@@ -428,6 +431,9 @@ export function createView({ state, url, actions, catalog }) {
   function buildBar() {
     runBtn = h("button", { class: "pcw-btn pcw-btn-primary", onclick: () => (state.running ? actions.stop() : actions.runAll()) });
     addSel = h("select", { title: "自己加一步（不用 AI 也能搭方案）", onchange: () => { if (addSel.value) actions.addStep(addSel.value); addSel.value = ""; } });
+    const retryCatalog = () => { if (!(catalog() || []).length && catalogStatus && catalogStatus() === "failed") actions.reloadCatalog(); };      // 目录没读到时，点一下下拉就再试一次
+    addSel.addEventListener("mousedown", retryCatalog);
+    addSel.addEventListener("focus", retryCatalog);
     clearBtn = h("button", { class: "pcw-link", text: "清空方案", onclick: () => actions.clearPlan() });
     barEl.append(runBtn, addSel, h("span", { class: "pcw-spacer" }), clearBtn);
   }
@@ -442,9 +448,12 @@ export function createView({ state, url, actions, catalog }) {
     runBtn.disabled = !running && (!n || blocked.length > 0 || !!state.busy);
     runBtn.title = blocked.length ? "有步骤还缺必填的素材，先补上" : state.busy ? "AI 正在想，等它回复后再运行" : "";
     const apps = catalog() || [];
+    const holder = apps.length ? "＋ 添加一步…" : catalogStatus && catalogStatus() === "failed" ? "＋ 添加一步（应用目录没加载出来，点这里重试）" : "＋ 添加一步（应用目录加载中…）";
     if (addSel.options.length !== apps.length + 1) {                      // 目录加载好了才补选项（下拉打开时不去动它）
-      addSel.replaceChildren(h("option", { value: "", text: apps.length ? "＋ 添加一步…" : "＋ 添加一步（应用目录还没加载）" }),
+      addSel.replaceChildren(h("option", { value: "", text: holder }),
         ...apps.map((a) => h("option", { value: a.workflow, text: `${a.workflow} ${a.name}`, title: a.desc })));
+    } else if (addSel.options[0].text !== holder) {
+      addSel.options[0].text = holder;
     }
     addSel.disabled = running || !!state.busy || (!!plan && plan.steps.length >= lib.MAX_STEPS);
     clearBtn.style.display = hasPlan() ? "" : "none";
