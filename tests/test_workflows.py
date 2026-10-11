@@ -149,6 +149,13 @@ class Workflows(unittest.TestCase):
                 w = nodes[70]
                 self.assertEqual(w["type"], "ProAliPromptWriter")
                 self.assertIsNotNone(next(i for i in w["inputs"] if i["name"] == "info")["link"], f"{num}: 写提示词节点没接 Key（Settings 节点 id 31）")
+                # 谷歌的写提示词模型走网关：每个有写提示词的应用都要接「Key：网关」（Settings 节点 id 1，Key 按节点 id 存、各应用共用），阿里的 Key 还是节点 31
+                links = {l[0]: l for l in wf["links"]}
+                gw = links[next(i for i in w["inputs"] if i["name"] == "gateway_info")["link"]]
+                self.assertEqual((gw[1], nodes[gw[1]]["type"], nodes[gw[1]]["title"]), (1, "RelayAPISettings", "Key：网关（填一次）"), f"{num}: 写提示词节点没接网关 Key：选谷歌模型会用不了")
+                self.assertEqual(nodes[1]["widgets_values"][6], "http://airelay-newapi:3000", f"{num}: 网关地址（custom_api_base）不对")
+                self.assertTrue(nodes[1]["flags"].get("collapsed"), f"{num}: Key 节点要折叠")
+                self.assertEqual(links[next(i for i in w["inputs"] if i["name"] == "info")["link"]][1], 31, f"{num}: 阿里的 Key 应该是节点 31")
                 self.assertGreaterEqual(len(w["outputs"][0]["links"] or []), 1, f"{num}: 扩写结果没有连到下游")
 
     # 界面会把「生图」节点（16 个图片输入口）自动撑高到约 576，再加标题栏约 30；按这个算才和实际看到的一致

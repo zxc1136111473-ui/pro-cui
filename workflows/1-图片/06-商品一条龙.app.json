@@ -1,6 +1,6 @@
 {
   "last_node_id": 94,
-  "last_link_id": 42,
+  "last_link_id": 43,
   "nodes": [
     {
       "id": 1,
@@ -25,7 +25,8 @@
           "type": "STRING",
           "links": [
             1,
-            2
+            2,
+            13
           ],
           "slot_index": 0
         }
@@ -71,8 +72,8 @@
           "links": [
             3,
             12,
-            14,
-            16
+            15,
+            17
           ],
           "slot_index": 0
         }
@@ -259,7 +260,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            21
+            22
           ],
           "slot_index": 0
         },
@@ -267,7 +268,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            24
+            25
           ],
           "slot_index": 1
         },
@@ -311,7 +312,7 @@
         {
           "name": "info",
           "type": "STRING",
-          "link": 14,
+          "link": 15,
           "widget": {
             "name": "info"
           }
@@ -319,7 +320,7 @@
         {
           "name": "use_model",
           "type": "STRING",
-          "link": 15,
+          "link": 16,
           "widget": {
             "name": "use_model"
           }
@@ -345,7 +346,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            22
+            23
           ],
           "slot_index": 0
         },
@@ -353,7 +354,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            25
+            26
           ],
           "slot_index": 1
         }
@@ -389,7 +390,7 @@
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 32
+          "link": 33
         }
       ],
       "outputs": [
@@ -397,7 +398,7 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            33
+            34
           ],
           "slot_index": 0
         }
@@ -429,7 +430,7 @@
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 33
+          "link": 34
         }
       ],
       "outputs": [
@@ -437,7 +438,7 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            34
+            35
           ],
           "slot_index": 0
         }
@@ -469,7 +470,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 34
+          "link": 35
         }
       ],
       "outputs": [],
@@ -589,7 +590,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 18,
+          "link": 19,
           "widget": {
             "name": "prompt"
           }
@@ -600,7 +601,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            27
+            28
           ],
           "slot_index": 0
         },
@@ -608,7 +609,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            30
+            31
           ],
           "slot_index": 1
         },
@@ -652,7 +653,7 @@
         {
           "name": "info",
           "type": "STRING",
-          "link": 16,
+          "link": 17,
           "widget": {
             "name": "info"
           }
@@ -660,7 +661,7 @@
         {
           "name": "use_model",
           "type": "STRING",
-          "link": 17,
+          "link": 18,
           "widget": {
             "name": "use_model"
           }
@@ -683,7 +684,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 19,
+          "link": 20,
           "widget": {
             "name": "prompt"
           }
@@ -694,7 +695,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            28
+            29
           ],
           "slot_index": 0
         },
@@ -702,7 +703,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            31
+            32
           ],
           "slot_index": 1
         }
@@ -738,7 +739,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 35
+          "link": 36
         }
       ],
       "outputs": [],
@@ -822,7 +823,7 @@
           "type": "STRING",
           "links": [
             10,
-            38
+            39
           ],
           "slot_index": 0
         },
@@ -831,7 +832,7 @@
           "type": "STRING",
           "links": [
             11,
-            42
+            43
           ],
           "slot_index": 1
         }
@@ -966,10 +967,10 @@
           "name": "branch",
           "type": "INT",
           "links": [
-            20,
-            23,
-            26,
-            29
+            21,
+            24,
+            27,
+            30
           ],
           "slot_index": 0
         },
@@ -977,8 +978,8 @@
           "name": "model",
           "type": "STRING",
           "links": [
-            15,
-            17
+            16,
+            18
           ],
           "slot_index": 1
         }
@@ -1022,6 +1023,14 @@
           "link": null
         },
         {
+          "name": "gateway_info",
+          "type": "STRING",
+          "link": 13,
+          "widget": {
+            "name": "gateway_info"
+          }
+        },
+        {
           "name": "idea",
           "type": "STRING",
           "widget": {
@@ -1036,10 +1045,10 @@
           "name": "text",
           "type": "STRING",
           "links": [
-            13,
-            18,
+            14,
             19,
-            39
+            20,
+            40
           ],
           "slot_index": 0
         },
@@ -1082,7 +1091,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 13
+          "link": 14
         }
       ],
       "outputs": [],
@@ -1112,17 +1121,17 @@
         {
           "name": "in0_0",
           "type": "*",
-          "link": 21
+          "link": 22
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 22
+          "link": 23
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 20,
+          "link": 21,
           "widget": {
             "name": "branch"
           }
@@ -1133,7 +1142,7 @@
           "name": "out0",
           "type": "*",
           "links": [
-            32
+            33
           ],
           "slot_index": 0
         }
@@ -1164,17 +1173,17 @@
         {
           "name": "in0_0",
           "type": "*",
-          "link": 24
+          "link": 25
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 25
+          "link": 26
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 23,
+          "link": 24,
           "widget": {
             "name": "branch"
           }
@@ -1185,8 +1194,8 @@
           "name": "out0",
           "type": "*",
           "links": [
-            36,
-            40
+            37,
+            41
           ],
           "slot_index": 0
         }
@@ -1217,17 +1226,17 @@
         {
           "name": "in0_0",
           "type": "*",
-          "link": 27
+          "link": 28
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 28
+          "link": 29
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 26,
+          "link": 27,
           "widget": {
             "name": "branch"
           }
@@ -1238,7 +1247,7 @@
           "name": "out0",
           "type": "*",
           "links": [
-            35
+            36
           ],
           "slot_index": 0
         }
@@ -1269,17 +1278,17 @@
         {
           "name": "in0_0",
           "type": "*",
-          "link": 30
+          "link": 31
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 31
+          "link": 32
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 29,
+          "link": 30,
           "widget": {
             "name": "branch"
           }
@@ -1290,8 +1299,8 @@
           "name": "out0",
           "type": "*",
           "links": [
-            37,
-            41
+            38,
+            42
           ],
           "slot_index": 0
         }
@@ -1322,7 +1331,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 36
+          "link": 37
         }
       ],
       "outputs": [],
@@ -1352,7 +1361,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 37
+          "link": 38
         }
       ],
       "outputs": [],
@@ -1384,7 +1393,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 38
+          "link": 39
         }
       ],
       "outputs": [],
@@ -1419,7 +1428,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 39
+          "link": 40
         }
       ],
       "outputs": [],
@@ -1454,7 +1463,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 40
+          "link": 41
         }
       ],
       "outputs": [],
@@ -1489,7 +1498,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 41
+          "link": 42
         }
       ],
       "outputs": [],
@@ -1524,7 +1533,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 42
+          "link": 43
         }
       ],
       "outputs": [],
@@ -1639,6 +1648,14 @@
     ],
     [
       13,
+      1,
+      0,
+      70,
+      2,
+      "STRING"
+    ],
+    [
+      14,
       70,
       0,
       74,
@@ -1646,23 +1663,23 @@
       "STRING"
     ],
     [
-      14,
+      15,
       31,
       0,
       24,
       0,
-      "STRING"
-    ],
-    [
-      15,
-      77,
-      1,
-      24,
-      1,
       "STRING"
     ],
     [
       16,
+      77,
+      1,
+      24,
+      1,
+      "STRING"
+    ],
+    [
+      17,
       31,
       0,
       28,
@@ -1670,7 +1687,7 @@
       "STRING"
     ],
     [
-      17,
+      18,
       77,
       1,
       28,
@@ -1678,7 +1695,7 @@
       "STRING"
     ],
     [
-      18,
+      19,
       70,
       0,
       8,
@@ -1686,7 +1703,7 @@
       "STRING"
     ],
     [
-      19,
+      20,
       70,
       0,
       28,
@@ -1694,7 +1711,7 @@
       "STRING"
     ],
     [
-      20,
+      21,
       77,
       0,
       21,
@@ -1702,23 +1719,23 @@
       "INT"
     ],
     [
-      21,
+      22,
       4,
       0,
       21,
       0,
-      "IMAGE"
-    ],
-    [
-      22,
-      24,
-      0,
-      21,
-      1,
       "IMAGE"
     ],
     [
       23,
+      24,
+      0,
+      21,
+      1,
+      "IMAGE"
+    ],
+    [
+      24,
       77,
       0,
       22,
@@ -1726,23 +1743,23 @@
       "INT"
     ],
     [
-      24,
+      25,
       4,
       1,
       22,
       0,
-      "STRING"
-    ],
-    [
-      25,
-      24,
-      1,
-      22,
-      1,
       "STRING"
     ],
     [
       26,
+      24,
+      1,
+      22,
+      1,
+      "STRING"
+    ],
+    [
+      27,
       77,
       0,
       23,
@@ -1750,23 +1767,23 @@
       "INT"
     ],
     [
-      27,
+      28,
       8,
       0,
       23,
       0,
-      "IMAGE"
-    ],
-    [
-      28,
-      28,
-      0,
-      23,
-      1,
       "IMAGE"
     ],
     [
       29,
+      28,
+      0,
+      23,
+      1,
+      "IMAGE"
+    ],
+    [
+      30,
       77,
       0,
       25,
@@ -1774,7 +1791,7 @@
       "INT"
     ],
     [
-      30,
+      31,
       8,
       1,
       25,
@@ -1782,7 +1799,7 @@
       "STRING"
     ],
     [
-      31,
+      32,
       28,
       1,
       25,
@@ -1790,7 +1807,7 @@
       "STRING"
     ],
     [
-      32,
+      33,
       21,
       0,
       5,
@@ -1798,7 +1815,7 @@
       "*"
     ],
     [
-      33,
+      34,
       5,
       0,
       6,
@@ -1806,7 +1823,7 @@
       "IMAGE"
     ],
     [
-      34,
+      35,
       6,
       0,
       7,
@@ -1814,7 +1831,7 @@
       "IMAGE"
     ],
     [
-      35,
+      36,
       23,
       0,
       9,
@@ -1822,7 +1839,7 @@
       "*"
     ],
     [
-      36,
+      37,
       22,
       0,
       41,
@@ -1830,7 +1847,7 @@
       "*"
     ],
     [
-      37,
+      38,
       25,
       0,
       42,
@@ -1838,7 +1855,7 @@
       "*"
     ],
     [
-      38,
+      39,
       10,
       0,
       90,
@@ -1846,7 +1863,7 @@
       "STRING"
     ],
     [
-      39,
+      40,
       70,
       0,
       91,
@@ -1854,7 +1871,7 @@
       "STRING"
     ],
     [
-      40,
+      41,
       22,
       0,
       92,
@@ -1862,7 +1879,7 @@
       "*"
     ],
     [
-      41,
+      42,
       25,
       0,
       93,
@@ -1870,7 +1887,7 @@
       "*"
     ],
     [
-      42,
+      43,
       10,
       1,
       94,
@@ -1960,7 +1977,7 @@
         70,
         "model",
         "写提示词的模型",
-        "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3。用户没点名要换就别改"
+        "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3；谷歌的 gemini-3.5-flash-lite（谷歌里最快）/ gemini-3.6-flash-thinking / gemini-3.1-pro（最强但慢，约 20~40 秒）走网关，都比阿里慢。用户没点名要换就别改"
       ],
       [
         8,

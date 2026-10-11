@@ -621,7 +621,7 @@ def main():
         pg.wait_for_selector(".pcw-step")
         pg.locator(".pcw-step details.pcw-settings").first.evaluate("e => { e.open = true }")
         wm, am = pg.locator("select[data-pc='0:70:model']"), pg.locator("select[data-pc='0:3:model']")
-        check("01：「写提示词的模型」是常用设置里的下拉，6 个模型，默认 qwen3.8-flash（不用展开高级设置就看得到）", wm.locator("option").count() == 6 and "qwen3.8-flash" in wm.locator("option:checked").inner_text() and pg.locator(".pcw-adv select[data-pc='0:70:model']").count() == 0, wm.locator("option").all_inner_texts().__str__())
+        check("01：「写提示词的模型」是常用设置里的下拉，9 个模型（阿里 6 个 + 谷歌 3 个），默认 qwen3.8-flash（不用展开高级设置就看得到）", wm.locator("option").count() == 9 and "qwen3.8-flash" in wm.locator("option:checked").inner_text() and pg.locator(".pcw-adv select[data-pc='0:70:model']").count() == 0, wm.locator("option").all_inner_texts().__str__())
         check("「阿里·出图模型」也在常用设置里：5 个模型，默认 qwen-image-2.0-pro", am.locator("option").count() == 5 and pg.locator(".pcw-adv select[data-pc='0:3:model']").count() == 0 and "qwen-image-2.0-pro" in am.locator("option:checked").inner_text())
         pg.locator("details.pcw-adv").first.evaluate("e => { e.open = true }")
         gm = pg.locator("input[type=text][data-pc='0:1:custom_model']")
@@ -654,6 +654,70 @@ def main():
         wait3(pg, lambda b: b and b[0].startswith("已完成"), 30)
         sub6 = h.comfy.runs[-1]["prompt"] if len(h.comfy.runs) > n_runs else {}
         check("选了「阿里 qwen-image-3.0-pro」：提交给 ComfyUI 的模式节点就是它，两个阿里改图节点和取图选择分支都在提示词里", sub6.get("77", {}).get("inputs", {}).get("mode") == opts6[5] and {"24", "28", "21", "23"} <= set(sub6), str(sub6.get("77")))
+
+        # 助手模型：输入框下面的下拉（自动 + 阿里 + 谷歌），选了会记住；谷歌的走网关（网关的 Key 和地址），阿里的走阿里；选的看不了图而这一轮带了图片时，这一轮换成能看图的
+        pg.click("text=清空方案")
+        msel = pg.locator(".pcw-modelrow select")
+        mopts = msel.locator("option").all_inner_texts()
+        below = pg.evaluate("(() => { const i = document.querySelector('.pcw-row textarea').getBoundingClientRect(), m = document.querySelector('.pcw-modelrow select').getBoundingClientRect(); return m.top >= i.bottom && m.bottom <= window.innerHeight; })()")
+        check("输入框下面有「助手模型」下拉：自动 + 阿里 6 个 + 谷歌 3 个，默认「自动」", msel.is_visible() and below and len(mopts) == 10 and mopts[0] == "自动（推荐）" and msel.input_value() == "", f"{mopts} {below}")
+        check("下拉分成「阿里」「谷歌（走网关…）」两组", pg.locator(".pcw-modelrow optgroup").evaluate_all("els => els.map(e => e.label)") == ["阿里", "谷歌（走网关，一般比阿里慢）"])
+
+        def ask(text):
+            n_ = len(h.llm.requests)
+            say3(pg, text)
+            pg.wait_for_function(f"window.__proChat.state.busy === false && window.__proChat.state.messages.filter((m) => m.role === 'assistant').length >= {sum(1 for m_ in st3(pg, 's.messages') if m_['role'] == 'assistant') + 1}", timeout=15000)
+            return h.llm.requests[n_] if len(h.llm.requests) > n_ else {"url": "", "headers": {}, "json": {}}
+
+        def last_note():
+            return pg.locator(".pcw-ai .pcw-modelnote").last.inner_text() if pg.locator(".pcw-ai .pcw-modelnote").count() else ""
+        while pg.locator(".pcw-draft").count():                                                          # 输入框上方还挂着没发的附件的话先去掉（带图片的一轮「自动」会换成看图的模型）
+            pg.locator(".pcw-draft button").first.click()
+        r = ask("你好")
+        check("自动：纯文字这一轮发给阿里的 qwen3.7-plus，用阿里的地址和 Key", r["json"].get("model") == "qwen3.7-plus" and r["url"] == "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions" and r["headers"].get("Authorization") == "Bearer sk-harness-key", str(r)[:300])
+        check("回复下面写着「模型：qwen3.7-plus」", last_note() == "模型：qwen3.7-plus", last_note())
+        msel.select_option("gemini-3.1-pro")
+        r = ask("你好")
+        check("选了 gemini-3.1-pro：发给网关（网关的地址和 Key），不带阿里才有的参数", r["json"].get("model") == "gemini-3.1-pro" and r["url"] == "http://airelay-newapi:3000/v1/chat/completions"
+              and r["headers"].get("Authorization") == "Bearer sk-harness-gateway" and "enable_thinking" not in r["json"], str(r)[:300])
+        check("回复下面写着「模型：gemini-3.1-pro」", last_note() == "模型：gemini-3.1-pro", last_note())
+        pg.reload()
+        pg.wait_for_selector(".pcw-modelrow select")
+        pg.wait_for_function("window.__proChat.catalog().models > 0", timeout=15000)
+        check("刷新网页后下拉还是 gemini-3.1-pro，回复下面的「模型：…」也还在", pg.locator(".pcw-modelrow select").input_value() == "gemini-3.1-pro" and last_note() == "模型：gemini-3.1-pro", f"{pg.locator('.pcw-modelrow select').input_value()} {last_note()}")
+        msel = pg.locator(".pcw-modelrow select")
+        msel.select_option("qwen3.8-max")
+        pg.set_input_files(".pcw-left input[type=file]", prod)
+        pg.wait_for_selector(".pcw-draft")
+        r = ask("你好")
+        check("选了看不了图的 qwen3.8-max 又附了图：这一轮换成能看图的 qwen3.8-omni-flash，图片没丢", r["json"].get("model") == "qwen3.8-omni-flash" and [c["type"] for c in r["json"]["messages"][-1]["content"]] == ["image_url", "text"], str(r["json"])[:200])
+        check("回复里说明了为什么换（「qwen3.8-max 看不了图」），下面写着实际用的模型", "qwen3.8-max 看不了图" in pg.locator(".pcw-ai").last.inner_text() and last_note() == "模型：qwen3.8-omni-flash", pg.locator(".pcw-ai").last.inner_text())
+        pg.set_input_files(".pcw-left input[type=file]", prod)
+        pg.wait_for_selector(".pcw-draft")
+        msel.select_option("gemini-3.5-flash-lite")
+        r = ask("你好")
+        check("谷歌的能看图：带图片的这一轮照样用它、走网关", r["json"].get("model") == "gemini-3.5-flash-lite" and r["url"].startswith("http://airelay-newapi:3000/") and [c["type"] for c in r["json"]["messages"][-1]["content"]] == ["image_url", "text"], str(r)[:300])
+        msel.select_option("")
+        r = ask("你好")
+        check("切回「自动」：又是 qwen3.7-plus、走阿里", r["json"].get("model") == "qwen3.7-plus" and r["url"].startswith("https://dashscope.aliyuncs.com/") and pg.evaluate("localStorage.getItem('proChat.ui')").count('"model":""') == 1, str(r)[:200])
+        shot_name = os.path.join(SHOTS, "model-select.png")
+        pg.screenshot(path=shot_name)
+        # 后端是旧版（目录里没有模型清单）：不摆一个选了也没用的下拉
+        old_page = ctx3.new_page()
+
+        def strip_models(route):
+            resp = route.fetch()
+            body = resp.json()
+            body.pop("models", None)
+            route.fulfill(response=resp, json=body)
+        old_page.route("**/api/pro/catalog", strip_models)
+        old_page.goto(base)
+        old_page.wait_for_selector(".pcw.pcw-open", timeout=30000)
+        old_page.wait_for_function("window.__proChat.catalog().status === 'ready'", timeout=15000)
+        check("后端是旧版（目录里没有模型清单）：不显示助手模型下拉", old_page.evaluate("window.__proChat.catalog().models") == 0 and not old_page.locator(".pcw-modelrow").is_visible())
+        old_page.close()
+        pg.locator(".pcw-bar select").select_option("06")                                                  # 给后面的场景留一个方案（它们一开头要点「清空方案」）
+        pg.wait_for_selector(".pcw-step")
 
         # 提交到一半刷新网页：用同一个 run_id 再提交，ComfyUI 那边只会收到一次
         pg.click("text=清空方案")

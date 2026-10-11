@@ -97,8 +97,13 @@ class FakeSession:
         pass
 
 
-def fake_session(post):
-    return mock.patch.object(ali, "_open", lambda base, what: FakeSession(post))
+def fake_session(post, opened=None):
+    """opened 是个列表时，每次「开会话」记下 (地址, 用途, 发给谁)：测 Key 和请求发到了哪里。"""
+    def _open(base, what, who="阿里"):
+        if opened is not None:
+            opened.append((base, what, who))
+        return FakeSession(post)
+    return mock.patch.object(ali, "_open", _open)
 
 
 class AliImageNodes(unittest.TestCase):
@@ -189,13 +194,17 @@ class PromptWriter(unittest.TestCase):
         r.json.return_value = body
         return r
 
-    def run_node(self, post, idea="一个红苹果", instruction="写提示词"):
-        with fake_session(post):
-            return ali.ProAliPromptWriter().run(idea, instruction, "", 0, self.INFO)
+    GATEWAY = json.dumps({"apikey": "gw-key", "api_base": "http://airelay-newapi:3000"})
+
+    def run_node(self, post, idea="一个红苹果", instruction="写提示词", model="", gateway_info="", opened=None, image=None):
+        with fake_session(post, opened):
+            return ali.ProAliPromptWriter().run(idea, instruction, model, 0, self.INFO, image=image, gateway_info=gateway_info)
 
     def test_the_model_dropdown_is_the_verified_list_with_the_default_first(self):
         """下拉里的每个模型都在服务器上用本节点的请求体（关思考、不流式）试过能用；glm-5.3 只能开思考所以不能放。加新模型之前先试，再改这里。"""
-        self.assertEqual(ali.WRITER_MODELS, ["qwen3.8-flash", "qwen3.8-max", "qwen3.7-plus", "qwen3.8-omni-flash", "deepseek-v4-pro", "kimi-k3"])
+        self.assertEqual(ali.WRITER_MODELS[:6], ["qwen3.8-flash", "qwen3.8-max", "qwen3.7-plus", "qwen3.8-omni-flash", "deepseek-v4-pro", "kimi-k3"])
+        self.assertEqual(ali.WRITER_MODELS[6:], ["gemini-3.5-flash-lite", "gemini-3.6-flash-thinking", "gemini-3.1-pro"])      # 谷歌的三个：2026-10-11 在服务器上试过文字和看图都行；其余 gemini 要么太慢要么不稳（见 pro-ali 里的注释）
+        self.assertEqual(ali.GATEWAY_WRITER_MODELS, ali.WRITER_MODELS[6:])
         spec = ali.ProAliPromptWriter.INPUT_TYPES()["required"]["model"]
         self.assertEqual((spec[0], spec[1]["default"]), (ali.WRITER_MODELS, ali.WRITER_MODEL))
         self.assertEqual(ali.WRITER_MODEL, ali.WRITER_MODELS[0])
@@ -241,6 +250,97 @@ class PromptWriter(unittest.TestCase):
         post = mock.Mock(return_value=self.resp(body={"choices": [{"message": {"content": "  "}}]}))
         with self.assertRaisesRegex(RuntimeError, "没有文字"):
             self.run_node(post)
+
+    # ── 谷歌（gemini）模型：走网关，用「Key：网关」节点给的 Key 和地址 ─────────────────────────────────────────
+    OK = {"choices": [{"message": {"content": "写好的提示词"}}], "usage": {"total_tokens": 9}}
+
+    def test_google_models_go_to_the_gateway_with_the_gateway_key(self):
+        for model in ali.GATEWAY_WRITER_MODELS:
+            post = mock.Mock(return_value=self.resp(body={"choices": [{"message": {"content": "  谷歌写的提示词 \n"}}], "usage": {"total_tokens": 9}}))
+            opened = []
+            text, status = self.run_node(post, model=model, gateway_info=self.GATEWAY, opened=opened)
+            self.assertEqual(text, "谷歌写的提示词")
+            self.assertEqual((json.loads(status)["code"], json.loads(status)["model"]), ("success", model))
+            url, kw = post.call_args[0][0], post.call_args[1]
+            self.assertEqual(url, "http://airelay-newapi:3000/v1/chat/completions")                    # 网关的地址（没有阿里的 /compatible-mode）
+            self.assertEqual(opened, [("http://airelay-newapi:3000", "写提示词", "网关")])
+            self.assertEqual(kw["headers"]["Authorization"], "Bearer gw-key")                           # 网关的 Key，不是阿里的
+            self.assertEqual(kw["timeout"], (ali.POST_CONNECT_TIMEOUT, ali.GATEWAY_WRITER_TIMEOUT))     # 谷歌慢，等得久一点
+            self.assertGreater(ali.GATEWAY_WRITER_TIMEOUT, ali.WRITER_TIMEOUT)
+            self.assertEqual(kw["json"]["model"], model)
+            self.assertNotIn("enable_thinking", kw["json"])                                              # 阿里才有的参数，不发给网关
+            self.assertEqual(kw["json"]["messages"], [{"role": "system", "content": "写提示词"}, {"role": "user", "content": "一个红苹果"}])
+            self.assertIs(kw["json"]["stream"], False)
+
+    def test_each_key_only_goes_to_its_own_service(self):
+        """阿里的模型只发阿里（用阿里的 Key），谷歌的只发网关（用网关的 Key）；就算两个 Key 都接着，也不会串。"""
+        for model in ali.WRITER_MODELS:
+            post = mock.Mock(return_value=self.resp(body=self.OK))
+            opened = []
+            self.run_node(post, model=model, gateway_info=self.GATEWAY, opened=opened)
+            url, kw = post.call_args[0][0], post.call_args[1]
+            if model in ali.GATEWAY_WRITER_MODELS:
+                self.assertEqual((url.split("/v1/")[0], kw["headers"]["Authorization"], opened[0][2]), ("http://airelay-newapi:3000", "Bearer gw-key", "网关"), model)
+            else:
+                self.assertEqual((url, kw["headers"]["Authorization"], opened[0][2]), ("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", "Bearer k", "阿里"), model)
+                self.assertIs(kw["json"]["enable_thinking"], False, model)
+            self.assertNotIn("gw-key" if model not in ali.GATEWAY_WRITER_MODELS else "\"k\"", json.dumps(kw["json"]) + url, model)
+
+    def test_a_google_model_without_a_usable_gateway_key_is_a_clear_error_and_nothing_is_sent(self):
+        post = mock.Mock()
+        no_key = ("", "   ", "{}", "不是 json", json.dumps({"apikey": "  "}), json.dumps({"api_base": "http://airelay-newapi:3000"}))
+        bad_base = (json.dumps({"apikey": "gw-key"}), json.dumps({"apikey": "gw-key", "api_base": ""}), json.dumps({"apikey": "gw-key", "api_base": "ftp://x"}),
+                    json.dumps({"apikey": "gw-key", "api_base": "file:///etc/passwd"}), json.dumps({"apikey": "gw-key", "api_base": "airelay-newapi:3000"}), json.dumps({"apikey": "gw-key", "api_base": "http://"}))
+        for gw in no_key:
+            with self.assertRaises(RuntimeError) as cm:
+                self.run_node(post, model="gemini-3.1-pro", gateway_info=gw)
+            self.assertIn("Key：网关", str(cm.exception), gw)
+            self.assertIn("gemini-3.1-pro", str(cm.exception))
+        for gw in bad_base:
+            with self.assertRaises(RuntimeError) as cm:
+                self.run_node(post, model="gemini-3.1-pro", gateway_info=gw)
+            self.assertIn("网关地址不对", str(cm.exception), gw)
+        post.assert_not_called()                                                                          # 一个请求都没发出去（更不会拿阿里的 Key 去试）
+        self.assertEqual(self.run_node(mock.Mock(return_value=self.resp(body=self.OK)), model="qwen3.8-max", gateway_info="")[0], "写好的提示词")      # 阿里的模型不受影响（不接网关也行）
+
+    def test_cite_markers_from_google_replies_are_removed(self):
+        for raw, want in (("图中是一颗红苹果[cite: 1]。", "图中是一颗红苹果。"), ("第一句[cite: 1, 2] 第二句 [cite:3]", "第一句 第二句"), ("没有标记", "没有标记"),
+                          ("方括号[不是引用]保留", "方括号[不是引用]保留"), ("[cite: 1]", "")):
+            post = mock.Mock(return_value=self.resp(body={"choices": [{"message": {"content": raw}}]}))
+            if want:
+                self.assertEqual(self.run_node(post, model="gemini-3.5-flash-lite", gateway_info=self.GATEWAY)[0], want, raw)
+            else:
+                with self.assertRaisesRegex(RuntimeError, "没有文字"):                                    # 去掉标记后什么都不剩：当没有回复
+                    self.run_node(post, model="gemini-3.5-flash-lite", gateway_info=self.GATEWAY)
+
+    def test_google_errors_are_labelled_gateway_not_ali(self):
+        gw = dict(model="gemini-3.1-pro", gateway_info=self.GATEWAY)
+        post = mock.Mock(return_value=self.resp(502, {"error": {"message": "upstream error: canvas failed", "type": "upstream_error", "code": None}}))
+        with self.assertRaisesRegex(RuntimeError, r"^\[网关 写提示词\] HTTP 502 ：upstream error"):
+            self.run_node(post, **gw)
+        self.assertEqual(post.call_count, 1)                                                              # HTTP 错误不重试
+        post = mock.Mock(side_effect=ali.requests.ConnectionError("reset"))
+        with self.assertRaisesRegex(RuntimeError, r"^\[网关 写提示词\] 连不上"):
+            self.run_node(post, **gw)
+        self.assertEqual(post.call_count, 2)                                                              # 连不上：整个请求重试一次
+        post = mock.Mock(side_effect=ali.requests.ReadTimeout("slow"))
+        with self.assertRaises(RuntimeError) as cm:
+            self.run_node(post, **gw)
+        self.assertRegex(str(cm.exception), rf"^\[网关 写提示词\] 等了 {ali.GATEWAY_WRITER_TIMEOUT} 秒没有回应：请求已经发出，网关那边")
+        self.assertNotIn("阿里", str(cm.exception))
+        with self.assertRaisesRegex(RuntimeError, r"^\[网关 写提示词\] 一句话需求是空的"):
+            self.run_node(mock.Mock(), idea=" ", **gw)
+
+    def test_google_models_can_see_images_too(self):
+        post = mock.Mock(return_value=self.resp(body=self.OK))
+        with mock.patch.object(ali, "_to_data_url", return_value="data:image/jpeg;base64,AAAA"):
+            self.run_node(post, idea="补充信息", instruction="写文案", model="gemini-3.6-flash-thinking", gateway_info=self.GATEWAY, image=object())
+        self.assertEqual(post.call_args[1]["json"]["messages"][1]["content"], [{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,AAAA"}}, {"type": "text", "text": "补充信息"}])
+
+    def test_the_gateway_key_is_an_optional_forced_input(self):
+        opt = ali.ProAliPromptWriter.INPUT_TYPES()["optional"]
+        self.assertEqual(opt["gateway_info"], ("STRING", {"default": "", "forceInput": True}))
+        self.assertEqual(list(opt), ["info", "image", "gateway_info"])                                    # 顺序和 gen_workflows 里的 SPEC 一致
 
     def test_empty_inputs_raise_without_request(self):
         post = mock.Mock()

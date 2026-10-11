@@ -6,7 +6,8 @@
 
 - 前端：web/pro-chat.js（工作台：聊天 / 方案卡片 / 结果板 / 素材库）。
 - 后端：POST /pro/chat（对话，调阿里）、POST /pro/run（运行一步）、POST /pro/stage（把输出目录里的结果放进素材库）、GET /pro/catalog（应用目录）；前端用 /api/pro/... 访问。
-- Key：和各阿里工作流用同一个，读服务器 relay_config.json 的 node_settings["31"]（只发往 dashscope.aliyuncs.com，不会回给前端）。
+- Key：阿里的和各阿里工作流用同一个，读服务器 relay_config.json 的 node_settings["31"]（只发往 dashscope.aliyuncs.com，不会回给前端）。
+  界面里选了谷歌（gemini）模型时走网关：Key 和地址读 node_settings["1"]（「Key：网关」节点存的，只发往那里配置的网关地址，同样不回给前端）。
 - 目录、校验、对话、运行的逻辑在 catalog.py / chat.py / run.py（不依赖 ComfyUI，tests/test_chat.py 直接测）；这里只管接 ComfyUI 的环境。
 """
 import asyncio
@@ -19,6 +20,7 @@ import shutil
 import tempfile
 import threading
 import time
+from urllib.parse import urlparse
 
 from . import catalog as cat_mod
 from . import chat, run
@@ -30,6 +32,8 @@ WEB_DIRECTORY = "./web"
 
 ALI_BASE = "https://dashscope.aliyuncs.com"
 KEY_NODE_ID = "31"                      # 工作流里「Key：阿里」节点的 id（Key 按节点 id 存）
+GATEWAY_KEY_NODE_ID = "1"               # 「Key：网关」节点的 id：谷歌（gemini）模型走网关（New API），用它的 Key 和地址
+DEFAULT_GATEWAY_BASE = "http://airelay-newapi:3000"      # 配置里没存地址时用（和工作流模板里网关节点的地址一样，是同一台服务器上的容器）
 OBJECT_INFO_TTL = 30
 VISION_SIDE = 768                       # 给模型看的图先缩到最长边 768（大图传阿里很慢）
 MAX_VISION_IMAGES = 4
@@ -71,16 +75,35 @@ def relay_config_path():
     return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ComfyUI-relayapi", "relay_config.json")
 
 
-def ali_key():
+def _node_settings(node_id):
+    """relay_config.json 里某个 Settings 节点存的设置（dict）；读不到 / 格式不对就是空 dict。"""
     try:
         with open(relay_config_path(), encoding="utf-8") as f:
             cfg = json.load(f)
+        node = (cfg.get("node_settings") or {}).get(node_id)
     except Exception:
-        cfg = {}
-    key = str(((cfg.get("node_settings") or {}).get(KEY_NODE_ID) or {}).get("api_key") or "").strip()
+        node = None
+    return node if isinstance(node, dict) else {}
+
+
+def ali_key():
+    key = str(_node_settings(KEY_NODE_ID).get("api_key") or "").strip()
     if not key:
         raise ChatError(503, "还没有阿里 Key：在任一工作流的节点图里展开「Key：阿里」节点，填一次 apikey（或在服务器的 relay_config.json 里预置），助手才能用")
     return key
+
+
+def gateway_creds():
+    """(网关 Key, 网关地址)：谷歌的模型走网关，用「Key：网关」节点存的 Key 和地址。地址只要求是 http(s)（一般是同一台服务器上的容器）。"""
+    node = _node_settings(GATEWAY_KEY_NODE_ID)
+    key = str(node.get("api_key") or "").strip()
+    if not key:
+        raise ChatError(503, "选了谷歌模型，要走网关，但还没有网关 Key：在任一工作流的节点图里展开「Key：网关」节点，填一次 apikey（或在服务器的 relay_config.json 里预置）；也可以先换成阿里的模型")
+    base = str(node.get("base_url") or "").strip().rstrip("/") or DEFAULT_GATEWAY_BASE
+    u = urlparse(base)
+    if u.scheme not in ("http", "https") or not u.hostname:
+        raise ChatError(503, f"网关地址不对（现在是 {base}）：「Key：网关」节点里的地址要填 http(s):// 开头的")
+    return key, base
 
 
 _OI = {"t": 0.0, "v": None}
@@ -149,8 +172,10 @@ def handle_chat(payload, post=None):
             broken.append(a["name"])
     for a in assets:                                         # 编号要和前端一致：文件没了 / 打不开的也占一个编号，只是不让模型用
         a["usable"] = asset_exists(a["name"]) and a["name"] not in broken
-    out = chat.chat_turn(payload, cat, ali_key(), ALI_BASE, assets, vision, post=post)
-    out["warnings"] = out["warnings"] + [f"图片「{n.split('/', 1)[-1]}」打不开，已忽略（换 PNG / JPG 再传）" for n in broken]
+    entry, note = chat.resolve_model(payload.get("model"), bool(vision))        # 界面里选的模型（没选 / 不认识 = 自动）；选的看不了图而这一轮有图片时换成能看图的
+    key, base = gateway_creds() if entry["provider"] == "gateway" else (ali_key(), ALI_BASE)
+    out = chat.chat_turn(payload, cat, key, base, assets, vision, post=post, model=entry)
+    out["warnings"] = ([note] if note else []) + out["warnings"] + [f"图片「{n.split('/', 1)[-1]}」打不开，已忽略（换 PNG / JPG 再传）" for n in broken]
     return out
 
 
@@ -245,9 +270,10 @@ def handle_stage(payload):
 
 
 def handle_catalog(_payload=None):
-    """应用目录（给工作台手动加步骤用）：每个应用的编号、名字、用途、能改什么。"""
+    """应用目录（给工作台手动加步骤用）：每个应用的编号、名字、用途、能改什么；还有聊天助手能选的模型。"""
     cat = cat_mod.build_catalog(workflows_dir(), object_info(), models_dir())
-    return {"apps": [{"workflow": a["id"], "name": a["name"], "path": a["path"], "desc": a["desc"], "schema": cat_mod.schema(a)} for a in cat.values()]}
+    return {"apps": [{"workflow": a["id"], "name": a["name"], "path": a["path"], "desc": a["desc"], "schema": cat_mod.schema(a)} for a in cat.values()],
+            "models": chat.model_list()}                     # 聊天助手能选的模型（界面下拉用）
 
 
 # ── 路由（ComfyUI 里才注册；单独 import 这个文件做测试时跳过）──────────────────────────────────────

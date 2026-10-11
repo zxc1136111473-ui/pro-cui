@@ -74,7 +74,7 @@ SPEC = {
     "ProAliImage": ([("info", "STRING", True)], [("image", "IMAGE"), ("response", "STRING")], ["prompt"]),
     "ProAliImageEdit": ([("info", "STRING", True), ("use_model", "STRING", True), ("image1", "IMAGE", False), ("image2", "IMAGE", False), ("image3", "IMAGE", False)],
                         [("image", "IMAGE"), ("response", "STRING")], ["prompt"]),
-    "ProAliPromptWriter": ([("info", "STRING", True), ("image", "IMAGE", False)], [("text", "STRING"), ("response", "STRING")], ["instruction"]),
+    "ProAliPromptWriter": ([("info", "STRING", True), ("image", "IMAGE", False), ("gateway_info", "STRING", True)], [("text", "STRING"), ("response", "STRING")], ["instruction"]),
     "ProAliTTS": ([("info", "STRING", True)], [("audio", "AUDIO"), ("response", "STRING")], ["text", "custom_voice"]),
     "ProAliDialogue": ([("info", "STRING", True)], [("audio", "AUDIO"), ("srt", "STRING"), ("report", "STRING")], []),
     "ProAliVoiceDesign": ([("info", "STRING", True)], [("voice", "STRING"), ("preview", "AUDIO")], ["voice_prompt"]),
@@ -458,8 +458,9 @@ def status(g, gen, out="response", pos=(0, 0), title="状态（出错时这里�
 # ── 画布最上面：「★ 先选模式」+「★ 只填这里：一句话需求」，其余节点整体下移 ───────────────────────────────────
 # 节点编号固定：70 写提示词、74 它的预览、75 海报文案拆分、77 模式。阿里 Settings 固定 31（Key 按节点 id 存）。
 IDEA_TITLE = "★ 只填这里：一句话需求"
-WRITER_HINT = "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3。用户没点名要换就别改"
-WRITER_HINT_VISION = "这个应用要让 AI 看图，默认 qwen3.8-omni-flash（能看图）；换成别的模型只能读文字、看不了图，会出错。用户没点名要换就别改"
+WRITER_HINT = ("AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3；"
+               "谷歌的 gemini-3.5-flash-lite（谷歌里最快）/ gemini-3.6-flash-thinking / gemini-3.1-pro（最强但慢，约 20~40 秒）走网关，都比阿里慢。用户没点名要换就别改")
+WRITER_HINT_VISION = ("这个应用要让 AI 看图，默认 qwen3.8-omni-flash（能看图）；谷歌的 gemini-* 也能看图（走网关，更慢）；换成别的阿里模型只能读文字、看不了图，会出错。用户没点名要换就别改")
 
 
 def top_block(g, mode=None, writer=None, settings_id=31):
@@ -472,6 +473,11 @@ def top_block(g, mode=None, writer=None, settings_id=31):
     need_settings = bool(writer) and not have
     if need_settings:
         bottom += 40 + 300 + 30
+    have_gate = [n for n in g.nodes if n["id"] == 1]            # 谷歌的写提示词模型走网关：写提示词节点要接「Key：网关」（节点 1，Key 按节点 id 存，各应用共用）
+    assert not have_gate or have_gate[0]["type"] == "RelayAPISettings", "节点 1 要留给网关 Settings（Key 按节点 id 存），换个编号"
+    need_gate = bool(writer) and not have_gate
+    if need_gate:
+        bottom += 40 + 300 + 30
     shift = bottom + 60
     for n in g.nodes:
         n["pos"][1] += shift
@@ -481,12 +487,15 @@ def top_block(g, mode=None, writer=None, settings_id=31):
         w = dict(writer)
         if need_settings:
             g.add(settings_id, "RelayAPISettings", (60, wy + 560 + 70), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里文字）")
+        if need_gate:
+            g.add(1, "RelayAPISettings", (60, wy + 560 + 70 + 340), (400, 300), IMG_SET, title="Relay API Settings（网关 Key）")
         instruction = FLOW.TEMPLATES[w["kind"]] if w.get("kind") else "（由模式节点提供）"
         # idea, instruction, model, seed, control_after_generate
         g.add(70, "ProAliPromptWriter", (60, wy), (520, 560), [w["idea"], instruction, w.get("model", "qwen3.8-flash"), 1, "randomize"],
               title=w.get("idea_title", IDEA_TITLE))
         g.app_extra(70, "model", "写提示词的模型", w.get("model_hint") or (WRITER_HINT_VISION if w.get("model") == "qwen3.8-omni-flash" else WRITER_HINT))
         g.connect(settings_id, "STRING", 70, "info")
+        g.connect(1, "STRING", 70, "gateway_info")
         if not w.get("kind"):
             g.connect(77, "instruction", 70, "instruction")
         if w.get("preview", True):

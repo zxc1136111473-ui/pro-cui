@@ -1153,6 +1153,13 @@
   "has_intermediate_output": false,
   "input": {
    "optional": {
+    "gateway_info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ],
     "image": [
      "IMAGE"
     ],
@@ -1190,12 +1197,15 @@
       "qwen3.7-plus",
       "qwen3.8-omni-flash",
       "deepseek-v4-pro",
-      "kimi-k3"
+      "kimi-k3",
+      "gemini-3.5-flash-lite",
+      "gemini-3.6-flash-thinking",
+      "gemini-3.1-pro"
      ],
      {
       "default": "qwen3.8-flash",
       "display_name": "模型",
-      "tooltip": "写提示词用哪个文字模型。默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；要看图的（看图写文案、图生视频）必须选 qwen3.8-omni-flash，其余模型只能读文字"
+      "tooltip": "写提示词用哪个文字模型。默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；gemini-* 是谷歌的，走网关（要接「Key：网关」），比阿里慢（几秒到 40 秒）。要看图的（看图写文案、图生视频）必须选 qwen3.8-omni-flash 或 gemini-*，其余模型只能读文字"
      }
     ],
     "seed": [
@@ -1213,7 +1223,8 @@
   "input_order": {
    "optional": [
     "info",
-    "image"
+    "image",
+    "gateway_info"
    ],
    "required": [
     "idea",

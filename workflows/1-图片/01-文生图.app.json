@@ -1,6 +1,6 @@
 {
   "last_node_id": 91,
-  "last_link_id": 16,
+  "last_link_id": 17,
   "nodes": [
     {
       "id": 1,
@@ -24,7 +24,8 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            3
+            2,
+            4
           ],
           "slot_index": 0
         }
@@ -64,7 +65,7 @@
         {
           "name": "info",
           "type": "STRING",
-          "link": 3,
+          "link": 4,
           "widget": {
             "name": "info"
           }
@@ -152,7 +153,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 5,
+          "link": 6,
           "widget": {
             "name": "prompt"
           }
@@ -172,7 +173,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            8
+            9
           ],
           "slot_index": 0
         },
@@ -180,7 +181,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            11
+            12
           ],
           "slot_index": 1
         },
@@ -224,7 +225,7 @@
         {
           "name": "info",
           "type": "STRING",
-          "link": 4,
+          "link": 5,
           "widget": {
             "name": "info"
           }
@@ -232,7 +233,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 6,
+          "link": 7,
           "widget": {
             "name": "prompt"
           }
@@ -261,7 +262,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            9
+            10
           ],
           "slot_index": 0
         },
@@ -269,7 +270,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            12
+            13
           ],
           "slot_index": 1
         }
@@ -305,7 +306,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 13
+          "link": 14
         }
       ],
       "outputs": [],
@@ -338,8 +339,8 @@
           "name": "branch",
           "type": "INT",
           "links": [
-            7,
-            10
+            8,
+            11
           ],
           "slot_index": 0
         }
@@ -377,7 +378,7 @@
           "type": "STRING",
           "links": [
             1,
-            4
+            5
           ],
           "slot_index": 0
         }
@@ -426,6 +427,14 @@
           "name": "image",
           "type": "IMAGE",
           "link": null
+        },
+        {
+          "name": "gateway_info",
+          "type": "STRING",
+          "link": 2,
+          "widget": {
+            "name": "gateway_info"
+          }
         }
       ],
       "outputs": [
@@ -433,10 +442,10 @@
           "name": "text",
           "type": "STRING",
           "links": [
-            2,
-            5,
+            3,
             6,
-            15
+            7,
+            16
           ],
           "slot_index": 0
         },
@@ -479,7 +488,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 2
+          "link": 3
         }
       ],
       "outputs": [],
@@ -509,17 +518,17 @@
         {
           "name": "in0_0",
           "type": "*",
-          "link": 8
+          "link": 9
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 9
+          "link": 10
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 7,
+          "link": 8,
           "widget": {
             "name": "branch"
           }
@@ -530,7 +539,7 @@
           "name": "out0",
           "type": "*",
           "links": [
-            13
+            14
           ],
           "slot_index": 0
         }
@@ -561,17 +570,17 @@
         {
           "name": "in0_0",
           "type": "*",
-          "link": 11
+          "link": 12
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 12
+          "link": 13
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 10,
+          "link": 11,
           "widget": {
             "name": "branch"
           }
@@ -582,8 +591,8 @@
           "name": "out0",
           "type": "*",
           "links": [
-            14,
-            16
+            15,
+            17
           ],
           "slot_index": 0
         }
@@ -614,7 +623,7 @@
         {
           "name": "source",
           "type": "*",
-          "link": 14
+          "link": 15
         }
       ],
       "outputs": [],
@@ -646,7 +655,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 15
+          "link": 16
         }
       ],
       "outputs": [],
@@ -681,7 +690,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 16
+          "link": 17
         }
       ],
       "outputs": [],
@@ -708,6 +717,14 @@
     ],
     [
       2,
+      1,
+      0,
+      70,
+      2,
+      "STRING"
+    ],
+    [
+      3,
       70,
       0,
       74,
@@ -715,7 +732,7 @@
       "STRING"
     ],
     [
-      3,
+      4,
       1,
       0,
       2,
@@ -723,7 +740,7 @@
       "STRING"
     ],
     [
-      4,
+      5,
       31,
       0,
       3,
@@ -731,7 +748,7 @@
       "STRING"
     ],
     [
-      5,
+      6,
       70,
       0,
       2,
@@ -739,7 +756,7 @@
       "STRING"
     ],
     [
-      6,
+      7,
       70,
       0,
       3,
@@ -747,23 +764,23 @@
       "STRING"
     ],
     [
-      7,
+      8,
       77,
       0,
       10,
       2,
       "INT"
-    ],
-    [
-      8,
-      2,
-      0,
-      10,
-      0,
-      "IMAGE"
     ],
     [
       9,
+      2,
+      0,
+      10,
+      0,
+      "IMAGE"
+    ],
+    [
+      10,
       3,
       0,
       10,
@@ -771,7 +788,7 @@
       "IMAGE"
     ],
     [
-      10,
+      11,
       77,
       0,
       12,
@@ -779,23 +796,23 @@
       "INT"
     ],
     [
-      11,
+      12,
       2,
       1,
       12,
       0,
-      "STRING"
-    ],
-    [
-      12,
-      3,
-      1,
-      12,
-      1,
       "STRING"
     ],
     [
       13,
+      3,
+      1,
+      12,
+      1,
+      "STRING"
+    ],
+    [
+      14,
       10,
       0,
       4,
@@ -803,7 +820,7 @@
       "*"
     ],
     [
-      14,
+      15,
       12,
       0,
       11,
@@ -811,7 +828,7 @@
       "*"
     ],
     [
-      15,
+      16,
       70,
       0,
       90,
@@ -819,7 +836,7 @@
       "STRING"
     ],
     [
-      16,
+      17,
       12,
       0,
       91,
@@ -913,7 +930,7 @@
         70,
         "model",
         "写提示词的模型",
-        "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3。用户没点名要换就别改"
+        "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3；谷歌的 gemini-3.5-flash-lite（谷歌里最快）/ gemini-3.6-flash-thinking / gemini-3.1-pro（最强但慢，约 20~40 秒）走网关，都比阿里慢。用户没点名要换就别改"
       ],
       [
         3,

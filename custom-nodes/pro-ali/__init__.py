@@ -2,6 +2,7 @@
 
 Key 与地址取自 Relay API Settings 节点的 info 输出（存在服务器 relay_config.json 的 node_settings[节点 id]，不进 git）。
 只允许把 Key 发往 *.aliyuncs.com，Settings 里地址配错时宁可报错也不外发。
+「写提示词」选谷歌（gemini）模型时走网关：Key 和地址取自「Key：网关」节点（gateway_info 输入），只发往那个节点配置的网关地址，阿里的 Key 不会发给网关。
 错误直接抛出（红色节点 + 阿里返回的原因）。计费请求（生图 / 改图 / 配音 / 听写 / 音色）只发一次、不重试：重试会重复计费。
 连接阶段单独处理：发请求前先用一个免费的 HEAD 把 TCP + TLS 连接建好（建不好就重试，这时什么都没发出去，不会计费），请求走这条已经连好的连接；
 结果下载是 GET，失败重试。写提示词的文字请求几乎不花钱，连不上（含超时）整个请求重试一次。
@@ -34,8 +35,14 @@ WRITER_TIMEOUT = 60   # 关掉思考后实测约 3 秒（开着约 12~20 秒）
 WRITER_MODEL = "qwen3.8-flash"
 # 「写提示词」能选的文字模型：2026-10-10 逐个用本节点的请求体在服务器上试过（一句话需求 → 扩写），都能用，2~4 秒；glm-5.3 只能开思考（本节点关着思考），用不了。
 # qwen3.8-omni-flash 能看图（「看图写文案」/ 图生视频要用它或同类），其余只能读文字
-WRITER_MODELS = [WRITER_MODEL, "qwen3.8-max", "qwen3.7-plus", "qwen3.8-omni-flash", "deepseek-v4-pro", "kimi-k3"]
+# 谷歌（gemini）的三个走网关（Key：网关，gateway_info 输入）：2026-10-11 用本节点的请求体在服务器上试过，文字和看图都行，但比阿里慢（文字 4~45 秒，看图 10~170 秒，偶尔更久），超时放宽到 120 秒。
+# 没放进来的：gemini-3.1-pro-thinking（两分钟不回）、gemini-3.6-flash（十次里卡住了两次）、gemini-3.5-flash-lite-thinking（比 flash-lite 慢得多）、gemini-canvas（是做网页的，回 502）
+GATEWAY_WRITER_MODELS = ["gemini-3.5-flash-lite", "gemini-3.6-flash-thinking", "gemini-3.1-pro"]
+WRITER_MODELS = [WRITER_MODEL, "qwen3.8-max", "qwen3.7-plus", "qwen3.8-omni-flash", "deepseek-v4-pro", "kimi-k3"] + GATEWAY_WRITER_MODELS
+GATEWAY_WRITER_TIMEOUT = 120      # 文字 5~45 秒；带图片的更慢也更不稳（实测 10 秒到 170 秒不等：第一次 90 秒没回、重试那次又花了近 80 秒），所以放宽到 120 秒
 CHAT_API = "/compatible-mode/v1/chat/completions"
+GATEWAY_CHAT_API = "/v1/chat/completions"             # 网关（New API）的 OpenAI 兼容地址，没有 /compatible-mode
+_CITE = re.compile(r"\s*\[cite:[^\]]*\]")               # 谷歌网页版的回复里夹着「[cite: 1]」这样的引用标记，不是正文，要去掉（会混进提示词里）
 ASR_MAX_SECONDS = 300  # 阿里 qwen3-asr-flash 单次上限约 5 分钟
 DOWNLOAD_TIMEOUT = 60
 CONNECT_TIMEOUT = 3        # 连接 / 握手阶段的超时（正常不到 1 秒）：德国 → 北京的线路偶尔握手卡 10~25 秒后被重置，干等没用，换条新连接多半马上就好
@@ -120,7 +127,26 @@ def _creds(info):
     return key, f"https://{host}"
 
 
-def _open(base, what):
+def _gateway_creds(info, model):
+    """网关（New API）的 Key 和地址：取自「Key：网关」节点的 info（apikey / api_base）。地址由那个节点配置（一般是同一台服务器上的 http://airelay-newapi:3000），只要求是 http(s)。"""
+    cfg = {}
+    if info and info.strip():
+        try:
+            cfg = json.loads(info)
+        except Exception:
+            pass
+    key = str(cfg.get("apikey") or "").strip()
+    if not key:
+        raise RuntimeError(f"[网关 写提示词] 选了谷歌模型「{model}」，要走网关，但没有拿到网关的 Key：请点开标题为「Key：网关」的节点（折叠着的，点标题左边的圆点展开；类型 Relay API Settings），"
+                           "在 apikey 填网关的 Key（或在服务器 relay_config.json 里预置）；工作流里没有这个节点的话，换成阿里的模型")
+    raw = str(cfg.get("api_base") or "").strip().rstrip("/")
+    u = urlparse(raw)
+    if u.scheme not in ("http", "https") or not u.hostname:
+        raise RuntimeError(f"[网关 写提示词] 网关地址不对（现在是 {raw or '空的'}）：「Key：网关」节点里的 custom_api_base 要填 http(s):// 开头的地址")
+    return key, raw
+
+
+def _open(base, what, who="阿里"):
     """开一个会话，并先对同一个主机发一个免费的 HEAD 把 TCP + TLS 连接建好（建不好就重试）。
     这时还没有任何计费请求发出去，所以连接阶段的失败可以放心重试；之后的请求走这条连好的连接（keep-alive），不会再卡在握手上。
     HEAD 不带 Key，返回什么状态码都行（阿里网关的 / 是 404）：只要连上、握手成功。"""
@@ -133,19 +159,19 @@ def _open(base, what):
         except requests.RequestException as e:
             last = e
     s.close()
-    raise RuntimeError(f"[阿里 {what}] 连不上：{type(last).__name__}（连接 / 握手试了 {WARMUP_TRIES} 次都没成功，请求没有发出，不会计费）")
+    raise RuntimeError(f"[{who} {what}] 连不上：{type(last).__name__}（连接 / 握手试了 {WARMUP_TRIES} 次都没成功，请求没有发出，不会计费）")
 
 
-def _send(base, key, path, body, timeout, what):
-    """（预热连接后）把 JSON 发给阿里，只发一次，返回 Response；连不上 / 等回复超时抛 RuntimeError。"""
-    s = _open(base, what)
+def _send(base, key, path, body, timeout, what, who="阿里"):
+    """（预热连接后）把 JSON 发给阿里（who="网关" 时发给网关），只发一次，返回 Response；连不上 / 等回复超时抛 RuntimeError。"""
+    s = _open(base, what, who)
     try:
         return s.post(base + path, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
                       json=body, timeout=(POST_CONNECT_TIMEOUT, timeout))
     except requests.ReadTimeout:
-        raise RuntimeError(f"[阿里 {what}] 等了 {timeout} 秒没有回应：请求已经发出，阿里那边可能还在处理（可能已计费），先别连着重跑")
+        raise RuntimeError(f"[{who} {what}] 等了 {timeout} 秒没有回应：请求已经发出，{who}那边可能还在处理（可能已计费），先别连着重跑")
     except requests.RequestException as e:
-        raise RuntimeError(f"[阿里 {what}] 连不上：{type(e).__name__}")
+        raise RuntimeError(f"[{who} {what}] 连不上：{type(e).__name__}")
     finally:
         s.close()
 
@@ -400,11 +426,11 @@ class ProAliASR:
         return (text, json.dumps({"code": "success", "seconds": (d.get("usage") or {}).get("seconds")}, ensure_ascii=False))
 
 
-def _chat(base, key, body, timeout, what):
-    """OpenAI 兼容的 chat/completions。连不上（含超时）整个请求重试一次（文字请求几乎不花钱），HTTP 错误不重试；返回解析后的 JSON。"""
+def _chat(base, key, body, timeout, what, path=CHAT_API, who="阿里"):
+    """OpenAI 兼容的 chat/completions（默认发给阿里；谷歌模型传 path=GATEWAY_CHAT_API、who="网关"）。连不上（含超时）整个请求重试一次（文字请求几乎不花钱），HTTP 错误不重试；返回解析后的 JSON。"""
     for attempt in (1, 2):
         try:
-            r = _send(base, key, CHAT_API, body, timeout, what)
+            r = _send(base, key, path, body, timeout, what, who)
             break
         except RuntimeError:
             if attempt == 2:
@@ -412,10 +438,12 @@ def _chat(base, key, body, timeout, what):
     try:
         d = r.json()
     except Exception:
-        raise RuntimeError(f"[阿里 {what}] HTTP {r.status_code}，返回不是 JSON：{r.text[:200]}")
+        raise RuntimeError(f"[{who} {what}] HTTP {r.status_code}，返回不是 JSON：{r.text[:200]}")
     if r.status_code != 200:
         err = d.get("error", d)
-        raise RuntimeError(f"[阿里 {what}] HTTP {r.status_code} {err.get('code', '')}：{str(err.get('message', ''))[:300]}")
+        if not isinstance(err, dict):
+            err = {"message": err}
+        raise RuntimeError(f"[{who} {what}] HTTP {r.status_code} {err.get('code') or ''}：{str(err.get('message', ''))[:300]}")
     return d
 
 
@@ -430,33 +458,41 @@ class ProAliPromptWriter:
             "idea": ("STRING", {"multiline": True, "default": "", "display_name": "一句话需求", "tooltip": "想要什么，一句话说清楚；模型会按下面的「扩写指令」写成完整提示词"}),
             "instruction": ("STRING", {"multiline": True, "default": "", "display_name": "扩写指令（一般不用改）", "tooltip": "告诉模型怎么写、写成什么样；各工作流已经按用途写好"}),
             "model": (WRITER_MODELS, {"default": WRITER_MODEL, "display_name": "模型",
-                                      "tooltip": "写提示词用哪个文字模型。默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；要看图的（看图写文案、图生视频）必须选 qwen3.8-omni-flash，其余模型只能读文字"}),
+                                      "tooltip": "写提示词用哪个文字模型。默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；gemini-* 是谷歌的，走网关（要接「Key：网关」），比阿里慢（几秒到 40 秒）。"
+                                                 "要看图的（看图写文案、图生视频）必须选 qwen3.8-omni-flash 或 gemini-*，其余模型只能读文字"}),
             # seed 不参与请求：只是让每次运行都重新扩写（ComfyUI 输入没变就直接用上次的结果）
             "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "display_name": "随机数（变一下就重新扩写）"})},
-            "optional": {"info": ("STRING", {"default": "", "forceInput": True}), "image": ("IMAGE",)}}
+            "optional": {"info": ("STRING", {"default": "", "forceInput": True}), "image": ("IMAGE",), "gateway_info": ("STRING", {"default": "", "forceInput": True})}}
 
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("text", "response")
     FUNCTION = "run"
     CATEGORY = "pro/aliyun"
 
-    def run(self, idea, instruction, model, seed, info="", image=None):
-        key, base = _creds(info)
-        if not idea.strip():
-            raise RuntimeError("[阿里 写提示词] 一句话需求是空的")
-        if not instruction.strip():
-            raise RuntimeError("[阿里 写提示词] 扩写指令是空的")
+    def run(self, idea, instruction, model, seed, info="", image=None, gateway_info=""):
         model = model.strip() or WRITER_MODEL
+        google = model in GATEWAY_WRITER_MODELS                  # 谷歌的模型走网关（用「Key：网关」）；其余都发给阿里
+        if google:
+            key, base = _gateway_creds(gateway_info, model)
+        else:
+            key, base = _creds(info)
+        who = "网关" if google else "阿里"
+        if not idea.strip():
+            raise RuntimeError(f"[{who} 写提示词] 一句话需求是空的")
+        if not instruction.strip():
+            raise RuntimeError(f"[{who} 写提示词] 扩写指令是空的")
         user = idea.strip() if image is None else [{"type": "image_url", "image_url": {"url": _to_data_url(image)}}, {"type": "text", "text": idea.strip()}]
-        body = {"model": model, "stream": False, "enable_thinking": False,
+        body = {"model": model, "stream": False,
                 "messages": [{"role": "system", "content": instruction.strip()}, {"role": "user", "content": user}]}
-        d = _chat(base, key, body, WRITER_TIMEOUT, "写提示词")
+        if not google:
+            body["enable_thinking"] = False                      # 阿里的参数（关思考，快）；网关那边不需要
+        d = _chat(base, key, body, GATEWAY_WRITER_TIMEOUT if google else WRITER_TIMEOUT, "写提示词", GATEWAY_CHAT_API if google else CHAT_API, who)
         try:
-            text = d["choices"][0]["message"]["content"].strip()
+            text = _CITE.sub("", d["choices"][0]["message"]["content"]).strip()
         except Exception:
             text = ""
         if not text:
-            raise RuntimeError("[阿里 写提示词] 返回里没有文字：" + json.dumps(d, ensure_ascii=False)[:300])
+            raise RuntimeError(f"[{who} 写提示词] 返回里没有文字：" + json.dumps(d, ensure_ascii=False)[:300])
         return (text, json.dumps({"code": "success", "model": model, "usage": d.get("usage")}, ensure_ascii=False))
 
 
@@ -837,6 +873,6 @@ NODE_CLASS_MAPPINGS = {"ProAliImage": ProAliImage, "ProAliImageEdit": ProAliImag
                       "ProAliPromptWriter": ProAliPromptWriter}
 NODE_DISPLAY_NAME_MAPPINGS = {"ProAliImage": "阿里 文生图（qwen-image，支持 2K）", "ProAliImageEdit": "阿里 改图（qwen-image-edit）",
                               "ProAliTTS": "阿里 配音（qwen3-tts）", "ProAliDialogue": "阿里 多角色对白配音（每行「角色：台词」）", "ProAliASR": "阿里 语音识别（听写，qwen3-asr）",
-                              "ProAliPromptWriter": "阿里 写提示词（一句话需求→完整提示词）",
+                              "ProAliPromptWriter": "写提示词（阿里 / 谷歌：一句话需求→完整提示词）",
                               "ProAliVoiceDesign": "阿里 音色设计（文字描述→新音色）", "ProAliVoiceClone": "阿里 声音克隆（样音→新音色）",
                               "ProAliVoiceAdmin": "阿里 音色管理（列出/删除）"}

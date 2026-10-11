@@ -505,7 +505,7 @@ export function toStorage(state) {
 function cleanMessage(m) {
   if (!isObj(m) || !["user", "assistant", "error", "note"].includes(m.role)) return null;
   return { id: str(m.id), role: m.role, text: str(m.text), attachments: posInts(m.attachments), warnings: Array.isArray(m.warnings) ? m.warnings.map(str) : [],
-    snap: isObj(m.snap) ? m.snap : null, planText: str(m.planText) };
+    snap: isObj(m.snap) ? m.snap : null, planText: str(m.planText), model: typeof m.model === "string" ? m.model : "" };
 }
 
 function cleanItem(it) {

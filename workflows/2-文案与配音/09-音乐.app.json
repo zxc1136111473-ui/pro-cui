@@ -1,13 +1,13 @@
 {
   "last_node_id": 91,
-  "last_link_id": 16,
+  "last_link_id": 17,
   "nodes": [
     {
       "id": 11,
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1114
+        1178
       ],
       "size": [
         400,
@@ -24,7 +24,7 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            3
+            4
           ],
           "slot_index": 0
         }
@@ -51,7 +51,7 @@
       "type": "RelayAPISettings",
       "pos": [
         60,
-        1178
+        1242
       ],
       "size": [
         400,
@@ -68,7 +68,7 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            4
+            5
           ],
           "slot_index": 0
         }
@@ -108,7 +108,7 @@
         {
           "name": "info",
           "type": "STRING",
-          "link": 3,
+          "link": 4,
           "widget": {
             "name": "info"
           }
@@ -116,7 +116,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 5,
+          "link": 6,
           "widget": {
             "name": "prompt"
           }
@@ -127,7 +127,7 @@
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            8
+            9
           ],
           "slot_index": 0
         },
@@ -135,7 +135,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            11
+            12
           ],
           "slot_index": 1
         }
@@ -169,7 +169,7 @@
         {
           "name": "info",
           "type": "STRING",
-          "link": 4,
+          "link": 5,
           "widget": {
             "name": "info"
           }
@@ -177,7 +177,7 @@
         {
           "name": "prompt",
           "type": "STRING",
-          "link": 6,
+          "link": 7,
           "widget": {
             "name": "prompt"
           }
@@ -188,7 +188,7 @@
           "name": "audio",
           "type": "AUDIO",
           "links": [
-            9
+            10
           ],
           "slot_index": 0
         },
@@ -208,7 +208,7 @@
           "name": "response",
           "type": "STRING",
           "links": [
-            12
+            13
           ],
           "slot_index": 3
         },
@@ -256,7 +256,7 @@
         {
           "name": "audio",
           "type": "AUDIO",
-          "link": 13
+          "link": 14
         }
       ],
       "outputs": [],
@@ -291,8 +291,8 @@
           "name": "branch",
           "type": "INT",
           "links": [
-            7,
-            10
+            8,
+            11
           ],
           "slot_index": 0
         }
@@ -352,6 +352,50 @@
       "bgcolor": "#653"
     },
     {
+      "id": 1,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1114
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "image",
+        "banana-2",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "grok-video-3",
+        "",
+        "http://airelay-newapi:3000",
+        "gemini-image"
+      ],
+      "title": "Key：网关（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
       "id": 70,
       "type": "ProAliPromptWriter",
       "pos": [
@@ -363,7 +407,7 @@
         560
       ],
       "flags": {},
-      "order": 7,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
@@ -378,6 +422,14 @@
           "name": "image",
           "type": "IMAGE",
           "link": null
+        },
+        {
+          "name": "gateway_info",
+          "type": "STRING",
+          "link": 2,
+          "widget": {
+            "name": "gateway_info"
+          }
         }
       ],
       "outputs": [
@@ -385,10 +437,10 @@
           "name": "text",
           "type": "STRING",
           "links": [
-            2,
-            5,
+            3,
             6,
-            15
+            7,
+            16
           ],
           "slot_index": 0
         },
@@ -425,13 +477,13 @@
         300
       ],
       "flags": {},
-      "order": 8,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 2
+          "link": 3
         }
       ],
       "outputs": [],
@@ -455,23 +507,23 @@
         150
       ],
       "flags": {},
-      "order": 9,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "name": "in0_0",
           "type": "*",
-          "link": 8
+          "link": 9
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 9
+          "link": 10
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 7,
+          "link": 8,
           "widget": {
             "name": "branch"
           }
@@ -482,7 +534,7 @@
           "name": "out0",
           "type": "*",
           "links": [
-            13
+            14
           ],
           "slot_index": 0
         }
@@ -507,23 +559,23 @@
         150
       ],
       "flags": {},
-      "order": 10,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
           "name": "in0_0",
           "type": "*",
-          "link": 11
+          "link": 12
         },
         {
           "name": "in1_0",
           "type": "*",
-          "link": 12
+          "link": 13
         },
         {
           "name": "branch",
           "type": "INT",
-          "link": 10,
+          "link": 11,
           "widget": {
             "name": "branch"
           }
@@ -534,8 +586,8 @@
           "name": "out0",
           "type": "*",
           "links": [
-            14,
-            16
+            15,
+            17
           ],
           "slot_index": 0
         }
@@ -560,13 +612,13 @@
         110
       ],
       "flags": {},
-      "order": 11,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 14
+          "link": 15
         }
       ],
       "outputs": [],
@@ -592,13 +644,13 @@
       "flags": {
         "collapsed": true
       },
-      "order": 12,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
           "name": "text",
           "type": "STRING",
-          "link": 15
+          "link": 16
         }
       ],
       "outputs": [],
@@ -627,13 +679,13 @@
       "flags": {
         "collapsed": true
       },
-      "order": 13,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
           "name": "text",
           "type": "STRING",
-          "link": 16
+          "link": 17
         }
       ],
       "outputs": [],
@@ -660,6 +712,14 @@
     ],
     [
       2,
+      1,
+      0,
+      70,
+      2,
+      "STRING"
+    ],
+    [
+      3,
       70,
       0,
       74,
@@ -667,7 +727,7 @@
       "STRING"
     ],
     [
-      3,
+      4,
       11,
       0,
       12,
@@ -675,7 +735,7 @@
       "STRING"
     ],
     [
-      4,
+      5,
       21,
       0,
       22,
@@ -683,23 +743,23 @@
       "STRING"
     ],
     [
-      5,
-      70,
-      0,
-      12,
-      1,
-      "STRING"
-    ],
-    [
       6,
       70,
       0,
-      22,
+      12,
       1,
       "STRING"
     ],
     [
       7,
+      70,
+      0,
+      22,
+      1,
+      "STRING"
+    ],
+    [
+      8,
       77,
       0,
       10,
@@ -707,7 +767,7 @@
       "INT"
     ],
     [
-      8,
+      9,
       12,
       0,
       10,
@@ -715,7 +775,7 @@
       "AUDIO"
     ],
     [
-      9,
+      10,
       22,
       0,
       10,
@@ -723,7 +783,7 @@
       "AUDIO"
     ],
     [
-      10,
+      11,
       77,
       0,
       13,
@@ -731,7 +791,7 @@
       "INT"
     ],
     [
-      11,
+      12,
       12,
       1,
       13,
@@ -739,7 +799,7 @@
       "STRING"
     ],
     [
-      12,
+      13,
       22,
       3,
       13,
@@ -747,7 +807,7 @@
       "STRING"
     ],
     [
-      13,
+      14,
       10,
       0,
       5,
@@ -755,7 +815,7 @@
       "*"
     ],
     [
-      14,
+      15,
       13,
       0,
       6,
@@ -763,7 +823,7 @@
       "*"
     ],
     [
-      15,
+      16,
       70,
       0,
       90,
@@ -771,7 +831,7 @@
       "STRING"
     ],
     [
-      16,
+      17,
       13,
       0,
       91,
@@ -853,7 +913,7 @@
         70,
         "model",
         "写提示词的模型",
-        "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3。用户没点名要换就别改"
+        "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3；谷歌的 gemini-3.5-flash-lite（谷歌里最快）/ gemini-3.6-flash-thinking / gemini-3.1-pro（最强但慢，约 20~40 秒）走网关，都比阿里慢。用户没点名要换就别改"
       ]
     ],
     "appAdvanced": [

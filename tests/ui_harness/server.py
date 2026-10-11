@@ -49,10 +49,12 @@ class FakeLLM:
 
     def __init__(self):
         self.calls = []
+        self.requests = []                                     # 每次请求的 {url, headers, json}：测「发给阿里还是网关、用的哪个 Key」
         self.delay = 0                                         # 回复前先等几秒（测「等 AI 回复时方案被锁住」）
 
     def __call__(self, url, headers=None, json=None, timeout=None):      # noqa: A002
         self.calls.append(json)
+        self.requests.append({"url": url, "headers": dict(headers or {}), "json": json})
         if self.delay:
             time.sleep(self.delay)
         user = [m for m in json["messages"] if m["role"] == "user"][-1]["content"]
@@ -179,7 +181,7 @@ class Harness:
         os.makedirs(self.out)
         self.cfg = os.path.join(self.tmp, "relay_config.json")
         with open(self.cfg, "w", encoding="utf-8") as f:
-            json.dump({"node_settings": {"31": {"api_key": "sk-harness-key"}}}, f)
+            json.dump({"node_settings": {"31": {"api_key": "sk-harness-key"}, "1": {"api_key": "sk-harness-gateway", "base_url": "http://airelay-newapi:3000"}}}, f)
         self.pc = _load.load("pro-chat")
         self.pc.workflows_dir, self.pc.input_dir, self.pc.output_dir = (lambda: WF_DIR), (lambda: self.inp), (lambda: self.out)
         self.pc.relay_config_path, self.pc.object_info, self.pc.comfy_port = (lambda: self.cfg), (lambda: OI), (lambda: 8188)

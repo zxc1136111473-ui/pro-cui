@@ -13,9 +13,11 @@ import re
 from . import catalog as cat_mod
 
 CHAT_API = "/compatible-mode/v1/chat/completions"
-TEXT_MODEL = "qwen3.7-plus"              # 改方案（「标题加上…」「改成阿里引擎」）flash 档常改错 / 丢信息，plus 档稳
-VISION_MODEL = "qwen3.8-omni-flash"      # 有图片时用（和「阿里 写提示词」的看图模式同一个模型）
+GATEWAY_CHAT_API = "/v1/chat/completions"   # 网关（New API）的 OpenAI 兼容地址（没有阿里的 /compatible-mode）：谷歌的 gemini 走这里
+TEXT_MODEL = "qwen3.7-plus"              # 「自动」时纯文字这一轮用它：改方案（「标题加上…」「改成阿里引擎」）flash 档常改错 / 丢信息，plus 档稳
+VISION_MODEL = "qwen3.8-omni-flash"      # 「自动」时有图片的这一轮用它（和「阿里 写提示词」的看图模式同一个模型）
 LLM_TIMEOUT = (6, 60)                    # (连接, 等回复) 秒：德国 → 阿里大陆的线路偶尔握手卡 10~25 秒后被重置，连接阶段短超时、快速重连比干等强
+GATEWAY_LLM_TIMEOUT = (6, 120)           # 网关 → 谷歌网页版比阿里慢（真实的助手提示词约 2.4 万字符，实测 flash-lite 5~15 秒、flash-thinking 10~30 秒、3.1-pro 30~80 秒，带图片的一轮最长约 90 秒）：等回复放宽到 120 秒；网关在内网，连接不会卡握手，也不用并发补发
 LLM_ATTEMPTS = 3                          # 连接失败时最多连这么多次
 HEDGE_AFTER = 8                           # 秒：请求这么久没回，就并发再发一个（线路卡住时换条新连接多半几秒就回），谁先回用谁；最多同时 3 个
 MAX_PARALLEL = 3
@@ -59,6 +61,42 @@ class ChatError(Exception):
     def __init__(self, status, message):
         super().__init__(message)
         self.status = status
+
+
+# 助手（聊天）能选的模型（界面下拉里的就是这一份，后端也只认它）。provider：ali = 阿里（Key 用节点 31），gateway = 网关（谷歌 gemini，Key 用节点 1）；vision：能不能看图。
+# 每个模型（2026-10-11）都用助手真实的系统提示词 + 真实的应用目录在服务器上试过：主图 / 文案 / 海报（要保留 199、50）/ 改方案（加「全场包邮」）/ 闲聊（不该给方案）/ 两步（出图再出视频）/ 看图（能看图的）。
+# 能按格式给出可用的方案才放进来：qwen3.7-plus、qwen3.8-max、qwen3.8-omni-flash、deepseek-v4-pro、kimi-k3、gemini-3.5-flash-lite、gemini-3.6-flash-thinking、gemini-3.1-pro 全过；
+# qwen3.8-flash 海报那条丢了数字（5/6），放进来但标明。没放的：gemini-3.1-pro-thinking（两分钟不回）、gemini-3.6-flash（十次里卡住了两次）、gemini-canvas（是做网页的）。
+CHAT_MODELS = [
+    {"id": "qwen3.7-plus", "provider": "ali", "vision": False, "label": "qwen3.7-plus · 阿里（稳，纯文字的默认）"},
+    {"id": "qwen3.8-max", "provider": "ali", "vision": False, "label": "qwen3.8-max · 阿里（更强，慢一点）"},
+    {"id": "qwen3.8-flash", "provider": "ali", "vision": False, "label": "qwen3.8-flash · 阿里（最快，但常漏掉你说的数字，不推荐）"},
+    {"id": "qwen3.8-omni-flash", "provider": "ali", "vision": True, "label": "qwen3.8-omni-flash · 阿里（能看图，有图片时的默认）"},
+    {"id": "deepseek-v4-pro", "provider": "ali", "vision": False, "label": "deepseek-v4-pro · 阿里"},
+    {"id": "kimi-k3", "provider": "ali", "vision": False, "no_temperature": True, "label": "kimi-k3 · 阿里"},       # 阿里这边它不收 temperature 参数（HTTP 400），所以不带
+    {"id": "gemini-3.5-flash-lite", "provider": "gateway", "vision": True, "label": "gemini-3.5-flash-lite · 谷歌（快，约 5~15 秒）"},
+    {"id": "gemini-3.6-flash-thinking", "provider": "gateway", "vision": True, "label": "gemini-3.6-flash-thinking · 谷歌（约 10~30 秒）"},
+    {"id": "gemini-3.1-pro", "provider": "gateway", "vision": True, "label": "gemini-3.1-pro · 谷歌（最强，约 30~80 秒）"},
+]
+MODEL_BY_ID = {m["id"]: m for m in CHAT_MODELS}
+_CITE = re.compile(r"\s*\[cite:[^\]]*\]")             # 谷歌网页版的回复里夹着「[cite: 1]」这样的引用标记，不是正文，要去掉
+
+
+def model_list():
+    """给界面下拉用的模型清单（id / 显示名 / 提供方 / 能不能看图）。"""
+    return [{"id": m["id"], "label": m["label"], "provider": m["provider"], "vision": m["vision"]} for m in CHAT_MODELS]
+
+
+def resolve_model(requested, has_images):
+    """用户选的模型 → (模型条目, 要告诉用户的说明)。没选 / 不认识 → 自动：这一轮有图片用 VISION_MODEL，否则 TEXT_MODEL；
+    选的模型看不了图而这一轮带了图片 → 这一轮改用能看图的 VISION_MODEL，并说明（图片不会因此被悄悄丢掉）。"""
+    auto = MODEL_BY_ID[VISION_MODEL if has_images else TEXT_MODEL]
+    want = MODEL_BY_ID.get(requested) if isinstance(requested, str) else None
+    if want is None:
+        return auto, ""
+    if has_images and not want["vision"]:
+        return auto, f"这一轮带了图片，{want['id']} 看不了图，这一轮改用 {auto['id']}"
+    return want, ""
 
 
 STEP_REF = re.compile(r"(?:步骤|step)\s*(\d+)(?:\s*[.．]\s*(\d+))?|第\s*(\d+)\s*步", re.I)
@@ -170,30 +208,40 @@ def scrub(text, key):
     return re.sub(r"sk-[A-Za-z0-9*._\-]+", "sk-***", text)
 
 
-def call_llm(messages, key, base, model, timeout=LLM_TIMEOUT, post=None, hedge_after=HEDGE_AFTER):
-    """OpenAI 兼容的 chat/completions，要求 JSON 回复，返回模型的文字。
-    连接失败（卡住 / 被重置）自动重连；等回复超时、HTTP 错误不重发；请求 hedge_after 秒还没回就并发再发一个（最多 MAX_PARALLEL 个），谁先回用谁。"""
+def call_llm(messages, key, base, model, timeout=None, post=None, hedge_after=HEDGE_AFTER, provider="ali", temperature=0.2):
+    """OpenAI 兼容的 chat/completions，要求 JSON 回复，返回模型的文字。provider="ali" 发给阿里（base + /compatible-mode/…），"gateway" 发给网关（base + /v1/…，谷歌的模型）。
+    连接失败（卡住 / 被重置）自动重连；等回复超时、HTTP 错误不重发；请求 hedge_after 秒还没回就并发再发一个（最多 MAX_PARALLEL 个），谁先回用谁（网关不并发补发）。"""
     import concurrent.futures as cf
     import requests
+    gateway = provider == "gateway"
+    who = "网关" if gateway else "阿里"
+    path = GATEWAY_CHAT_API if gateway else CHAT_API
+    if timeout is None:
+        timeout = GATEWAY_LLM_TIMEOUT if gateway else LLM_TIMEOUT
+    if gateway:
+        hedge_after = None                    # 谷歌本来就慢，并发补发只会白白多发几倍请求；网关在内网，也没有握手卡住的问题
     post = post or requests.post
     headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
 
     def attempt():                            # 一个请求；返回 Response（不管状态码），连不上 / 等回复超时抛 ChatError
-        body = {"model": model, "messages": messages, "stream": False, "enable_thinking": False, "temperature": 0.2, "max_tokens": 1500,
-                "response_format": {"type": "json_object"}}
+        body = {"model": model, "messages": messages, "stream": False, "max_tokens": 1500, "response_format": {"type": "json_object"}}
+        if temperature is not None:               # 个别模型（kimi-k3）不收这个参数，传 None 就不带
+            body["temperature"] = temperature
+        if not gateway:
+            body["enable_thinking"] = False       # 阿里的参数（关思考，快）；网关不需要
         for n in range(1, LLM_ATTEMPTS + 1):
             try:
-                r = post(base + CHAT_API, headers=headers, json=body, timeout=timeout)
+                r = post(base + path, headers=headers, json=body, timeout=timeout)
                 if r.status_code == 400 and "response_format" in (r.text or "") and "response_format" in body:
                     body.pop("response_format")           # 个别模型不支持 JSON 模式：去掉再试，靠提示词约束
-                    r = post(base + CHAT_API, headers=headers, json=body, timeout=timeout)
+                    r = post(base + path, headers=headers, json=body, timeout=timeout)
                 return r
             except requests.ReadTimeout:
                 wait = timeout[1] if isinstance(timeout, tuple) else timeout
-                raise ChatError(504, f"阿里这次回得太慢（等了 {wait} 秒没有回应），再发一次试试")
+                raise ChatError(504, f"{who}这次回得太慢（等了 {wait} 秒没有回应），再发一次试试")
             except requests.RequestException as e:
                 if n == LLM_ATTEMPTS:
-                    raise ChatError(502, f"连不上阿里（{type(e).__name__}），稍后再试")
+                    raise ChatError(502, f"连不上{who}（{type(e).__name__}），稍后再试")
 
     ex = cf.ThreadPoolExecutor(max_workers=MAX_PARALLEL)
     try:
@@ -224,16 +272,16 @@ def call_llm(messages, key, base, model, timeout=LLM_TIMEOUT, post=None, hedge_a
     try:
         d = r.json()
     except Exception:
-        raise ChatError(502, f"阿里返回的不是 JSON（HTTP {r.status_code}）：{scrub((r.text or '')[:150], key)}")
+        raise ChatError(502, f"{who}返回的不是 JSON（HTTP {r.status_code}）：{scrub((r.text or '')[:150], key)}")
     if r.status_code != 200:
         err = d.get("error", d) if isinstance(d, dict) else {}
         if not isinstance(err, dict):
             err = {"message": err}
-        raise ChatError(502, f"阿里返回错误（HTTP {r.status_code} {scrub(err.get('code', ''), key)}）：{scrub(err.get('message', ''), key)[:200]}")
+        raise ChatError(502, f"{who}返回错误（HTTP {r.status_code} {scrub(err.get('code') or '', key)}）：{scrub(err.get('message', ''), key)[:200]}")
     try:
-        return d["choices"][0]["message"]["content"] or ""
+        return _CITE.sub("", d["choices"][0]["message"]["content"] or "")
     except Exception:
-        raise ChatError(502, "阿里的返回里没有文字：" + scrub(json.dumps(d, ensure_ascii=False)[:200], key))
+        raise ChatError(502, f"{who}的返回里没有文字：" + scrub(json.dumps(d, ensure_ascii=False)[:200], key))
 
 
 def parse_reply(text):
@@ -324,18 +372,19 @@ def missing_required(plan):
     return [(i, f["label"], f["kind"]) for i, st in enumerate(plan["steps"], 1) for f in cat_mod.required_files(st["schema"], st["mode"]) if f["key"] not in st["files"]]
 
 
-def chat_turn(payload, cat, key, base, assets, vision, post=None):
-    """一轮对话：payload = {messages, plan}；assets = normalize_assets 的结果（usable 已设好）；vision = [(素材库编号, data URL)]（这一轮新附的图片）。
-    返回 {reply, plan, warnings}。"""
+def chat_turn(payload, cat, key, base, assets, vision, post=None, model=None):
+    """一轮对话：payload = {messages, plan}；assets = normalize_assets 的结果（usable 已设好）；vision = [(素材库编号, data URL)]（这一轮新附的图片）；
+    model = resolve_model 给的模型条目（没给 = 自动）；key / base 要和它的 provider 对得上（阿里的 Key + 阿里地址，或网关的 Key + 网关地址）。
+    返回 {reply, plan, warnings, model}（model = 这一轮实际用的模型 id）。"""
     if not cat:
         raise ChatError(503, "服务器上没有找到任何「应用」（*.app.json）；先部署工作流")
     history = payload.get("messages") if isinstance(payload.get("messages"), list) else []
     if not any(isinstance(m, dict) and m.get("role") == "user" and str(m.get("content", "")).strip() for m in history):
         raise ChatError(400, "没有收到消息")
     msgs = build_messages(system_prompt(cat, assets, payload.get("plan")), history, vision)
-    model = VISION_MODEL if vision else TEXT_MODEL
+    entry = model or MODEL_BY_ID[VISION_MODEL if vision else TEXT_MODEL]
     for attempt in (1, 2):                    # 格式不对 / 方案里没有可用的应用编号：把问题告诉模型，让它重写一次
-        text = call_llm(msgs, key, base, model, post=post)
+        text = call_llm(msgs, key, base, entry["id"], post=post, provider=entry["provider"], temperature=None if entry.get("no_temperature") else 0.2)
         try:
             reply, raw_plan = parse_reply(text)
         except ValueError:
@@ -356,4 +405,4 @@ def chat_turn(payload, cat, key, base, assets, vision, post=None):
         msgs = msgs + [{"role": "assistant", "content": text or ""}, {"role": "user", "content": fix}]
     if not reply:
         reply = "我给你准备了一个方案，看看合不合适：" if plan else "我没太明白，能再说具体一点吗？"
-    return {"reply": reply, "plan": plan, "warnings": warns}
+    return {"reply": reply, "plan": plan, "warnings": warns, "model": entry["id"]}

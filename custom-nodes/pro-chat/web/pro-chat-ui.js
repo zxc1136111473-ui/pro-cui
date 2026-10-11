@@ -62,6 +62,8 @@ export const CSS = `
 .pcw-draft button{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:9px;border:none;background:#555;color:#fff;cursor:pointer;line-height:16px;padding:0;font-size:12px}
 .pcw-row{display:flex;gap:6px;align-items:flex-end}
 .pcw-row textarea{flex:1;resize:none;max-height:140px;background:var(--comfy-input-bg,#222);color:var(--input-text,#ddd);border:1px solid var(--border-color,#4e4e4e);border-radius:8px;padding:7px 8px;font:inherit}
+.pcw-modelrow{display:flex;align-items:center;gap:6px;margin-top:6px}
+.pcw-modelrow select{flex:1;min-width:0;background:var(--comfy-input-bg,#222);color:var(--input-text,#ddd);border:1px solid var(--border-color,#4e4e4e);border-radius:6px;padding:3px 6px;font:inherit;font-size:12px}
 .pcw-drop{outline:2px dashed var(--p-primary-color,#3b82f6);outline-offset:-4px}
 .pcw-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border-color,#4e4e4e)}
 .pcw-bar select{background:var(--comfy-input-bg,#222);color:var(--input-text,#ddd);border:1px solid var(--border-color,#4e4e4e);border-radius:6px;padding:4px 6px;font:inherit}
@@ -125,7 +127,7 @@ export const CSS = `
 const KIND_ICON = { video: "▶", audio: "♪", image: "▣", other: "▫" };
 
 export function createView({ state, url, actions, catalog, catalogStatus }) {
-  let root, listEl, inputEl, sendBtn, draftEl, statusEl, fileInput, stepsEl, barEl, noticeEl, assetsEl, handle;
+  let root, listEl, inputEl, sendBtn, draftEl, statusEl, fileInput, stepsEl, barEl, noticeEl, assetsEl, handle, modelEl, modelRow;
   let busyTimer;
   const stepEls = [];
 
@@ -155,7 +157,8 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     if (m.role === "error") return h("div", { class: "pcw-msg pcw-ai pcw-err" }, m.text);
     if (m.role === "note") return h("div", { class: "pcw-muted", style: "align-self:center", text: m.text });
     return h("div", { class: "pcw-msg pcw-ai" }, m.text, (m.warnings || []).map((w) => h("div", { class: "pcw-warn", text: "（" + w + "）" })),
-      m.planText ? h("div", { class: "pcw-planchip", text: "方案已更新到右边：" + m.planText }) : null);
+      m.planText ? h("div", { class: "pcw-planchip", text: "方案已更新到右边：" + m.planText }) : null,
+      m.model ? h("div", { class: "pcw-muted pcw-modelnote", text: "模型：" + m.model }) : null);
   }
 
   function renderChat() {
@@ -168,6 +171,19 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
       }
       for (const m of state.messages) listEl.append(renderMessage(m));
     });
+  }
+
+  // 输入框下面的「助手模型」下拉：自动 + 后端给的清单（阿里一组、谷歌一组）；选的记在浏览器里（actions.setModel），清单读到之前只有「自动」
+  function renderModels() {
+    const list = actions.models();
+    const cur = actions.getModel();
+    modelEl.replaceChildren(h("option", { value: "", text: "自动（推荐）" }));
+    for (const [prov, title] of [["ali", "阿里"], ["gateway", "谷歌（走网关，一般比阿里慢）"]]) {
+      const ms = list.filter((m) => m.provider === prov);
+      if (ms.length) modelEl.append(h("optgroup", { label: title }, ms.map((m) => h("option", { value: m.id, text: m.label }))));
+    }
+    modelEl.value = list.some((m) => m.id === cur) ? cur : "";
+    modelRow.style.display = list.length ? "" : "none";                          // 后端是旧版（没给清单）：不显示，别摆一个选了也没用的下拉
   }
 
   function autoGrow() {
@@ -516,12 +532,15 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     sendBtn = h("button", { class: "pcw-btn pcw-btn-primary", text: "发送", onclick: () => actions.send() });
     fileInput = h("input", { type: "file", accept: "image/*,video/*,audio/*", multiple: true, style: "display:none", onchange: () => { actions.attach([...fileInput.files]); fileInput.value = ""; } });
     const attachBtn = h("button", { class: "pcw-btn", title: "附件：上传商品图、视频、音频（可多个，也可以直接粘贴 / 拖进来）", text: "附件", onclick: () => fileInput.click() });
+    modelEl = h("select", { class: "pcw-modelsel", title: "排方案、回复你的 AI 用哪个模型。自动 = 系统挑（纯文字用稳定的阿里模型，带图片的那一轮用能看图的）；谷歌的走网关，一般比阿里慢（几秒到 80 秒，带图片的那一轮要 1 分钟左右）；"
+      + "选的模型看不了图、而这一轮带了图片时，这一轮会自动换成能看图的。选了会记住", onchange: () => actions.setModel(modelEl.value) });
+    modelRow = h("div", { class: "pcw-modelrow" }, h("span", { class: "pcw-muted", text: "助手模型" }), modelEl);
     barEl = h("div", { class: "pcw-bar" });
     noticeEl = h("div", { class: "pcw-notice", style: "display:none" });
     buildBar();
     stepsEl = h("div", { class: "pcw-steps" });
     assetsEl = h("div", { class: "pcw-assets" });
-    const left = h("div", { class: "pcw-left" }, listEl, h("div", { class: "pcw-input" }, draftEl, statusEl, h("div", { class: "pcw-row" }, inputEl, h("div", { style: "display:flex;flex-direction:column;gap:6px" }, attachBtn, sendBtn)), fileInput));
+    const left = h("div", { class: "pcw-left" }, listEl, h("div", { class: "pcw-input" }, draftEl, statusEl, h("div", { class: "pcw-row" }, inputEl, h("div", { style: "display:flex;flex-direction:column;gap:6px" }, attachBtn, sendBtn)), modelRow, fileInput));
     const right = h("div", { class: "pcw-right" }, barEl, noticeEl, stepsEl, assetsEl);
     root = h("div", { class: "pcw", tabindex: "-1", onpaste: (e) => actions.onPaste(e), ondragover: (e) => { e.preventDefault(); e.stopPropagation(); root.classList.add("pcw-drop"); }, ondragleave: () => root.classList.remove("pcw-drop"), ondrop: (e) => { root.classList.remove("pcw-drop"); actions.onDrop(e); } },
       h("div", { class: "pcw-top" }, h("b", { text: "AI 工作台" }), h("span", { class: "pcw-sub", text: "说一句话 → 排好步骤 → 一键跑完。原来的节点图 / 应用在后面，点右上角按钮回去" }),
@@ -539,6 +558,7 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     renderPlan();
     renderAssets();
     renderDrafts();
+    renderModels();
     refreshSend();
   }
 
@@ -552,7 +572,7 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
   return {
     get root() { return root; },
     get input() { return inputEl; },
-    renderAll, renderChat, renderPlan, renderAssets, renderDrafts, refreshStatus, refreshSend, tickRunning, setBusy, setStatus, setOpen, autoGrow,
+    renderAll, renderChat, renderPlan, renderAssets, renderDrafts, renderModels, refreshStatus, refreshSend, tickRunning, setBusy, setStatus, setOpen, autoGrow,
     isOpen: () => root.classList.contains("pcw-open"),
     scrollChat: () => { listEl.scrollTop = listEl.scrollHeight; },
     insertText: (text) => { inputEl.value = (inputEl.value ? inputEl.value.replace(/\s*$/, " ") : "") + text; autoGrow(); inputEl.focus(); },

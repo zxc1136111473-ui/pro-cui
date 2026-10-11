@@ -326,6 +326,12 @@ class Lib(unittest.TestCase):
         self.assertEqual(js('console.log(JSON.stringify([L.elapsedText(0), L.elapsedText(4600), L.elapsedText(59400), L.elapsedText(75000), L.elapsedText(-5)]))'),
                          ["0 秒", "5 秒", "59 秒", "1 分 15 秒", "0 秒"])
 
+    def test_the_model_a_reply_used_survives_storage(self):
+        r = js('''const st = {messages: [{id: "a", role: "assistant", text: "好", model: "gemini-3.1-pro"}, {id: "b", role: "assistant", text: "好", model: 5},
+            {id: "c", role: "user", text: "嗨"}, {id: "d", role: "assistant", text: "老存档（没有这个字段）"}, {id: "e", role: "assistant", text: "好", model: {x: 1}}], assets: [], plan: null, chain: null};
+          console.log(JSON.stringify(L.fromStorage(L.toStorage(st)).messages.map((m) => m.model)))''')
+        self.assertEqual(r, ["gemini-3.1-pro", "", "", "", ""])                          # 只认字符串；老存档和乱写的都当没有
+
     def test_storage_round_trip_trims_and_keeps_only_runs_that_can_be_resumed(self):
         r = js('''const msgs = Array.from({length: 80}, (_, i) => ({id: "m" + i, role: "user", text: "第" + i + "句"}));
           const a = app("01"), b = app("03"), c = app("04"), d = done(app("07"));

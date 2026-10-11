@@ -951,6 +951,123 @@ class ChatTurn(unittest.TestCase):
         self.assertEqual(cm.exception.status, 503)
 
 
+class ChatModels(unittest.TestCase):
+    """助手（聊天）能选的模型：清单、选择规则、阿里 / 网关（谷歌）两条路。"""
+    GW = "http://airelay-newapi:3000"
+
+    def test_the_model_list_is_what_the_ui_shows(self):
+        ml = chat.model_list()
+        ids = [m["id"] for m in ml]
+        self.assertEqual(ids, ["qwen3.7-plus", "qwen3.8-max", "qwen3.8-flash", "qwen3.8-omni-flash", "deepseek-v4-pro", "kimi-k3",
+                               "gemini-3.5-flash-lite", "gemini-3.6-flash-thinking", "gemini-3.1-pro"])             # 每个都用真实的系统提示词 + 目录在服务器上试过才放进来
+        self.assertEqual(len(set(ids)), len(ids))
+        for m in ml:
+            self.assertEqual(sorted(m), ["id", "label", "provider", "vision"])
+            self.assertTrue(m["label"].startswith(m["id"]), m)                                               # 显示名以模型名开头，一眼认得
+            self.assertIn(m["provider"], ("ali", "gateway"))
+            self.assertIsInstance(m["vision"], bool)
+            self.assertEqual(m["provider"] == "gateway", m["id"].startswith("gemini"), m)                  # 谷歌的走网关，其余走阿里
+        by = chat.MODEL_BY_ID
+        self.assertFalse(by[chat.TEXT_MODEL]["vision"])                                                      # 「自动」的两个默认：纯文字一个、能看图一个
+        self.assertTrue(by[chat.VISION_MODEL]["vision"])
+        self.assertEqual({m["id"] for m in ml if m["vision"]}, {"qwen3.8-omni-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash-thinking", "gemini-3.1-pro"})
+
+    def test_resolve_model_rules(self):
+        auto_text, auto_vis = chat.MODEL_BY_ID[chat.TEXT_MODEL], chat.MODEL_BY_ID[chat.VISION_MODEL]
+        for req in (None, "", "nonsense", "gpt-5", 123, ["qwen3.8-max"], {"id": "x"}, True):                    # 没选 / 不认识 = 自动，不管是什么类型
+            self.assertEqual(chat.resolve_model(req, False), (auto_text, ""), repr(req))
+            self.assertEqual(chat.resolve_model(req, True), (auto_vis, ""), repr(req))
+        self.assertEqual(chat.resolve_model("qwen3.8-max", False), (chat.MODEL_BY_ID["qwen3.8-max"], ""))
+        self.assertEqual(chat.resolve_model("gemini-3.1-pro", True), (chat.MODEL_BY_ID["gemini-3.1-pro"], ""))   # 谷歌的能看图：这一轮有图片也照用
+        self.assertEqual(chat.resolve_model(chat.VISION_MODEL, True), (auto_vis, ""))
+        entry, note = chat.resolve_model("qwen3.8-max", True)                                                # 选的看不了图、这一轮有图片：换成能看图的，并说明
+        self.assertEqual(entry, auto_vis)
+        self.assertIn("qwen3.8-max", note)
+        self.assertIn(chat.VISION_MODEL, note)
+
+    def test_the_gateway_call_has_its_own_address_and_no_ali_only_parameters(self):
+        post = FakePost(llm("好[cite: 1]"))
+        text = chat.call_llm([{"role": "user", "content": "hi"}], "gw-key", self.GW, "gemini-3.1-pro", post=post, provider="gateway")
+        self.assertEqual(text, "好")                                                                         # 谷歌网页版夹的引用标记去掉
+        c = post.calls[0]
+        self.assertEqual(c["url"], self.GW + "/v1/chat/completions")
+        self.assertEqual(c["headers"]["Authorization"], "Bearer gw-key")
+        self.assertEqual(c["timeout"], chat.GATEWAY_LLM_TIMEOUT)
+        self.assertGreater(chat.GATEWAY_LLM_TIMEOUT[1], chat.LLM_TIMEOUT[1])                                  # 谷歌慢，等得久一点
+        self.assertEqual((c["json"]["model"], c["json"]["response_format"], c["json"]["temperature"]), ("gemini-3.1-pro", {"type": "json_object"}, 0.2))
+        self.assertNotIn("enable_thinking", c["json"])
+        post = FakePost(llm("好"))                                                                            # 阿里那条路不变
+        chat.call_llm([{"role": "user", "content": "hi"}], "ali-key", "https://dashscope.aliyuncs.com", "qwen3.7-plus", post=post)
+        c = post.calls[0]
+        self.assertEqual((c["url"], c["timeout"], c["json"]["enable_thinking"]), ("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", chat.LLM_TIMEOUT, False))
+
+    def test_the_gateway_is_never_asked_twice_at_once(self):
+        """阿里线路卡的时候会并发补发；谷歌本来就慢，补发只会多发几倍请求，所以网关不补发。"""
+        import time as _t
+        calls = []
+
+        def slow(url, headers=None, json=None, timeout=None):    # noqa: A002
+            calls.append(url)
+            _t.sleep(0.3)
+            return llm({"reply": "慢但成功", "plan": None})
+        text = chat.call_llm([{"role": "user", "content": "hi"}], "k", self.GW, "gemini-3.1-pro", post=slow, hedge_after=0.05, provider="gateway")
+        self.assertEqual(json.loads(text)["reply"], "慢但成功")
+        self.assertEqual(len(calls), 1)
+        calls.clear()
+        chat.call_llm([{"role": "user", "content": "hi"}], "k", "https://x", "qwen3.7-plus", post=slow, hedge_after=0.05)           # 阿里：还是会补发
+        self.assertGreater(len(calls), 1)
+
+    def test_gateway_errors_say_gateway_and_never_leak_the_key(self):
+        def err(post):
+            with self.assertRaises(ChatError) as cm:
+                chat.call_llm([{"role": "user", "content": "hi"}], "gw-key-777", self.GW, "gemini-3.1-pro", post=post, provider="gateway")
+            return cm.exception
+        e = err(FakePost(Resp(401, {"error": {"code": "invalid_api_key", "message": "bad key gw-key-777"}})))
+        self.assertEqual(e.status, 502)
+        self.assertTrue(str(e).startswith("网关返回错误（HTTP 401 invalid_api_key）"), str(e))
+        self.assertNotIn("gw-key-777", str(e))
+        e = err(FakePost(Resp(502, {"error": {"message": "upstream error", "type": "upstream_error", "code": None}})))
+        self.assertIn("网关返回错误（HTTP 502 ）：upstream error", str(e))                                   # code 是 null 时别写成「None」
+        self.assertTrue(str(err(FakePost(Resp(500, None, "<html>bad gateway</html>")))).startswith("网关返回的不是 JSON（HTTP 500）"))
+        self.assertTrue(str(err(FakePost(Resp(200, {"weird": 1})))).startswith("网关的返回里没有文字"))
+        import requests
+        e = err(FakePost(requests.ReadTimeout("slow")))
+        self.assertEqual((e.status, str(e)), (504, f"网关这次回得太慢（等了 {chat.GATEWAY_LLM_TIMEOUT[1]} 秒没有回应），再发一次试试"))
+        e = err(FakePost(requests.ConnectionError("down")))
+        self.assertEqual((e.status, str(e)), (502, "连不上网关（ConnectionError），稍后再试"))
+
+    def test_chat_turn_reports_the_model_it_used(self):
+        payload = {"messages": [{"role": "user", "content": "你好"}]}
+        raw = {"reply": "嗨", "plan": None}
+        for model, vision, want, url in ((None, [], chat.TEXT_MODEL, "https://x/compatible-mode/v1/chat/completions"),
+                                         (None, [(1, "data:image/jpeg;base64,AA")], chat.VISION_MODEL, "https://x/compatible-mode/v1/chat/completions"),
+                                         (chat.MODEL_BY_ID["qwen3.8-max"], [], "qwen3.8-max", "https://x/compatible-mode/v1/chat/completions"),
+                                         (chat.MODEL_BY_ID["gemini-3.1-pro"], [], "gemini-3.1-pro", "https://x/v1/chat/completions")):
+            post = FakePost(llm(raw))
+            out = chat.chat_turn(payload, CAT, "k", "https://x", [{"name": "助手/a.png", "label": "", "kind": "image", "usable": True}] if vision else [], vision, post=post, model=model)
+            self.assertEqual((out["model"], post.calls[0]["json"]["model"], post.calls[0]["url"]), (want, want, url))
+            self.assertEqual((out["reply"], out["plan"]), ("嗨", None))
+
+    def test_kimi_k3_is_called_without_temperature_because_ali_rejects_it(self):
+        """阿里对 kimi-k3 的 temperature 参数回 HTTP 400（真机试出来的）：别的模型照常带 0.2，它不带。"""
+        for mid in (m["id"] for m in chat.CHAT_MODELS):
+            post = FakePost(llm({"reply": "好", "plan": None}))
+            key, base = ("gw", self.GW) if chat.MODEL_BY_ID[mid]["provider"] == "gateway" else ("k", "https://x")
+            chat.chat_turn({"messages": [{"role": "user", "content": "你好"}]}, CAT, key, base, [], [], post=post, model=chat.MODEL_BY_ID[mid])
+            sent = post.calls[0]["json"]
+            if mid == "kimi-k3":
+                self.assertNotIn("temperature", sent)
+            else:
+                self.assertEqual(sent["temperature"], 0.2, mid)
+            self.assertEqual(sent["max_tokens"], 1500)
+
+    def test_a_gemini_reply_with_cite_markers_and_a_code_fence_still_parses(self):
+        wrapped = "```json\n" + json.dumps({"reply": "用文案应用写[cite: 1]。", "plan": {"steps": [ChatTurn.STEP]}}, ensure_ascii=False) + "\n```"
+        post = FakePost(llm(wrapped))
+        out = chat.chat_turn({"messages": [{"role": "user", "content": "写文案"}]}, CAT, "gw", self.GW, [], [], post=post, model=chat.MODEL_BY_ID["gemini-3.5-flash-lite"])
+        self.assertEqual((out["reply"], out["plan"]["steps"][0]["workflow"]), ("用文案应用写。", "07"))
+
+
 class TestChatTurnHelper:
     @staticmethod
     def turn_with(post, assets):
@@ -1430,6 +1547,72 @@ class Glue(unittest.TestCase):
         self.assertEqual(sent["headers"]["Authorization"], "Bearer sk-glue-key-999")
         self.assertNotIn("sk-glue-key-999", json.dumps(out, ensure_ascii=False))                # Key 不会回给前端
         self.assertNotIn("sk-gateway-key", json.dumps(sent["json"], ensure_ascii=False))        # 也不会误把别的 Key 发给阿里
+
+    def chat_with(self, model, **extra):
+        post = FakePost(llm({"reply": "好", "plan": None}))
+        payload = {"messages": [{"role": "user", "content": "你好"}], "model": model}
+        payload.update(extra)
+        out = pc.handle_chat(payload, post=post)
+        return out, post.calls[0]
+
+    def test_google_models_use_the_gateway_key_and_address_from_node_1_and_never_the_ali_key(self):
+        out, sent = self.chat_with("gemini-3.1-pro")
+        self.assertEqual((sent["url"], sent["headers"]["Authorization"]), ("http://airelay-newapi:3000/v1/chat/completions", "Bearer sk-gateway-key"))   # 配置里没存地址：用默认的网关地址
+        self.assertEqual((sent["json"]["model"], out["model"]), ("gemini-3.1-pro", "gemini-3.1-pro"))
+        self.assertNotIn("sk-glue-key-999", json.dumps(sent, ensure_ascii=False))                          # 阿里的 Key 不会发给网关
+        self.assertNotIn("sk-gateway-key", json.dumps(out, ensure_ascii=False))                            # 网关的 Key 不会回给前端
+        write_text(self.cfg, json.dumps({"node_settings": {"31": {"api_key": "sk-glue-key-999"}, "1": {"api_key": " sk-gw2 ", "base_url": "https://gw.example.com:8443/"}}}))
+        _, sent = self.chat_with("gemini-3.5-flash-lite")
+        self.assertEqual((sent["url"], sent["headers"]["Authorization"]), ("https://gw.example.com:8443/v1/chat/completions", "Bearer sk-gw2"))       # 用配置里的地址（去掉末尾斜杠）
+        for ali_model in ("qwen3.8-max", "kimi-k3", "", None, "不认识的模型"):                              # 阿里的模型（和自动）还是只用阿里的 Key 和地址
+            out, sent = self.chat_with(ali_model)
+            self.assertEqual((sent["url"], sent["headers"]["Authorization"]), ("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", "Bearer sk-glue-key-999"), repr(ali_model))
+            self.assertNotIn("sk-gw2", json.dumps(sent, ensure_ascii=False))
+
+    def test_missing_or_bad_gateway_settings_are_clear_errors_and_nothing_is_sent(self):
+        post = FakePost(llm({"reply": "好", "plan": None}))
+        bad = (None, {"api_key": ""}, {"api_key": "   ", "base_url": "http://x"}, {"base_url": "http://x"}, "不是字典")
+        for node in bad:
+            cfg = {"31": {"api_key": "sk-glue-key-999"}}
+            if node is not None:
+                cfg["1"] = node
+            write_text(self.cfg, json.dumps({"node_settings": cfg}))
+            with self.assertRaises(ChatError) as cm:
+                pc.handle_chat({"messages": [{"role": "user", "content": "你好"}], "model": "gemini-3.1-pro"}, post=post)
+            self.assertEqual(cm.exception.status, 503, repr(node))
+            self.assertIn("Key：网关", str(cm.exception))
+            self.assertIn("换成阿里的模型", str(cm.exception))
+        for base in ("ftp://x", "airelay-newapi:3000", "http://", "file:///etc/passwd"):
+            write_text(self.cfg, json.dumps({"node_settings": {"31": {"api_key": "k"}, "1": {"api_key": "sk-gw", "base_url": base}}}))
+            with self.assertRaises(ChatError) as cm:
+                pc.handle_chat({"messages": [{"role": "user", "content": "你好"}], "model": "gemini-3.1-pro"}, post=post)
+            self.assertIn("网关地址不对", str(cm.exception), base)
+        self.assertEqual(post.calls, [])                                                                      # 一个请求都没发出去
+        write_text(self.cfg, json.dumps({"node_settings": {"31": {"api_key": "sk-glue-key-999"}}}))          # 没有网关 Key：阿里的模型照常用
+        self.assertEqual(self.chat_with("qwen3.8-max")[0]["reply"], "好")
+
+    def test_a_model_that_cannot_see_images_is_swapped_for_this_turn_with_a_note(self):
+        extra = {"assets": [{"name": "助手/a.png"}], "new_assets": [1]}
+        out, sent = self.chat_with("qwen3.8-max", **extra)
+        self.assertEqual((sent["json"]["model"], out["model"]), (chat.VISION_MODEL, chat.VISION_MODEL))
+        self.assertEqual(len(out["warnings"]), 1)
+        self.assertIn("qwen3.8-max 看不了图", out["warnings"][0])
+        self.assertEqual([c["type"] for c in sent["json"]["messages"][-1]["content"]], ["image_url", "text"])  # 图片没有被悄悄丢掉
+        out, sent = self.chat_with("gemini-3.5-flash-lite", **extra)                                         # 谷歌的能看图：这一轮带图片也用它，走网关
+        self.assertEqual((sent["json"]["model"], out["warnings"], sent["url"].split("/v1/")[0]), ("gemini-3.5-flash-lite", [], "http://airelay-newapi:3000"))
+        self.assertEqual([c["type"] for c in sent["json"]["messages"][-1]["content"]], ["image_url", "text"])
+        out, sent = self.chat_with("qwen3.8-max", assets=[{"name": "助手/a.png"}], new_assets=[])            # 这一轮没有新图片：用选的模型，没有说明
+        self.assertEqual((sent["json"]["model"], out["warnings"]), ("qwen3.8-max", []))
+
+    def test_an_unknown_model_name_is_never_forwarded(self):
+        for weird in ("gpt-5", "qwen-max-latest", "gemini-3.1-pro-thinking", "gemini-canvas", "../x", "qwen3.8-max ", 5, ["qwen3.8-max"], {"id": "kimi-k3"}):
+            out, sent = self.chat_with(weird)
+            self.assertEqual((sent["json"]["model"], out["model"]), (chat.TEXT_MODEL, chat.TEXT_MODEL), repr(weird))
+            self.assertTrue(sent["url"].startswith("https://dashscope.aliyuncs.com/"))
+
+    def test_the_catalog_lists_the_chat_models(self):
+        self.assertEqual(pc.handle_catalog()["models"], chat.model_list())
+        self.assertTrue(all(a["schema"] for a in pc.handle_catalog()["apps"]))
 
     def test_handle_run_end_to_end(self):
         post = FakePost(Resp(200, {"prompt_id": "p-1", "number": 1, "node_errors": {}}))

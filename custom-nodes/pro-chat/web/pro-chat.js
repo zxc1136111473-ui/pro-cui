@@ -32,7 +32,7 @@ const state = { messages: [], assets: [], plan: null, draft: [], chain: null, bu
 const INSTANCE = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 let seq = 0;
 const nextId = () => `${INSTANCE}-${++seq}`;
-let view, saveTimer, tickTimer, lockTimer, sendToken = 0, catalogApps = null, ui = { open: true };
+let view, saveTimer, tickTimer, lockTimer, sendToken = 0, catalogApps = null, chatModels = [], ui = { open: true };      // chatModels：聊天助手能选的模型（后端 /pro/catalog 一起给）；ui.model：选了哪个（"" = 自动）
 let catalogStatus = "loading", catalogFails = 0, catalogLoading = null;       // 应用目录：loading（加载中）/ ready / failed（没读到）
 let driving = false;                           // 这个标签页正在拿运行锁 / 运行（拿锁要等一下，这期间也不能再开始别的）
 let lostLock = false;                          // 没有 Web Locks 时：运行记录被别的标签页写了，这里已经不是持有的那个
@@ -179,7 +179,7 @@ async function resumeRunning() {
 
 // ── 应用目录（手动加步骤用；也用它刷新存在浏览器里的旧方案的设置项）──────────────────────────────────
 function fetchCatalog() {
-  return api.fetchApi("/pro/catalog").then(readJson).then((d) => d.apps || []).catch(() => null);
+  return api.fetchApi("/pro/catalog").then(readJson).then((d) => ({ apps: d.apps || [], models: Array.isArray(d.models) ? d.models : [] })).catch(() => null);
 }
 // 模块一加载就把请求发出去：setup() 要等 ComfyUI 把整个页面准备好才会被调用（慢的时候是十几二十秒以后），下拉能早一点可以用
 let firstCatalog = fetchCatalog();
@@ -191,23 +191,24 @@ function loadCatalog() {
   catalogLoading = (async () => {
     const pending = firstCatalog || fetchCatalog();
     firstCatalog = null;
-    const apps = await pending;
+    const got = await pending;
     catalogLoading = null;
-    if (!apps) {                                           // 目录读不到：只是不能手动加步骤，聊天不受影响；前两次自动再试，之后点一下「添加一步」的下拉再试
+    if (!got) {                                           // 目录读不到：只是不能手动加步骤，聊天不受影响；前两次自动再试，之后点一下「添加一步」的下拉再试
       catalogStatus = "failed";
       catalogFails += 1;
       if (view) view.refreshStatus();
       if (catalogFails < 3) setTimeout(loadCatalog, 2500 * catalogFails);
       return;
     }
-    catalogApps = apps;
+    catalogApps = got.apps;
+    chatModels = got.models;
     catalogStatus = "ready";
     catalogFails = 0;
     for (const st of state.plan ? state.plan.steps : []) {
       const a = catalogApps.find((x) => x.workflow === st.workflow);
       if (a) { st.schema = a.schema; st.name = a.name; st.path = a.path; }
     }
-    if (view) view.renderPlan();
+    if (view) { view.renderPlan(); view.renderModels(); }
   })();
   return catalogLoading;
 }
@@ -252,10 +253,11 @@ async function send() {
   try {
     const d = await readJson(await post("/pro/chat", {
       messages: lib.apiMessages(state.messages), assets: state.assets.map((a) => ({ name: a.name, label: a.label })), new_assets: kept, plan: lib.serverPlan(state.plan),
+      model: ui.model || "",                                 // 输入框下面选的助手模型（空 = 自动）；后端只认它清单里有的
     }));
     if (token !== sendToken) return;                       // 等回复的时候点了「清空全部」：这条回复不要了
     if (d.plan && !Array.isArray(d.plan.steps)) throw new Error("服务器上的助手后端还是旧版本（方案格式对不上）：重启一下 ComfyUI 容器（deploy.sh --sync）再刷新网页");
-    const m = { role: "assistant", text: d.reply, warnings: d.warnings || [] };
+    const m = { role: "assistant", text: d.reply, warnings: d.warnings || [], model: typeof d.model === "string" ? d.model : "" };
     if (d.plan && state.running) {                         // 正常到不了这里（运行中不让发消息）；万一别的标签页在跑，别把运行中的步骤换掉
       m.warnings.push("有步骤正在运行，这个新方案没有应用；跑完后再说一次");
     } else if (d.plan) {
@@ -696,6 +698,9 @@ const actions = {
   examples: EXAMPLES,
   send, attach, onPaste, onDrop, uploadForField, changed, open, close, clearAll, clearPlan, runAll, runStep, stop, addStep, removeStep, openInApp, copyText, loadText,
   reloadCatalog: () => { catalogFails = 0; return loadCatalog(); },
+  models: () => chatModels,
+  getModel: () => ui.model || "",
+  setModel: (id) => { ui.model = typeof id === "string" ? id : ""; persistUi(); },
   mention: (n) => { view.insertText(`素材 ${n} `); },
 };
 
@@ -739,4 +744,4 @@ app.registerExtension({
 });
 
 // 给测试 / 调试用：控制台里可以 window.__proChat.state 看状态
-window.__proChat = { state, view: () => view, actions, lib, catalog: () => ({ apps: catalogApps ? catalogApps.length : 0, status: catalogStatus, fails: catalogFails }) };
+window.__proChat = { state, view: () => view, actions, lib, catalog: () => ({ apps: catalogApps ? catalogApps.length : 0, models: chatModels.length, status: catalogStatus, fails: catalogFails }) };
