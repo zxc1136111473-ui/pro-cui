@@ -326,6 +326,152 @@ class Lib(unittest.TestCase):
         self.assertEqual(js('console.log(JSON.stringify([L.elapsedText(0), L.elapsedText(4600), L.elapsedText(59400), L.elapsedText(75000), L.elapsedText(-5)]))'),
                          ["0 秒", "5 秒", "59 秒", "1 分 15 秒", "0 秒"])
 
+    def test_group_apps_keeps_the_catalog_order_and_puts_ungrouped_ones_in_other(self):
+        r = js('''console.log(JSON.stringify([L.groupApps([{workflow: "01", group: "图片"}, {workflow: "07", group: "文案与配音"}, {workflow: "02", group: "图片"}, {workflow: "99"}, {workflow: "98", group: ""}, null]).map((g) => [g.group, g.apps.map((a) => a.workflow)]),
+          L.groupApps(null), L.groupApps([])]))''')
+        self.assertEqual(r, [[["图片", ["01", "02"]], ["文案与配音", ["07"]], ["其他", ["99", "98"]]], [], []])
+
+    def test_durations_keep_the_last_five_and_estimate_with_the_median(self):
+        r = js('''const d = {}, a = app("01"), b = app("01"), c = app("02");
+          b.mode = "B 模式";
+          const k = [L.durationKey(a), L.durationKey(b), L.durationKey(c)];
+          for (const ms of [40000, 50000, 60000, 70000, 80000, 90000, 100000]) L.recordDuration(d, k[0], ms);
+          for (const bad of [0, 999, -5, NaN, "x", null, undefined, Infinity]) L.recordDuration(d, k[1], bad);
+          L.recordDuration(d, k[2], 3000); L.recordDuration(null, k[2], 3000); L.recordDuration(d, k[2], 1000.4);
+          console.log(JSON.stringify([k, d[k[0]], L.estimateMs(d, k[0]), L.estimateMs(d, k[1]), L.estimateMs(d, k[2]), L.estimateMs(d, "nope"), L.estimateMs(null, "x"), L.estimateMs({x: [5000, "a", -1, 1000, 9000]}, "x")]))''')
+        self.assertEqual(r[0], ["01|0", "01|1", "02|0"])                                                 # 同一个应用不同模式分开记
+        self.assertEqual(r[1], [60000, 70000, 80000, 90000, 100000])                                     # 只留最近 5 次
+        self.assertEqual(r[2:], [80000, 0, 3000, 0, 0, 5000])                                            # 中位数（偶数个取偏大的那个）；坏数据 / 不到 1 秒的不记；没有记录是 0
+
+    def test_eta_text_and_progress(self):
+        r = js('''console.log(JSON.stringify([[0, 3000, 12000, 40000, 49000, 55000, 89000, 100000, 170000, 400000].map(L.etaText),
+          [L.progressPercent(30000, 60000), L.progressPercent(0, 60000), L.progressPercent(120000, 60000), L.progressPercent(5000, 0), L.progressPercent(-1, 60000), L.progressPercent(NaN, 60000), L.progressPercent(60000, 60000)]]))''')
+        self.assertEqual(r[0], ["约 5 秒", "约 5 秒", "约 10 秒", "约 40 秒", "约 50 秒", "约 1 分钟", "约 1 分钟", "约 2 分钟", "约 3 分钟", "约 7 分钟"])
+        self.assertEqual(r[1], [50, 0, 95, None, None, None, 95])                                         # 到不了 100：预计只是估的
+
+    def test_remaining_time_is_only_given_when_every_remaining_step_has_a_record(self):
+        r = js('''const a = app("01"), b = app("02"), c = app("03");
+          done(a);
+          const p = plan(a, b, c);
+          const d = {}; L.recordDuration(d, L.durationKey(b), 60000);
+          const none = L.remainingMs(p, d, 1, 10000);
+          L.recordDuration(d, L.durationKey(c), 30000);
+          console.log(JSON.stringify([none, L.remainingMs(p, d, 1, 10000), L.remainingMs(p, d, 1, 59000), L.remainingMs(p, d, 1, 0), L.remainingMs(plan(done(app("01"))), d, 0, 0)]))''')
+        self.assertEqual(r, [None, 80000, 35000, 90000, None])                                            # 第 3 步没记录就不猜；正在跑的那步减去已经过去的（最少留 5 秒），后面的步骤加预计；没有记录的应用返回 None
+
+    def test_pending_after_includes_the_steps_that_use_the_results_of_the_one_being_rerun(self):
+        r = js('''const s0 = app("01"), s1 = app("02"), s2 = app("03"), s3 = app("04"), s4 = app("05");
+          s2.files = {"4:image": {step: 2, n: 1}}; s2.usedRuns = {2: 1};       // 第 3 步用第 2 步的图
+          s3.files = {"4:image": {step: 3, n: 1}}; s3.usedRuns = {3: 1};       // 第 4 步用第 3 步的图（间接用到第 2 步）
+          for (const s of [s0, s1, s2, s3, s4]) done(s);
+          const p = plan(s0, s1, s2, s3, s4);
+          const allDone = [0, 1, 2, 3, 4].map((i) => L.stepStatus(p, i).kind);
+          const d = {}; for (const s of p.steps) L.recordDuration(d, L.durationKey(s), 20000);
+          console.log(JSON.stringify([L.pendingAfter(p, 0), L.pendingAfter(p, 1), L.pendingAfter(p, 3), L.pendingAfter(p, 4), L.remainingMs(p, d, 1, 0), L.remainingMs(p, d, 0, 0), allDone]))''')
+        self.assertEqual(r[6], ["done"] * 5)                                                                 # 前提：五步现在都是「已完成」
+        self.assertEqual(r[:4], [[], [2, 3], [], []])                                                       # 第 2 步一重跑，用它结果的第 3、4 步也要重跑（虽然现在还是「已完成」）；没人用的不算
+        self.assertEqual(r[4:6], [60000, 20000])                                                             # 20 秒 × 3 步；第 1 步后面没有要接着跑的
+
+    def test_explain_error_knows_the_errors_this_system_really_produces(self):
+        r = js('''const t = (x) => { const e = L.explainError(x); return e ? e.title : null; };
+          console.log(JSON.stringify([
+            t("[网关 写提示词] 选了谷歌模型「gemini-3.1-pro」，要走网关，但没有拿到网关的 Key：请点开标题为「Key：网关」的节点"),
+            t("[阿里] 没有 API Key：请点开标题为「Key：阿里」的节点（折叠着的）"),
+            t("[网关 写提示词] HTTP 401 ：Invalid token (request id: 2026)"), t("[阿里 改图] HTTP 401 invalid_api_key：Incorrect API key provided"),
+            t("[阿里 改图] HTTP 429 Throttling.RateQuota：too many requests"),
+            t("[阿里 改图] HTTP 404 ：Model not exist"), t("[阿里 改图] 不认识的模型「qwen-image-edit-max」：可选 …"),
+            t("[阿里 写提示词] 等了 60 秒没有回应：请求已经发出，阿里那边可能还在处理（可能已计费），先别连着重跑"), t("[网关 写提示词] 等了 120 秒没有回应：请求已经发出，网关那边可能还在处理"),
+            t("[阿里 写提示词] 连不上：ConnectionError（连接 / 握手试了 4 次都没成功，请求没有发出，不会计费）"),
+            t("Veo 今天的额度用完了"), t("image blocked by safety filter"), t("节点 xyz 出错：something odd"), t(""), t(null), t(undefined), t(123),
+            L.explainError("[阿里 写提示词] 等了 60 秒没有回应").tip, L.explainError("[阿里 写提示词] 连不上：ConnectionError").tip,
+            t("连不上服务器，不知道这次请求有没有送到（网络断了？）。再点一次会带着同一个编号重试"), L.explainError("连不上服务器，不知道这次请求有没有送到（网络断了？）").tip]))''')
+        self.assertEqual(r[:5], ["还没填 Key", "还没填 Key", "Key 不对或者已经失效", "Key 不对或者已经失效", "调用太频繁，被对方限流了"])
+        self.assertEqual(r[5:12], ["这个模型对方没有", "这个模型对方没有", "对方这次回得太慢了", "对方这次回得太慢了", "网络没连上", "额度用完了", "内容没通过对方的审核"])
+        self.assertEqual(r[12:17], [None] * 5)                                                              # 认不出的、空的、不是文字的：不乱解释
+        self.assertIn("可能已经计费", r[17])                                                                # 超时：提醒别连着重跑（可能已经花钱）
+        self.assertIn("不会计费", r[18])                                                                    # 连不上：请求没发出去
+        self.assertEqual(r[19], "没收到服务器的回复")                                                        # 工作台自己的「不知道有没有送到」不能被当成「请求没发出去」
+        self.assertIn("可能已经收到", r[20])
+        self.assertIn("不会重复计费", r[20])
+
+    def test_collapse_defaults_follow_the_plan_size_and_the_users_choice(self):
+        r = js('''const mk = (n) => plan(...Array.from({length: n}, (_, i) => app("0" + (i + 1))));
+          const three = mk(3), four = mk(4);
+          const cols = (p) => p.steps.map((_, i) => L.isCollapsed(p, i));
+          const a = cols(three), b = cols(four);
+          done(four.steps[0]);
+          const c = cols(four);
+          four.steps[3].collapsed = false; four.steps[1].collapsed = true;
+          const d = cols(four);
+          L.setAllCollapsed(four, true); const e = cols(four);
+          L.setAllCollapsed(four, false); const f = cols(four);
+          const allDone = mk(4); allDone.steps.forEach((s) => done(s));
+          console.log(JSON.stringify([a, b, c, d, e, f, cols(allDone), L.focusIndex(four), L.focusIndex(allDone), L.AUTO_COLLAPSE_FROM]))''')
+        self.assertEqual(r[0], [False, False, False])                                                       # 三步以内：都展开
+        self.assertEqual(r[1], [False, True, True, True])                                                   # 四步以上：只展开第一个没做完的
+        self.assertEqual(r[2], [True, False, True, True])                                                   # 第 1 步做完了：展开的跟着挪到第 2 步
+        self.assertEqual(r[3], [True, True, True, False])                                                   # 用户手动选的优先：第 4 步展开、第 2 步折叠
+        self.assertEqual((r[4], r[5]), ([True] * 4, [False] * 4))
+        self.assertEqual((r[6], r[7], r[8], r[9]), ([False, True, True, True], 1, 0, 4))                     # 全做完了：展开第 1 步
+
+    def test_step_summary_and_source_image(self):
+        r = js('''const a = app("01"); a.mode = "B 模式"; a.fields = {"70:idea": "x", "3:speed": 0.9};
+          const plain = app("02");
+          const noMode = L.newStep({workflow: "15", name: "抠图", schema: {fields: {}, files: {}, produces: ["image"]}});
+          const assets = [{name: "助手/a.png", kind: "image", label: "原图"}, {name: "助手/m.mp3", kind: "audio", label: "音"}, {name: "助手/out1.png", kind: "image", label: "第一步的图"}, {name: "", kind: "other", label: ""}];
+          const s1 = app("03", {produces: ["image"]}); done(s1, {image: [3]});
+          const s2 = app("04"); s2.files = {"4:image": {step: 1, n: 1}};
+          const s3 = app("05"); s3.files = {"4:image": {asset: 1}, "5:audio": {asset: 2}};
+          const s4 = app("06"); s4.files = {"4:image": {asset: 4}};
+          const s5 = app("07"); s5.files = {"5:audio": {asset: 2}};
+          const s6 = app("08"); s6.files = {"4:image": {step: 1, n: 5}};
+          const p = plan(s1, s2, s3, s4, s5, s6);
+          console.log(JSON.stringify([L.stepSummary(a), L.stepSummary(plain), L.stepSummary(noMode),
+            [1, 2, 3, 4, 5].map((i) => { const x = L.sourceImage(p, assets, i); return x ? [x.n, x.name] : null; })]))''')
+        self.assertEqual(r[:3], ["B 模式 · 改过 2 项设置", "A 模式", ""])
+        self.assertEqual(r[3], [[3, "助手/out1.png"], [1, "助手/a.png"], None, None, None])                 # 前面步骤做出的图 / 素材库的图；已删掉的素材、音频、还没出的第 5 个结果：没有
+
+    def test_removing_an_asset_keeps_the_numbers_and_unhooks_the_steps_that_used_it(self):
+        r = js('''const assets = [{name: "助手/a.png", kind: "image", label: "a"}, {name: "助手/b.png", kind: "image", label: "b"}, {name: "助手/c.png", kind: "image", label: "c"}];
+          const s1 = app("01"); s1.files = {"4:image": {asset: 2}};
+          const s2 = app("02"); s2.files = {"4:image": {asset: 3}, "5:audio": {asset: 2}};
+          const p = plan(s1, s2);
+          const before = L.usersOfAsset(p, 2);
+          const hit = L.removeAsset(assets, p, 2);
+          console.log(JSON.stringify([before, hit, assets, s1.files, s2.files, L.removeAsset(assets, p, 2), L.removeAsset(assets, p, 9), L.removeAsset(assets, p, 0), L.removeAsset(assets, p, 1.5), L.removeAsset(assets, null, 3), assets.length,
+            L.fileChoices(p, assets, 0, "image").assets.map((c) => c.value)]))''')
+        self.assertEqual(r[0], [1, 2])
+        self.assertEqual(r[1], [1, 2])
+        self.assertEqual(r[2], [{"name": "助手/a.png", "kind": "image", "label": "a"}, {"name": "", "kind": "other", "label": ""}, {"name": "", "kind": "other", "label": ""}])    # 编号不移位：删掉的留一个空位（这行是全部调用之后的样子：2 号、3 号都删了）
+        self.assertEqual((r[3], r[4]), ({}, {"4:image": {"asset": 3}}))
+        self.assertEqual(r[5:9], [[], [], [], []])                                                           # 已经删了的、不存在的、乱写的：什么都不做
+        self.assertEqual(r[9], [])                                                                           # 方案是 null 也不报错（这一次真的把 3 号删了，没有步骤受影响）
+        self.assertEqual((r[10], r[11]), (3, ["a:1"]))                                                       # 编号还是 3 个位置；文件下拉里不再出现删掉的 / 空位
+
+    def test_the_collapsed_flag_survives_storage_and_a_new_plan_that_matches(self):
+        r = js('''const a = app("01"), b = app("02"); a.collapsed = true; b.collapsed = false;
+          const back = L.fromStorage(L.toStorage({messages: [], assets: [], plan: plan(a, b), chain: null})).plan.steps;
+          const junk = app("03"); junk.collapsed = "yes";
+          const back2 = L.fromStorage(L.toStorage({messages: [], assets: [], plan: plan(junk), chain: null})).plan.steps;
+          const old = plan(a, b); const fresh = plan(app("01"), app("02"), app("03"));
+          L.adoptPlan(old, fresh);
+          console.log(JSON.stringify([back.map((s) => s.collapsed === undefined ? null : s.collapsed), back2.map((s) => s.collapsed === undefined ? null : s.collapsed), fresh.steps.map((s) => s.collapsed === undefined ? null : s.collapsed)]))''')
+        self.assertEqual(r, [[True, False], [None], [True, False, None]])                                   # 只认真正的 true / false；新方案里「同一个步骤」继承用户的折叠选择，新增的步骤没选过
+
+    def test_plan_has_work_tells_a_pristine_plan_from_one_the_user_touched(self):
+        r = js('''const fresh = plan(app("01"), app("02"));
+          const touched = (f) => { const p = plan(app("01"), app("02")); f(p); return L.planHasWork(p); };
+          console.log(JSON.stringify([L.planHasWork(null), L.planHasWork(plan()), L.planHasWork(fresh),
+            touched((p) => { p.steps[1].fields = {"70:idea": "改过"}; }), touched((p) => { p.steps[0].mode = "B 模式"; }), touched((p) => { p.steps[1].files = {"4:image": {asset: 1}}; }),
+            touched((p) => { done(p.steps[0]); }), touched((p) => { p.steps[0].state = "failed"; }), touched((p) => { p.steps[0].result = {items: []}; })]))''')
+        self.assertEqual(r, [False, False, False, True, True, True, True, True, True])                       # 只是加了几步、什么都没动：不用问；动过、跑过、跑失败过：要问
+
+    def test_result_brief_counts_what_a_step_made_without_the_error_texts(self):
+        r = js('''const it = (kind, extra = {}) => ({kind, file: {filename: "a"}, ...extra});
+          console.log(JSON.stringify([L.resultBrief(null), L.resultBrief({items: []}), L.resultBrief({items: [it("image"), it("image"), it("text"), it("text", {isError: true})]}),
+            L.resultBrief({items: [it("video"), it("audio"), it("text")]}), L.resultBrief({items: [it("text", {isError: true})]})]))''')
+        self.assertEqual(r, ["", "", "结果：2 张图片、1 段文字", "结果：1 个视频、1 段音频、1 段文字", ""])                           # 「出错信息」那种只在出错时出现的文字不算
+
     def test_the_model_a_reply_used_survives_storage(self):
         r = js('''const st = {messages: [{id: "a", role: "assistant", text: "好", model: "gemini-3.1-pro"}, {id: "b", role: "assistant", text: "好", model: 5},
             {id: "c", role: "user", text: "嗨"}, {id: "d", role: "assistant", text: "老存档（没有这个字段）"}, {id: "e", role: "assistant", text: "好", model: {x: 1}}], assets: [], plan: null, chain: null};
@@ -503,7 +649,7 @@ class Static(unittest.TestCase):
     def test_ui_script_only_talks_to_our_routes_and_comfy_apis(self):
         src = self.read("pro-chat.js")
         routes = set(re.findall(r'(?:post|fetchApi)\(\s*[`"\'](/[^`"\'$?]*)', src))
-        self.assertEqual(routes, {"/pro/chat", "/pro/run", "/pro/stage", "/pro/catalog", "/interrupt", "/upload/image", "/history/", "/queue", "/userdata/"})
+        self.assertEqual(routes, {"/pro/chat", "/pro/run", "/pro/stage", "/pro/preset", "/pro/catalog", "/interrupt", "/upload/image", "/history/", "/queue", "/userdata/"})
         for name in self.UI_FILES:
             text = self.read(name)
             self.assertNotIn("http://", text.replace("http://127", ""), name)

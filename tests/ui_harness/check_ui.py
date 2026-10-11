@@ -83,7 +83,7 @@ def main():
         check("打开时蓝色小按钮不显示", not page.locator(".pcw-handle").is_visible())
         check("默认打开时焦点已经在聊天输入框里（直接打字，按键不会落到 ComfyUI 的快捷键上）", page.evaluate("document.activeElement === document.querySelector('.pcw-row textarea')"), page.evaluate("document.activeElement.tagName"))
         check("没有方案时右边有提示", "还没有方案" in page.locator(".pcw-steps").inner_text())
-        check("应用目录加载了（可以手动加步骤）", page.locator(".pcw-bar select option").count() == 17, str(page.locator(".pcw-bar select option").count()))
+        check("应用目录加载了（可以手动加步骤）", page.locator(".pcw-bar select.pcw-addsel option").count() == 17, str(page.locator(".pcw-bar select.pcw-addsel option").count()))
         shot("01-打开")
 
         # T2 附图
@@ -194,7 +194,7 @@ def main():
         check("点停止后这一步显示「已停止」", b[1].startswith("已停止"), str(b))
         check("聊天里记了一条已停止", "已停止步骤 2" in page.locator(".pcw-list").inner_text())
         h.comfy.delay = 1.0
-        page.locator(".pcw-step").nth(1).locator("text=再试一次").click()
+        page.locator(".pcw-step").nth(1).get_by_role("button", name="再试一次").click()
         b = wait_badges(lambda b: b[1].startswith("已完成"), timeout=30)
         check("停止后可以再试一次", b[1].startswith("已完成"), str(b))
 
@@ -228,7 +228,7 @@ def main():
         check("工作台开着、焦点不在里面时按 Ctrl+Enter / Cmd+Enter 也不会触发 ComfyUI 的排队运行（后面那张节点图不会被误跑）", page.evaluate("window.__queueKeys") == 0, str(page.evaluate("window.__queueKeys")))
 
         # T12 手动加一步 / 删一步 / 数字控件 / 高级设置
-        page.locator(".pcw-bar select").select_option("07")
+        page.locator(".pcw-bar select.pcw-addsel").select_option("07")
         page.wait_for_function("document.querySelectorAll('.pcw-step').length === 3")
         check("手动加了第 3 步（文案）", page.eval_on_selector_all(".pcw-step .pcw-step-name", "els => els.map(e => e.textContent)")[2] == "文案")
         page.locator(".pcw-step").nth(2).locator("text=删除").click()
@@ -241,7 +241,7 @@ def main():
         check("高级设置里有数字滑块（字幕字号）", step2.locator("input[type=range][min='16']").count() >= 1)
         check("有选项下拉的默认标记", "（默认）" in step2.locator("select[data-pc='1:12:size']").inner_text())
         check("改过的高级设置带「恢复默认」", step2.locator(".pcw-adv .pcw-changed").count() >= 1)
-        page.locator(".pcw-bar select").select_option("10")                                           # 手动加一个什么都没改的：高级设置默认折叠
+        page.locator(".pcw-bar select.pcw-addsel").select_option("10")                                           # 手动加一个什么都没改的：高级设置默认折叠
         page.wait_for_function("document.querySelectorAll('.pcw-step').length === 3")
         step3 = page.locator(".pcw-step").nth(2)
         check("什么都没改的步骤：高级设置默认折叠", step3.locator("details.pcw-adv").first.get_attribute("open") is None)
@@ -380,7 +380,7 @@ def main():
 
         # 必填的素材没给：不让运行
         pg.click("text=清空方案")
-        pg.locator(".pcw-bar select").select_option("04")
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("04")
         pg.wait_for_selector(".pcw-step")
         check("手动加「多尺寸套图」：商品图标了必填，标红", pg.locator(".pcw-missing").count() == 1 and "（必填）" in pg.locator(".pcw-step").inner_text())
         check("缺必填时「运行这一步」和「运行全部」都不能点，顶部写着还缺什么", pg.locator(".pcw-step .pcw-btn-sm").first.is_disabled() and pg.locator(".pcw-bar .pcw-btn-primary").is_disabled() and "还缺：商品图" in pg.locator(".pcw-notice").inner_text())
@@ -441,7 +441,7 @@ def main():
             del: [...document.querySelectorAll('.pcw-step')].every(s => [...s.querySelectorAll('button')].filter(b => b.textContent === '删除').every(b => b.disabled)),
             fields: [...document.querySelectorAll('.pcw-step textarea, .pcw-step select')].every(e => e.disabled),
             all: document.querySelector('.pcw-bar .pcw-btn-primary').disabled,
-            add: document.querySelector('.pcw-bar select').disabled,
+            add: document.querySelector('.pcw-bar select.pcw-addsel').disabled,
             resets: [...document.querySelectorAll('.pcw-step .pcw-link')].every(b => b.disabled) }))()""")
         check("等 AI 回复时：运行 / 删除 / 设置控件 / 恢复默认 / 用默认 / 运行全部 / 添加一步都锁住", all(locked.values()), str(locked))
         pg.locator(".pcw-step").first.locator("text=运行这一步").click(force=True)
@@ -578,7 +578,7 @@ def main():
 
         # 只在某个模式才必填的文件：16 默认「放到背景图上」要背景图，换成纯色模式就不要了；商品图两个模式都要
         pg.click("text=清空方案")
-        pg.locator(".pcw-bar select").select_option("16")
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("16")
         pg.wait_for_selector(".pcw-step")
         pg.locator(".pcw-step details.pcw-settings").first.evaluate("e => { e.open = true }")
         check("纯色背景的颜色是单行输入框", pg.locator("input[type=text][data-pc='0:5:bg_color']").count() == 1 and pg.locator("textarea[data-pc='0:5:bg_color']").count() == 0)
@@ -595,7 +595,7 @@ def main():
 
         # 数字下拉（帧率 / 轮播清晰度）：界面里是文字，提交给 ComfyUI 的是数字
         pg.click("text=清空方案")
-        pg.locator(".pcw-bar select").select_option("11")
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("11")
         pg.wait_for_selector(".pcw-step")
         pg.locator("select[data-pc='0:mode']").select_option(index=2)               # 图片轮播 + 配音文案：只要一张图（默认的上传视频模式没有视频就不让运行）
         pg.locator(".pcw-step").first.locator("input[type=file][accept='image/*']").first.set_input_files(prod)             # 第一张轮播图：直接在这一步里上传
@@ -617,7 +617,7 @@ def main():
 
         # 模型：写提示词的模型 / 阿里出图模型是常用设置（下拉），网关出图模型在高级设置里（文字框）；改了之后提交给 ComfyUI 的就是它
         pg.click("text=清空方案")
-        pg.locator(".pcw-bar select").select_option("01")
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("01")
         pg.wait_for_selector(".pcw-step")
         pg.locator(".pcw-step details.pcw-settings").first.evaluate("e => { e.open = true }")
         wm, am = pg.locator("select[data-pc='0:70:model']"), pg.locator("select[data-pc='0:3:model']")
@@ -639,7 +639,7 @@ def main():
 
         # 出图引擎和模型：06 商品一条龙顶上的「模式」= 网关 Gemini 或阿里的 5 个模型之一；选了哪个，提交给 ComfyUI 的模式节点就是哪个
         pg.click("text=清空方案")
-        pg.locator(".pcw-bar select").select_option("06")
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("06")
         pg.wait_for_selector(".pcw-step")
         mode6 = pg.locator("select[data-pc='0:mode']")
         opts6 = mode6.locator("option").all_inner_texts()
@@ -716,7 +716,176 @@ def main():
         old_page.wait_for_function("window.__proChat.catalog().status === 'ready'", timeout=15000)
         check("后端是旧版（目录里没有模型清单）：不显示助手模型下拉", old_page.evaluate("window.__proChat.catalog().models") == 0 and not old_page.locator(".pcw-modelrow").is_visible())
         old_page.close()
-        pg.locator(".pcw-bar select").select_option("06")                                                  # 给后面的场景留一个方案（它们一开头要点「清空方案」）
+
+        # ══ 把工作流合并进工作台：分类下拉 / 一键方案 / 折叠 / 紧凑 / 大图预览 / 去掉素材 / 预计时间 / 报错说人话 / 含糊的话不反问 ══
+        dlg = {"msgs": [], "accept": True}
+
+        def on_dialog(d):
+            dlg["msgs"].append(d.message)
+            d.accept() if dlg["accept"] else d.dismiss()
+        pg.on("dialog", on_dialog)
+        pg.click("text=清空全部")                                                                           # 前面的场景留下了一堆素材：清空，下面从空白开始（一键方案会自动用素材库里最近的商品图）
+        pg.wait_for_function("window.__proChat.state.assets.length === 0 && !window.__proChat.state.plan", timeout=10000)
+        groups = pg.locator(".pcw-bar select.pcw-addsel optgroup").evaluate_all("els => els.map((e) => [e.label, e.querySelectorAll('option').length])")
+        check("「添加一步」的下拉按分类分组：图片 8 个 / 文案与配音 4 个 / 视频 4 个", groups == [["图片", 8], ["文案与配音", 4], ["视频", 4]], str(groups))
+        pre = pg.locator(".pcw-presetsel option").all_inner_texts()
+        check("顶上有「一键方案」下拉：占位 + 4 个方案", len(pre) == 5 and pre[0].startswith("⚡") and "商品全套" in pre[1] and "抠图换背景" in pre[2], str(pre))
+        chips = pg.locator(".pcw-right .pcw-empty .pcw-chip").all_inner_texts()
+        check("还没有方案时右边空白处也摆着 4 个一键方案，要先有商品图的写明了", len(chips) == 4 and "要先有商品图" in chips[0] and "要先有商品图" in chips[1] and "要先有商品图" not in chips[2] + chips[3], str(chips))
+        pg.locator(".pcw-presetsel").select_option("product_full")                                          # 没有商品图也能排，只是第 1 步提示还缺图片
+        pg.wait_for_function("document.querySelectorAll('.pcw-step').length === 2", timeout=10000)
+        names = pg.locator(".pcw-step-name").all_inner_texts()
+        notice = pg.locator(".pcw-notice").inner_text()
+        check("没有商品图时点「商品全套」：排出 2 步（商品一条龙 → 图生视频成片），提示第 1 步还缺商品图", names == ["商品一条龙", "图生视频成片"] and "步骤 1「商品一条龙」还缺：商品图" in notice, f"{names} {notice[:90]}")
+        check("聊天里记了一句「已按「商品全套…」排好 2 步」，第 2 步的参考图选的是第 1 步的第 2 个图片", "已按「商品全套" in pg.locator(".pcw-list").inner_text() and pg.locator("select[data-pc='1:2:image']").input_value() == "s:1:2", pg.locator("select[data-pc='1:2:image']").input_value())
+        pg.locator(".pcw-step").first.locator("input[type=file][accept='image/*']").first.set_input_files(prod)
+        pg.wait_for_function("document.querySelector(\"select[data-pc='0:3:image']\").value !== ''", timeout=15000)
+        n_img = st3(pg, "s.plan.steps[0].files['3:image'].asset")
+        dlg["accept"] = False
+        pg.locator(".pcw-presetsel").select_option("cutout_bg")
+        pg.wait_for_timeout(700)
+        check("方案里已经选过文件，换一键方案先问一声；点「取消」方案原样不动", len(dlg["msgs"]) == 1 and "换成「抠图换背景" in dlg["msgs"][0] and pg.locator(".pcw-step-name").all_inner_texts() == ["商品一条龙", "图生视频成片"], f"{dlg['msgs']} {pg.locator('.pcw-step-name').all_inner_texts()}")
+        dlg["accept"] = True
+        pg.locator(".pcw-presetsel").select_option("cutout_bg")
+        pg.wait_for_function("document.querySelector('.pcw-step-name') && document.querySelector('.pcw-step-name').textContent === '商品抠图'", timeout=10000)
+        check("点「确定」：换成抠图换背景（商品抠图 → 图层合成），第 1 步自动用素材库里最近的商品图，第 2 步用第 1 步的图、纯色背景，没有「还缺」",
+              pg.locator(".pcw-step-name").all_inner_texts() == ["商品抠图", "图层合成"] and pg.locator("select[data-pc='0:2:image']").input_value() == f"a:{n_img}" and pg.locator("select[data-pc='1:2:image']").input_value() == "s:1:1"
+              and pg.locator("select[data-pc='1:mode']").input_value() == "放到纯色背景上" and "还缺" not in pg.locator(".pcw-notice").inner_text(), pg.locator(".pcw-notice").inner_text()[:80])
+        pg.click("text=清空方案")
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("15")
+        pg.wait_for_selector(".pcw-step")
+        n_dlg = len(dlg["msgs"])
+        pg.locator(".pcw-presetsel").select_option("promo_set")                                           # 方案里只是加了一步、什么都没动：直接换，不问
+        pg.wait_for_function("document.querySelectorAll('.pcw-step').length === 3", timeout=10000)
+        check("方案里什么都没动过（只是加了一步）：换一键方案不用问", len(dlg["msgs"]) == n_dlg and pg.locator(".pcw-step-name").all_inner_texts() == ["海报", "文案", "配音"], str(dlg["msgs"]))
+        check("三步以内的方案都展开着（设置都摆在眼前）", pg.locator(".pcw-step.pcw-collapsed").count() == 0 and pg.locator(".pcw-step details.pcw-settings").count() == 3)
+
+        # 折叠：四步以上只展开最该看的那一步，其余折叠成一行；点箭头展开 / 折叠；「折叠全部 / 展开全部」；刷新后还在
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("05")
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("15")
+        pg.wait_for_function("document.querySelectorAll('.pcw-step').length === 5", timeout=10000)
+        check("五步的方案：只展开第 1 步，其余 4 步折叠成一行（一屏看得下），折叠的那行写着模式 / 还缺什么", pg.locator(".pcw-step.pcw-collapsed").count() == 4 and not pg.locator(".pcw-step").first.get_attribute("class").count("pcw-collapsed")
+              and pg.locator(".pcw-step.pcw-collapsed .pcw-sumline").count() >= 4 and "还缺：图片" in pg.locator(".pcw-step").nth(3).inner_text() and "A" != "B", pg.locator(".pcw-step.pcw-collapsed").count())
+        pg.locator(".pcw-step").nth(2).locator(".pcw-fold").click()
+        check("点第 3 步的箭头：它展开了（设置控件出现），另外 3 步还折叠着", pg.locator(".pcw-step.pcw-collapsed").count() == 3 and pg.locator("select[data-pc='2:mode']").count() == 1)
+        pg.get_by_role("button", name="展开全部").click() if pg.get_by_role("button", name="展开全部").count() else pg.get_by_role("button", name="折叠全部").click()
+        pg.get_by_role("button", name="折叠全部").click() if pg.locator(".pcw-step.pcw-collapsed").count() == 0 else None
+        pg.wait_for_timeout(300)
+        n_col = pg.locator(".pcw-step.pcw-collapsed").count()
+        pg.reload()
+        pg.wait_for_selector(".pcw-step")
+        check("「折叠全部」后 5 步都折叠了；刷新网页后还是折叠着（记在方案里）", n_col == 5 and pg.locator(".pcw-step.pcw-collapsed").count() == 5, f"{n_col} {pg.locator('.pcw-step.pcw-collapsed').count()}")
+        pg.get_by_role("button", name="展开全部").click()
+        check("「展开全部」后一步都不折叠", pg.locator(".pcw-step.pcw-collapsed").count() == 0)
+
+        # 紧凑：模式和文件（两列宽）、下拉在同一行，文字框仍然整行
+        pg.click("text=清空方案")
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("07")
+        pg.wait_for_selector(".pcw-step")
+        pg.locator("select[data-pc='0:mode']").select_option(index=1)
+        geo = pg.evaluate("""(() => { const r = (q) => document.querySelector(q).getBoundingClientRect(), a = r("select[data-pc='0:mode']"), b = r("select[data-pc='0:3:image']"), c = r("select[data-pc='0:70:model']"), t = r("textarea[data-pc='0:70:idea']"), g = r(".pcw-fields");
+          return {modeTop: a.top, fileTop: b.top, modelTop: c.top, textTop: t.top, textW: t.width, gridW: g.width, modeW: a.width, card: document.querySelector('.pcw-step').getBoundingClientRect().height}; })()""")
+        check("设置排得紧凑：模式和商品图并排在第一行，文字框占整行，整张卡不到 420 像素高（以前光这三样就要大半屏）", abs(geo["modeTop"] - geo["fileTop"]) < 12 and geo["textTop"] > geo["modeTop"] and geo["textW"] > geo["gridW"] * 0.95 and geo["card"] < 420, str(geo))
+
+        # 运行一遍：结果大图（对比原图 / 下载）、记用时（下次显示预计）、运行全部时顶上写第几步 / 预计还要多久
+        pg.click("text=清空方案")
+        pg.locator(".pcw-presetsel").select_option("cutout_bg")
+        pg.wait_for_function("document.querySelectorAll('.pcw-step').length === 2", timeout=10000)
+        h.comfy.delay = 2.0
+        pg.click("text=运行全部")
+        b = wait3(pg, lambda b: len(b) == 2 and all(x.startswith("已完成") for x in b), 60)
+        check("抠图换背景两步都跑完了", len(b) == 2 and all(x.startswith("已完成") for x in b), str(b))
+        dur = pg.evaluate("JSON.parse(localStorage.getItem('proChat.ui') || '{}').durations || {}")
+        check("跑完记下了每一步用了多久（按应用 + 模式分开记，各 2 秒以上）", set(dur) >= {"15|-1", "16|1"} and all(v and v[-1] >= 1500 for k, v in dur.items() if k in ("15|-1", "16|1")), str(dur))
+        dl2 = pg.locator(".pcw-step").nth(1).locator(".pcw-resbar a.pcw-link").first
+        check("结果图下面有「下载」链接：带文件名（浏览器会存成这个名字）、指向 /view", dl2.inner_text() == "下载" and (dl2.get_attribute("download") or "").endswith(".png") and "/view?" in (dl2.get_attribute("href") or ""), f"{dl2.inner_text()} {dl2.get_attribute('download')}")
+        pg.locator(".pcw-step").nth(1).locator(".pcw-res img").first.click()
+        pg.wait_for_selector(".pcw-lb")
+        seg = pg.locator(".pcw-lb-top button[data-lb]").all_inner_texts()
+        dl = pg.locator(".pcw-lb-top a[data-lb=download]")
+        check("点结果图：大图预览打开了，有「结果 / 原图 / 左右对比」和「下载」（下载链接带文件名）", seg[:3] == ["结果", "原图", "左右对比"] and (dl.get_attribute("download") or "").endswith(".png") and "/view?" in (dl.get_attribute("href") or "") and pg.locator(".pcw-lb-stage img").count() == 1, f"{seg} {dl.get_attribute('download')}")
+        pg.locator(".pcw-lb-top button[data-lb=both]").click()
+        n_two = pg.locator(".pcw-lb-stage img").count()
+        pg.locator(".pcw-lb-top button[data-lb=source]").click()
+        src_url = pg.locator(".pcw-lb-stage img").first.get_attribute("src")
+        check("「左右对比」同时摆出原图和结果 2 张图；「原图」只看原图（原图是第 1 步抠出来的图）", n_two == 2 and src_url and "filename=" in src_url, f"{n_two} {src_url}")
+        pg.keyboard.press("Escape")
+        check("按 Esc 关掉大图预览", pg.locator(".pcw-lb").count() == 0)
+
+        # 素材库：放大看（← → 翻页）、去掉（编号不移位；有步骤在用先问）
+        imgs = st3(pg, "s.assets.map((a, k) => a.kind === 'image' ? k + 1 : 0).filter(Boolean)")
+        pg.locator(".pcw-asset").first.hover()
+        pg.locator(".pcw-asset").first.locator("[data-tool=zoom]").click()
+        pg.wait_for_selector(".pcw-lb")
+        first = pg.locator(".pcw-lb-top span").first.inner_text()
+        pg.keyboard.press("ArrowRight")
+        second = pg.locator(".pcw-lb-top span").first.inner_text()
+        check("素材库里点放大：所有图片素材一起翻，→ 键翻到下一张", first == f"1 / {len(imgs)}" and second == f"2 / {len(imgs)}" and len(imgs) >= 3, f"{first} {second} {imgs}")
+        pg.keyboard.press("Escape")
+        used = st3(pg, "s.plan.steps[0].files['2:image'].asset")
+        tags_before = pg.locator(".pcw-asset .pcw-tag").all_inner_texts()
+        dlg["accept"] = False
+        n_dlg = len(dlg["msgs"])
+        pg.locator(f".pcw-asset:has(.pcw-tag:text-is('#{used}'))").hover()
+        pg.locator(f".pcw-asset:has(.pcw-tag:text-is('#{used}')) [data-tool=remove]").click()
+        pg.wait_for_timeout(400)
+        check("去掉一个方案里正在用的素材：先问一声；点「取消」什么都没变", len(dlg["msgs"]) == n_dlg + 1 and f"素材 #{used} 正在被步骤 1" in dlg["msgs"][-1] and pg.locator(".pcw-asset .pcw-tag").all_inner_texts() == tags_before, str(dlg["msgs"][-1:]))
+        dlg["accept"] = True
+        pg.locator(f".pcw-asset:has(.pcw-tag:text-is('#{used}'))").hover()
+        pg.locator(f".pcw-asset:has(.pcw-tag:text-is('#{used}')) [data-tool=remove]").click()
+        pg.wait_for_timeout(400)
+        tags_after = pg.locator(".pcw-asset .pcw-tag").all_inner_texts()
+        check("点「确定」：素材去掉了，别的素材的编号一个都没变（留了个空位），第 1 步提示还缺商品图", tags_after == [t for t in tags_before if t != f"#{used}"] and st3(pg, f"s.assets[{used - 1}].name") == "" and "还缺：商品图" in pg.locator(".pcw-notice").inner_text(), f"{tags_before} {tags_after}")
+        check("素材库标题里的个数跟着减少", f"素材库 · {len(tags_after)} 个" in pg.locator(".pcw-assets-head").inner_text(), pg.locator(".pcw-assets-head").inner_text())
+
+        # 运行中：显示预计时间和进度条，「运行全部」时顶上写第几步、预计还要多久
+        pg.locator("select[data-pc='0:2:image']").select_option(f"a:{[n for n in imgs if n != used][0]}")
+        h.comfy.delay = 4.0
+        pg.click("text=运行全部")
+        pg.wait_for_function("(document.querySelector('.pcw-step .pcw-badge') || {}).textContent.includes('预计')", timeout=15000)
+        run_badge = pg.locator(".pcw-step .pcw-badge").first.inner_text()
+        chain = pg.locator(".pcw-chain").inner_text()
+        pg.wait_for_function("(document.querySelector('.pcw-prog') || {style: {display: 'none'}}).style.display !== 'none'", timeout=10000)
+        check("运行中的步骤写着「预计约 … 」，有进度条；顶上写「运行全部：第 1 步运行中，后面还有 1 步，预计还要约 …」", "运行中" in run_badge and "预计约" in run_badge and "第 1 步运行中，后面还有 1 步，预计还要约" in chain, f"{run_badge} | {chain}")
+        wait3(pg, lambda b: len(b) == 2 and all(x.startswith("已完成") for x in b), 60)
+        h.comfy.delay = 1.0
+
+        # 报错说人话：认得的错误先写一句人话和怎么办，原文收在「详细信息」里；认不出的原样显示
+        pg.click("text=清空方案")
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("07")
+        pg.wait_for_selector(".pcw-step")
+        h.run_error = "[阿里 写提示词] 等了 60 秒没有回应：请求已经发出，阿里那边可能还在处理（可能已计费），先别连着重跑"
+        pg.get_by_role("button", name="运行这一步").click()
+        pg.wait_for_selector(".pcw-errbox", timeout=20000)
+        check("提交时报「等了 60 秒没有回应」：卡片里先写「对方这次回得太慢了」和怎么办（别连着重跑），原文在「详细信息」里",
+              pg.locator(".pcw-errtitle").inner_text() == "对方这次回得太慢了" and "可能已经计费" in pg.locator(".pcw-errtip").inner_text() and pg.locator(".pcw-errbox summary").inner_text() == "详细信息" and "等了 60 秒没有回应" in (pg.locator(".pcw-errbox pre").text_content() or ""), pg.locator(".pcw-errbox").text_content()[:160])
+        h.run_error = "something odd happened 12345"
+        pg.get_by_role("button", name="再试一次").click()
+        pg.wait_for_function("document.querySelector('.pcw-step .pcw-err') && document.querySelector('.pcw-step .pcw-err').textContent.includes('something odd')", timeout=20000)
+        check("认不出的错误原样显示，不乱解释", pg.locator(".pcw-errbox").count() == 0 and "something odd happened 12345" in pg.locator(".pcw-step .pcw-err").first.inner_text())
+        h.run_error = None
+
+        # 含糊的话不反问：附了图只说「帮我做一下」，模型反问时后端催一次，直接给方案
+        pg.click("text=清空方案")
+        pg.set_input_files(".pcw-left input[type=file]", prod)
+        pg.wait_for_selector(".pcw-draft")
+        n_llm = len(h.llm.requests)
+        n_ai = st3(pg, "s.messages.filter((m) => m.role === 'assistant').length")
+        say3(pg, "含糊求助：帮我做一下")
+        pg.wait_for_function("document.querySelectorAll('.pcw-step').length === 1", timeout=20000)
+        idle3(pg)
+        last = st3(pg, "s.messages.filter((m) => m.role === 'assistant').slice(-1)[0].text")
+        check("附了图只说含糊的话：模型第一次反问了，后端催了一次，直接排出「文案」方案，聊天里只多了一条回复（不是那句反问）",
+              len(h.llm.requests) == n_llm + 2 and h.llm.requests[-1]["json"]["messages"][-1]["content"].startswith("用户不会再补充信息了") and st3(pg, "s.plan.steps[0].workflow") == "07"
+              and "我先按" in last and st3(pg, "s.messages.filter((m) => m.role === 'assistant').length") == n_ai + 1, f"{len(h.llm.requests) - n_llm} {last}")
+        pg.remove_listener("dialog", on_dialog)
+        pg.click("text=清空全部")                                                                           # 这一段动过素材库（去掉过素材）：清空，给后面的场景放回一张商品图（素材 1 号），它们要用
+        pg.wait_for_function("window.__proChat.state.assets.length === 0", timeout=10000)
+        pg.set_input_files(".pcw-left input[type=file]", prod)
+        pg.wait_for_selector(".pcw-draft")
+        say3(pg, "你好")
+        idle3(pg)
+        pg.locator(".pcw-bar select.pcw-addsel").select_option("06")                                                  # 给后面的场景留一个方案（它们一开头要点「清空方案」）
         pg.wait_for_selector(".pcw-step")
 
         # 提交到一半刷新网页：用同一个 run_id 再提交，ComfyUI 那边只会收到一次
@@ -765,7 +934,7 @@ def main():
         check("回复一直没回到网页：这一步显示没成功，提示不知道请求有没有送到", b[0].startswith("没成功") and "不知道这次请求有没有送到" in pg.locator(".pcw-list").inner_text(), f"{b}")
         check("服务器其实收到并提交了一次（3 次重试用的是同一个 run_id，没有多提交）", len(h.comfy.runs) == n_runs + 1, str(len(h.comfy.runs) - n_runs))
         h.drop_run = 0
-        pg.locator(".pcw-step").first.locator("text=再试一次").click()
+        pg.locator(".pcw-step").first.get_by_role("button", name="再试一次").click()
         b = wait3(pg, lambda b: b and b[0].startswith("已完成"), 40)
         check("再点「再试一次」：沿用了上次的 run_id，接上了已经提交的那一次，ComfyUI 那边仍然只有一次", b[0].startswith("已完成") and len(h.comfy.runs) == n_runs + 1, f"{b} {len(h.comfy.runs) - n_runs}")
         check("结果里说明了「服务器上已经有这一次提交的记录」", "服务器上已经有这一次提交的记录" in pg.locator(".pcw-step").first.inner_text())
@@ -936,15 +1105,15 @@ def main():
         cp.route("**/pro/catalog", catalog_route)
         cp.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
         cp.goto(base)
-        cp.wait_for_selector(".pcw-bar select")
+        cp.wait_for_selector(".pcw-bar select.pcw-addsel")
         cp.wait_for_timeout(1000)
-        holder = cp.locator(".pcw-bar select option").first.inner_text()
-        check("目录请求还没回来：下拉写着「加载中」", "加载中" in holder and cp.locator(".pcw-bar select option").count() == 1 and len(held) >= 1, f"{holder} {len(held)}")
+        holder = cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text()
+        check("目录请求还没回来：下拉写着「加载中」", "加载中" in holder and cp.locator(".pcw-bar select.pcw-addsel option").count() == 1 and len(held) >= 1, f"{holder} {len(held)}")
         check("这时手动加步骤的下拉里还没有应用，聊天输入框照常能用", cp.locator(".pcw-row textarea").is_enabled())
         for r in held:
             r.continue_()
-        cp.wait_for_function("document.querySelectorAll('.pcw-bar select option').length > 5", timeout=20000)
-        check("目录回来后下拉里有 16 个应用，提示变成「＋ 添加一步…」", cp.locator(".pcw-bar select option").count() == 17 and cp.locator(".pcw-bar select option").first.inner_text() == "＋ 添加一步…", cp.locator(".pcw-bar select option").first.inner_text())
+        cp.wait_for_function("document.querySelectorAll('.pcw-bar select.pcw-addsel option').length > 5", timeout=20000)
+        check("目录回来后下拉里有 16 个应用，提示变成「＋ 添加一步…」", cp.locator(".pcw-bar select.pcw-addsel option").count() == 17 and cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text() == "＋ 添加一步…", cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text())
         cp.close()
         # 只有第一次请求失败：自动再试，不用点
         cat_mode["m"] = "first_fails"
@@ -956,28 +1125,28 @@ def main():
         cp = cx.new_page()
         cp.route("**/pro/catalog", flaky)
         cp.goto(base)
-        cp.wait_for_selector(".pcw-bar select")
-        cp.wait_for_function("document.querySelectorAll('.pcw-bar select option').length > 5", timeout=20000)
-        check("第一次读目录失败：过几秒自己再试，应用就出来了（不用点）", cp.locator(".pcw-bar select option").count() == 17 and seen[0] == 2, f"请求 {seen[0]} 次")
+        cp.wait_for_selector(".pcw-bar select.pcw-addsel")
+        cp.wait_for_function("document.querySelectorAll('.pcw-bar select.pcw-addsel option').length > 5", timeout=20000)
+        check("第一次读目录失败：过几秒自己再试，应用就出来了（不用点）", cp.locator(".pcw-bar select.pcw-addsel option").count() == 17 and seen[0] == 2, f"请求 {seen[0]} 次")
         cp.close()
         # 一直读不到：自动再试到次数用完，写「没加载出来，点这里重试」，点一下才再试
         cat_mode["m"] = "fail"
         cp = cx.new_page()
         cp.route("**/pro/catalog", catalog_route)
         cp.goto(base)
-        cp.wait_for_selector(".pcw-bar select")
+        cp.wait_for_selector(".pcw-bar select.pcw-addsel")
         try:
             cp.wait_for_function("window.__proChat.catalog().fails >= 3 && window.__proChat.catalog().status === 'failed'", timeout=40000)
         except PWTimeout:
             pass
-        shown = cp.locator(".pcw-bar select option").first.inner_text()
+        shown = cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text()
         check("目录一直读不到：自动再试 3 次后写「没加载出来，点这里重试」，聊天输入框照常能用", "点这里重试" in shown and cp.locator(".pcw-row textarea").is_enabled(), shown)
         cat_mode["m"] = "ok"
         cp.wait_for_timeout(6000)                                        # 比最长的重试间隔（5 秒）还久：要是还在自己重试，这时目录早就读到了（要用 Playwright 自己的等待：time.sleep 会让拦截请求的处理函数停着不跑）
-        check("自动重试用完以后不会自己再试（要点一下）", cp.locator(".pcw-bar select option").count() == 1)
-        cp.locator(".pcw-bar select").dispatch_event("mousedown")
-        cp.wait_for_function("document.querySelectorAll('.pcw-bar select option').length > 5", timeout=20000)
-        check("网络好了、点一下下拉：目录重新读到，应用都出来了", cp.locator(".pcw-bar select option").count() == 17 and cp.locator(".pcw-bar select option").first.inner_text() == "＋ 添加一步…")
+        check("自动重试用完以后不会自己再试（要点一下）", cp.locator(".pcw-bar select.pcw-addsel option").count() == 1)
+        cp.locator(".pcw-bar select.pcw-addsel").dispatch_event("mousedown")
+        cp.wait_for_function("document.querySelectorAll('.pcw-bar select.pcw-addsel option').length > 5", timeout=20000)
+        check("网络好了、点一下下拉：目录重新读到，应用都出来了", cp.locator(".pcw-bar select.pcw-addsel option").count() == 17 and cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text() == "＋ 添加一步…")
         cx.close()
 
         # 汇总

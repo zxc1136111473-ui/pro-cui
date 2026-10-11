@@ -143,6 +143,15 @@ def app_id_name(rel):
     return stem, stem
 
 
+def group_name(rel):
+    """1-图片/01-文生图.app.json → 「图片」（所在文件夹去掉数字前缀）；不在文件夹里的归「其他」。工作台里「添加一步」按它分组，给模型看的目录也按它分段。"""
+    parts = rel.replace(os.sep, "/").split("/")
+    if len(parts) < 2:
+        return "其他"
+    head, sep, rest = parts[0].partition("-")
+    return (rest if sep and head.isdigit() else parts[0]).strip() or "其他"
+
+
 def _num(v):
     return v if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else None
 
@@ -160,7 +169,7 @@ def load_app(wf, rel, oi):
     except Exception:
         defaults = {}
     app_id, name = app_id_name(rel)
-    app = {"id": app_id, "name": name, "path": rel.replace(os.sep, "/"), "desc": str(ex.get("appDescription") or "").strip(),
+    app = {"id": app_id, "name": name, "path": rel.replace(os.sep, "/"), "group": group_name(rel), "desc": str(ex.get("appDescription") or "").strip(),
            "cost": str(ex.get("appCost") or "").strip(), "cost_unless_model_file": str(ex.get("appCostUnlessModelFile") or "").strip(), "mode": None, "fields": {}, "files": {}, "outputs": [], "results": [], "produces": [],
            "titles": {str(n["id"]): (n.get("title") or n["type"]) for n in wf.get("nodes", [])}}
     entries = [(nid, widget, "", "", False, None) for nid, widget in ins]
@@ -341,7 +350,11 @@ def catalog_text(cat):
                 counts[tuple(f["options"])] = counts.get(tuple(f["options"]), 0) + 1
     tables = {o: [f"选项表{i}", False] for i, o in enumerate((o for o, c in counts.items() if c > 1), 1)}
     out = []
+    group = None
     for app in cat.values():
+        if app.get("group") != group:                      # 按分类分段（图片 / 文案与配音 / 视频）：模型先选大类再选应用，比 16 个平铺好找
+            group = app.get("group")
+            out.append(f"══ {group} ══")
         out.append(f"应用 {app['id']}「{app['name']}」")
         if app["desc"]:
             out.append(f"  用途：{app['desc']}")

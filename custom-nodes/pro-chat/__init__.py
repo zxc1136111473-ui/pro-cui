@@ -5,7 +5,8 @@
 结果出来后放进素材库，下一步直接拿来用。不碰你的画布，也不需要打开那些工作流。
 
 - 前端：web/pro-chat.js（工作台：聊天 / 方案卡片 / 结果板 / 素材库）。
-- 后端：POST /pro/chat（对话，调阿里）、POST /pro/run（运行一步）、POST /pro/stage（把输出目录里的结果放进素材库）、GET /pro/catalog（应用目录）；前端用 /api/pro/... 访问。
+- 后端：POST /pro/chat（对话，调阿里）、POST /pro/run（运行一步）、POST /pro/stage（把输出目录里的结果放进素材库）、POST /pro/preset（一键方案：点一下排好一组常用的步骤）、
+  GET /pro/catalog（应用目录 + 助手能选的模型 + 一键方案清单）；前端用 /api/pro/... 访问。
 - Key：阿里的和各阿里工作流用同一个，读服务器 relay_config.json 的 node_settings["31"]（只发往 dashscope.aliyuncs.com，不会回给前端）。
   界面里选了谷歌（gemini）模型时走网关：Key 和地址读 node_settings["1"]（「Key：网关」节点存的，只发往那里配置的网关地址，同样不回给前端）。
 - 目录、校验、对话、运行的逻辑在 catalog.py / chat.py / run.py（不依赖 ComfyUI，tests/test_chat.py 直接测）；这里只管接 ComfyUI 的环境。
@@ -23,7 +24,7 @@ import time
 from urllib.parse import urlparse
 
 from . import catalog as cat_mod
-from . import chat, run
+from . import chat, presets, run
 from .chat import ChatError
 
 NODE_CLASS_MAPPINGS = {}
@@ -269,11 +270,30 @@ def handle_stage(payload):
     return {"name": f"{cat_mod.IMAGE_DIR}/{base}", "kind": kind}
 
 
+def handle_preset(payload):
+    """一键方案：点一下排好一组常用的步骤（presets.PRESETS）。payload = {id, assets}：assets 是素材库（和 /pro/chat 一样），第一步要的商品图用里面最近的一张。
+    返回 {plan, warnings, name, image}，plan 的格式和 /pro/chat 给的一样（前端直接换上去）。"""
+    if not isinstance(payload, dict):
+        raise ChatError(400, "请求格式不对")
+    cat = cat_mod.build_catalog(workflows_dir(), object_info(), models_dir())
+    preset = presets.find(payload.get("id"))
+    if preset is None or not presets.usable(cat, preset):
+        raise ChatError(404, "没有这个一键方案（服务器上少了它要用的应用？）")
+    assets = chat.normalize_assets(payload.get("assets"))
+    for a in assets:
+        a["usable"] = asset_exists(a["name"])
+    plan, warns = chat.make_plan(presets.raw_plan(preset, assets), cat, assets)
+    if plan is None:                                         # 目录里的应用都在（usable 查过），到不了这里
+        raise ChatError(500, "一键方案没能排出来：" + "；".join(warns))
+    return {"plan": plan, "warnings": warns, "name": preset["name"], "image": preset["image"]}
+
+
 def handle_catalog(_payload=None):
     """应用目录（给工作台手动加步骤用）：每个应用的编号、名字、用途、能改什么；还有聊天助手能选的模型。"""
     cat = cat_mod.build_catalog(workflows_dir(), object_info(), models_dir())
-    return {"apps": [{"workflow": a["id"], "name": a["name"], "path": a["path"], "desc": a["desc"], "schema": cat_mod.schema(a)} for a in cat.values()],
-            "models": chat.model_list()}                     # 聊天助手能选的模型（界面下拉用）
+    return {"apps": [{"workflow": a["id"], "name": a["name"], "path": a["path"], "group": a["group"], "desc": a["desc"], "schema": cat_mod.schema(a)} for a in cat.values()],
+            "models": chat.model_list(),                     # 聊天助手能选的模型（界面下拉用）
+            "presets": presets.listing(cat)}                 # 一键方案（界面下拉用）
 
 
 # ── 路由（ComfyUI 里才注册；单独 import 这个文件做测试时跳过）──────────────────────────────────────
@@ -315,6 +335,10 @@ def _register_routes():
     @routes.post("/pro/stage")
     async def pro_stage(request):
         return await _call(request, handle_stage)
+
+    @routes.post("/pro/preset")
+    async def pro_preset(request):
+        return await _call(request, handle_preset)
 
     @routes.get("/pro/catalog")
     async def pro_catalog(request):

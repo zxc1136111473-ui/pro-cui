@@ -88,7 +88,7 @@ export const CSS = `
 .pcw-field.pcw-wide{grid-column:1 / -1}
 .pcw-field.pcw-changed>label{color:#2b74e8}
 .pcw-field>label{font-size:12px;opacity:.9;display:flex;gap:6px;align-items:center}
-.pcw-hint{font-size:11px;opacity:.55}
+.pcw-hint{font-size:11px;opacity:.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pcw-missing>label{color:#e0443e}
 .pcw-missing select{border-color:#e0443e}
 .pcw-field textarea,.pcw-field select,.pcw-field input[type=number],.pcw-field input[type=text]{width:100%;background:var(--comfy-input-bg,#222);color:var(--input-text,#ddd);border:1px solid var(--border-color,#4e4e4e);border-radius:6px;padding:5px 6px;font:inherit}
@@ -101,10 +101,10 @@ export const CSS = `
 .pcw-adv>summary{cursor:pointer;opacity:.75;font-size:12px}
 .pcw-filerow{display:flex;gap:6px;align-items:center}
 .pcw-filerow select{flex:1;min-width:0}
-.pcw-filepic{margin-top:4px;align-self:flex-start;max-height:96px;max-width:100%;border-radius:6px;border:1px solid var(--border-color,#4e4e4e)}
+.pcw-filepic{margin-top:4px;align-self:flex-start;max-height:64px;max-width:100%;border-radius:6px;border:1px solid var(--border-color,#4e4e4e)}
 .pcw-results{margin-top:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
 .pcw-res{position:relative;max-width:100%}
-.pcw-res img{display:block;max-width:100%;max-height:280px;border-radius:6px;cursor:zoom-in}
+.pcw-res img{display:block;max-width:100%;max-height:220px;border-radius:6px;cursor:zoom-in}
 .pcw-res video{display:block;max-width:100%;max-height:360px;border-radius:6px;background:#000}
 /* 抠图的结果是透明底：垫一层灰白棋盘格（常见的透明提示），不然透明的地方显示成黑底，看着像没抠干净 */
 .pcw-thumb,.pcw-res img,.pcw-filepic{background:#e8e8e8 repeating-conic-gradient(#c6c6c6 0% 25%, #e8e8e8 0% 50%) 0 0 / 14px 14px}
@@ -122,6 +122,44 @@ export const CSS = `
 .pcw-handle{position:fixed;left:56px;top:34%;z-index:1100;display:none;writing-mode:vertical-rl;letter-spacing:2px;padding:14px 7px;border:none;border-radius:0 8px 8px 0;background:var(--p-primary-color,#3b82f6);color:#fff;cursor:pointer;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .pcw-handle:hover{filter:brightness(1.15)}
 .pcw-launch{padding:12px;display:flex;flex-direction:column;gap:10px;font-size:13px}
+/* 紧凑：右栏够宽时，模式 / 文件这类控件占两列、下拉和数字并排，一屏摆下更多；文字框仍然整行 */
+.pcw-right{container-type:inline-size}
+.pcw-fields{grid-auto-flow:row dense}
+@container (min-width:620px){.pcw-field.pcw-span2{grid-column:span 2}}
+a.pcw-link{text-decoration:none}
+.pcw-fold{background:none;border:none;color:inherit;opacity:.7;cursor:pointer;font:inherit;font-size:14px;padding:0;width:18px}
+.pcw-fold:hover{opacity:1}
+.pcw-step.pcw-collapsed{padding-top:8px;padding-bottom:8px}
+.pcw-sumline{margin:3px 0 0 26px;font-size:12px}
+.pcw-prog{height:3px;border-radius:2px;background:rgba(127,127,127,.25);margin-top:6px;overflow:hidden}
+.pcw-prog>i{display:block;height:100%;width:0;background:var(--p-primary-color,#3b82f6);transition:width .9s linear}
+.pcw-chain{font-size:12px}
+.pcw-errbox{padding:6px 8px;border-radius:6px;background:rgba(224,68,62,.12)}
+.pcw-errtitle{font-weight:600}
+.pcw-errtip{margin:2px 0 4px;opacity:.9}
+.pcw-errbox details{font-size:12px;opacity:.85}
+.pcw-errbox pre{margin:4px 0 0;white-space:pre-wrap;word-break:break-word;font:inherit}
+/* 大图预览（点结果图 / 素材库里的放大按钮） */
+.pcw-lb{position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
+.pcw-lb:focus{outline:none}
+.pcw-lb-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;color:#eee;font-size:13px}
+.pcw-lb-stage{display:flex;gap:12px;align-items:center;justify-content:center;max-width:94%;min-height:0}
+.pcw-lb-stage img,.pcw-lb-stage video{display:block;max-width:100%;max-height:calc(100vh - 140px);min-width:0;border-radius:6px}
+.pcw-lb-stage img{background:#e8e8e8 repeating-conic-gradient(#c6c6c6 0% 25%, #e8e8e8 0% 50%) 0 0 / 14px 14px}
+.pcw-lb-stage.pcw-lb-two img,.pcw-lb-stage.pcw-lb-two video{max-width:46vw}
+.pcw-lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:64px;border:none;border-radius:8px;background:rgba(255,255,255,.12);color:#fff;font-size:22px;cursor:pointer}
+.pcw-lb-nav:hover{background:rgba(255,255,255,.28)}
+.pcw-lb-prev{left:12px}
+.pcw-lb-next{right:12px}
+.pcw-lb-info{color:#bbb;font-size:12px;min-height:16px}
+.pcw-lb .pcw-btn{background:rgba(255,255,255,.14);color:#fff;border-color:transparent;text-decoration:none}
+.pcw-lb .pcw-btn.pcw-on{background:var(--p-primary-color,#3b82f6)}
+/* 素材库缩略图上的小工具：放大 / 去掉 */
+.pcw-assettools{position:absolute;right:2px;top:2px;display:none;gap:2px}
+.pcw-asset:hover .pcw-assettools,.pcw-asset:focus-within .pcw-assettools{display:flex}
+@media (hover:none){.pcw-assettools{display:flex}}
+.pcw-assettools button{width:20px;height:20px;border-radius:10px;border:none;background:rgba(0,0,0,.65);color:#fff;cursor:pointer;font-size:12px;line-height:18px;padding:0}
+.pcw-assettools button:hover{background:rgba(0,0,0,.92)}
 `;
 
 const KIND_ICON = { video: "▶", audio: "♪", image: "▣", other: "▫" };
@@ -222,8 +260,9 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
   function fieldWrap(i, step, f, kids, wide, locked) {
     const changed = f.key in (step.fields || {});
     const reset = changed ? h("button", { class: "pcw-link", text: "↺ 恢复默认", title: "恢复默认值", disabled: locked, onclick: () => { delete step.fields[f.key]; actions.changed(); renderPlan(); } }) : null;
-    return h("div", { class: "pcw-field" + (wide ? " pcw-wide" : "") + (changed ? " pcw-changed" : "") },
-      h("label", null, h("span", { text: f.label }), reset), kids, f.hint ? h("div", { class: "pcw-hint", text: f.hint }) : null);
+    const span2 = !wide && f.hint && f.hint.length > 50;                               // 说明很长的控件占两列（说明最多显示两行，完整的放在鼠标悬停提示里）
+    return h("div", { class: "pcw-field" + (wide ? " pcw-wide" : span2 ? " pcw-span2" : "") + (changed ? " pcw-changed" : "") },
+      h("label", null, h("span", { text: f.label }), reset), kids, f.hint ? h("div", { class: "pcw-hint", title: f.hint, text: f.hint }) : null);
   }
 
   function control(i, step, f, locked) {
@@ -310,21 +349,32 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
       pic = h("div", { class: "pcw-hint", text: `运行步骤 ${ref.step} 之后，会自动用它做出来的${lib.KIND_LABEL[f.kind]}` });
     }
     const need = lib.isRequired(step, f);                   // 当前模式下必填（有的文件只在某个模式必填）
-    return h("div", { class: "pcw-field pcw-wide" + (cur ? " pcw-changed" : "") + (need && !cur ? " pcw-missing" : "") },
+    return h("div", { class: "pcw-field pcw-span2" + (cur ? " pcw-changed" : "") + (need && !cur ? " pcw-missing" : "") },
       h("label", null, h("span", { text: f.label + (need ? "（必填）" : "") }),
         cur ? h("button", { class: "pcw-link", text: "↺ 用默认", disabled: locked, onclick: () => { delete step.files[f.key]; actions.changed(); renderPlan(); } }) : null), row, pic);
   }
 
   // ── 方案：结果 ──────────────────────────────────────────────────────────────────────────────────────
-  function resultView(step) {
+  // 报错：认得的错误先写一句人话 + 怎么办，原文收在「详细信息」里；认不出的原样显示
+  function errorBox(text) {
+    const ex = lib.explainError(text);
+    if (!ex) return h("div", { class: "pcw-err", style: "flex:1 1 100%", text });
+    return h("div", { class: "pcw-err pcw-errbox", style: "flex:1 1 100%" }, h("div", { class: "pcw-errtitle", text: ex.title }), h("div", { class: "pcw-errtip", text: ex.tip }),
+      h("details", null, h("summary", { text: "详细信息" }), h("pre", { text })));
+  }
+
+  function resultView(step, stepIdx) {
     const r = step.result;
     if (!r) return null;
     const box = h("div", { class: "pcw-results" });
+    const visual = (r.items || []).filter((it) => it.kind === "image" || it.kind === "video");
+    const lbItems = visual.map((it) => ({ src: url(lib.viewPath(it.file)), kind: it.kind, name: it.file.filename, asset: it.asset || 0, label: it.label || "" }));
     for (const it of r.items || []) {
       const src = url(lib.viewPath(it.file));
-      const bar = it.asset ? h("div", { class: "pcw-resbar" }, h("span", { text: "素材 #" + it.asset }),
-        h("button", { class: "pcw-link", text: "在聊天里引用", onclick: () => actions.mention(it.asset) })) : null;
-      if (it.kind === "image") box.append(h("div", { class: "pcw-res" }, h("img", { src, loading: "lazy", onclick: () => window.open(src, "_blank") }), bar));
+      const bar = it.kind === "text" ? null : h("div", { class: "pcw-resbar" }, it.asset ? h("span", { text: "素材 #" + it.asset }) : null,
+        it.asset ? h("button", { class: "pcw-link", text: "在聊天里引用", onclick: () => actions.mention(it.asset) }) : null,
+        h("a", { class: "pcw-link", href: src, download: it.file.filename, title: "把这个文件下载到电脑上", text: "下载" }));
+      if (it.kind === "image") box.append(h("div", { class: "pcw-res" }, h("img", { src, loading: "lazy", title: "点一下看大图（可以对比原图、下载）", onclick: () => openLightbox(lbItems, visual.indexOf(it), stepIdx) }), bar));
       else if (it.kind === "video") box.append(h("div", { class: "pcw-res" }, h("video", { src, controls: true, preload: "metadata" }), bar));
       else if (it.kind === "audio") box.append(h("div", { class: "pcw-res" }, h("audio", { src, controls: true, preload: "metadata" }), bar));
       else if (it.kind === "text") {
@@ -334,7 +384,7 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
         if (it.text == null) actions.loadText(it, src, (t) => { pre.textContent = t; });
       }
     }
-    if (r.error) box.append(h("div", { class: "pcw-err", style: "flex:1 1 100%", text: r.error }));
+    if (r.error) box.append(errorBox(r.error));
     if (!(r.items || []).length && !r.error) box.append(h("div", { class: "pcw-muted", text: "没有产出结果（可能被跳过了）；可以点「在应用里打开」看看。" }));
     (r.warnings || []).forEach((w) => box.append(h("div", { class: "pcw-warn", style: "flex:1 1 100%", text: "（" + w + "）" })));
     return box;
@@ -347,7 +397,8 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     const t = STATUS_TEXT[st.kind];
     if (st.kind === "running") {
       const r = state.running;
-      return `${t} · 已 ${lib.elapsedText(Date.now() - ((step.run && step.run.started) || Date.now()))}${r && r.node ? " · " + lib.shortTitle(r.node) : ""}`;
+      const est = lib.estimateMs(actions.durations(), lib.durationKey(step));
+      return `${t} · 已 ${lib.elapsedText(Date.now() - ((step.run && step.run.started) || Date.now()))}${est ? `（预计${lib.etaText(est)}）` : ""}${r && r.node ? " · " + lib.shortTitle(r.node) : ""}`;
     }
     if (st.kind === "done") return `${t}${step.result && step.result.elapsed ? " · 用时 " + lib.elapsedText(step.result.elapsed) : ""}`;
     if (st.kind === "stale") return `${t}（${st.reason}）`;
@@ -383,12 +434,27 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     const sc = step.schema || {};
     const st = lib.stepStatus(state.plan, i);
     const locked = st.kind === "running" || !!state.busy;                          // 等 AI 回复的时候方案也不让改（回复一到整个方案会被换掉）
+    const collapsed = lib.isCollapsed(state.plan, i);
     const badge = h("span", { class: `pcw-badge pcw-b-${st.kind}`, text: badgeText(step, st) });
     const b = stepButtons(i);
     updateButtons(b, st);
-    const head = h("div", { class: "pcw-step-head" }, h("span", { class: "pcw-num", text: String(i + 1) }), h("b", { class: "pcw-step-name", text: step.name }), badge, h("span", { class: "pcw-spacer" }),
+    const fold = h("button", { class: "pcw-fold", title: collapsed ? "展开这一步" : "折叠这一步（只留一行，步骤多的时候一屏看得下）", "aria-expanded": String(!collapsed), text: collapsed ? "▸" : "▾", onclick: () => actions.toggleStep(i) });
+    const head = h("div", { class: "pcw-step-head" }, fold, h("span", { class: "pcw-num", text: String(i + 1) }), h("b", { class: "pcw-step-name", text: step.name }), badge, h("span", { class: "pcw-spacer" }),
       h("span", { style: "display:inline-flex;gap:6px" }, b.main, b.open, b.del));
-    const box = h("div", { class: "pcw-step", "data-step": String(i) }, head, step.note ? h("div", { class: "pcw-note", text: step.note }) : null);       // 费用 / 额度的提醒统一放在方案顶部（updateBar），卡片里不再重复
+    const prog = h("div", { class: "pcw-prog", style: "display:none" }, h("i"));
+    const box = h("div", { class: "pcw-step" + (collapsed ? " pcw-collapsed" : ""), "data-step": String(i) }, head, prog, step.note ? h("div", { class: "pcw-note", text: step.note }) : null);       // 费用 / 额度的提醒统一放在方案顶部（updateBar），卡片里不再重复
+    box._badge = badge;
+    box._buttons = b;
+    box._prog = prog;
+    updateProgress(box, step);
+    if (collapsed) {                                                    // 折叠：只留一行 + 一句摘要（模式 / 改过几项 / 有什么结果）+ 还缺什么 / 没成功
+      const line = [lib.stepSummary(step), lib.resultBrief(step.result)].filter(Boolean).join(" · ");
+      if (line) box.append(h("div", { class: "pcw-muted pcw-sumline", text: line }));
+      const missing = lib.missingRequired(step);
+      if (missing.length) box.append(h("div", { class: "pcw-err pcw-sumline", text: `还缺：${missing.map((f) => f.label).join("、")}（展开后点「上传…」或选素材）` }));
+      if (step.result && step.result.error) box.append(h("div", { class: "pcw-err pcw-sumline", text: "没成功，展开看原因" }));
+      return box;
+    }
     const common = Object.values(sc.fields || {}).filter((f) => !f.advanced);
     const advanced = Object.values(sc.fields || {}).filter((f) => f.advanced);
     const grid = h("div", { class: "pcw-fields" });
@@ -396,7 +462,7 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
       const cur = lib.currentMode(step);
       const sel = h("select", { "data-pc": `${i}:mode`, disabled: locked, onchange: () => { step.mode = sel.value === sc.mode.default ? null : sel.value; actions.changed(); renderPlan(); } },   // 重画：不同模式必填的文件不一样
         sc.mode.options.map((o) => h("option", { value: o, text: o, selected: o === cur })));
-      grid.append(h("div", { class: "pcw-field pcw-wide" }, h("label", null, h("span", { text: sc.mode.label || "模式" })), sel));
+      grid.append(h("div", { class: "pcw-field pcw-span2" }, h("label", null, h("span", { text: sc.mode.label || "模式" })), sel));
     }
     const texts = common.filter((f) => f.kind === "text");
     const files = Object.values(sc.files || {});
@@ -410,11 +476,19 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     }
     const open = st.kind !== "done" || !step.result;
     box.append(h("details", { class: "pcw-settings", open: open || undefined }, h("summary", { text: "设置" }), grid));
-    const results = resultView(step);
+    const results = resultView(step, i);
     if (results) box.append(results);                       // 注意：append(null) 会写出文字 "null"
-    box._badge = badge;
-    box._buttons = b;
     return box;
+  }
+
+  // 运行中的步骤：有历史用时记录就显示一条进度条（已过去 / 预计，最多到 95%）；没有记录就不显示（不瞎猜）
+  function updateProgress(box, step) {
+    const bar = box._prog;
+    if (!bar) return;
+    const est = step.state === "running" ? lib.estimateMs(actions.durations(), lib.durationKey(step)) : 0;
+    const pct = est ? lib.progressPercent(Date.now() - ((step.run && step.run.started) || Date.now()), est) : null;
+    bar.style.display = pct == null ? "none" : "";
+    if (pct != null) bar.firstChild.style.width = pct + "%";
   }
 
   // 只更新每张卡的状态标签和按钮（改设置时「要重跑」会变，不用重画控件）
@@ -427,6 +501,7 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
         el._badge.className = `pcw-badge pcw-b-${st.kind}`;
         el._badge.textContent = badgeText(step, st);
         updateButtons(el._buttons, st);
+        updateProgress(el, step);
       });
     }
     if (runBtn) updateBar();                                                // 没有方案时也要更新：顶上「添加一步」的下拉写着应用目录是加载中 / 没读到
@@ -437,21 +512,34 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     if (!hasPlan()) return;
     stepEls.forEach((el, i) => {
       const step = state.plan.steps[i];
-      if (el && step && step.state === "running") el._badge.textContent = badgeText(step, { kind: "running", reason: "" });
+      if (el && step && step.state === "running") { el._badge.textContent = badgeText(step, { kind: "running", reason: "" }); updateProgress(el, step); }
     });
+    if (chainEl) chainEl.textContent = chainText();
+  }
+
+  // 「运行全部」时顶上写：第几步在跑、后面还有几步、大概还要多久（每一步都有历史用时才给，不瞎猜）
+  function chainText() {
+    const c = state.chain, r = state.running;
+    if (!c || c.mode !== "all" || !r || !hasPlan() || !state.plan.steps[r.stepIdx]) return "";
+    const left = lib.pendingAfter(state.plan, r.stepIdx).length;
+    const rest = lib.remainingMs(state.plan, actions.durations(), r.stepIdx, Date.now() - r.start);
+    return `第 ${r.stepIdx + 1} 步运行中${left ? `，后面还有 ${left} 步` : "，这是最后一步"}${rest ? `，预计还要${lib.etaText(rest)}` : ""}`;
   }
 
   // 顶部工具条：运行 / 停止、添加一步、清空方案。元素只建一次（见上面的说明），状态变了原地更新
-  let runBtn, addSel, clearBtn;
+  let runBtn, addSel, clearBtn, presetSel, foldBtn, chainEl;
 
   function buildBar() {
     runBtn = h("button", { class: "pcw-btn pcw-btn-primary", onclick: () => (state.running ? actions.stop() : actions.runAll()) });
-    addSel = h("select", { title: "自己加一步（不用 AI 也能搭方案）", onchange: () => { if (addSel.value) actions.addStep(addSel.value); addSel.value = ""; } });
+    chainEl = h("span", { class: "pcw-muted pcw-chain" });
+    presetSel = h("select", { class: "pcw-presetsel", title: "一键方案：点一下排好一组常用的步骤（会换掉现在的方案）", onchange: () => { if (presetSel.value) actions.applyPreset(presetSel.value); presetSel.value = ""; } });
+    foldBtn = h("button", { class: "pcw-link", onclick: () => actions.toggleAll() });
+    addSel = h("select", { class: "pcw-addsel", title: "自己加一步（不用 AI 也能搭方案）", onchange: () => { if (addSel.value) actions.addStep(addSel.value); addSel.value = ""; } });
     const retryCatalog = () => { if (!(catalog() || []).length && catalogStatus && catalogStatus() === "failed") actions.reloadCatalog(); };      // 目录没读到时，点一下下拉就再试一次
     addSel.addEventListener("mousedown", retryCatalog);
     addSel.addEventListener("focus", retryCatalog);
     clearBtn = h("button", { class: "pcw-link", text: "清空方案", onclick: () => actions.clearPlan() });
-    barEl.append(runBtn, addSel, h("span", { class: "pcw-spacer" }), clearBtn);
+    barEl.append(runBtn, chainEl, presetSel, addSel, h("span", { class: "pcw-spacer" }), foldBtn, clearBtn);
   }
 
   function updateBar() {
@@ -465,12 +553,19 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     runBtn.title = blocked.length ? "有步骤还缺必填的素材，先补上" : state.busy ? "AI 正在想，等它回复后再运行" : "";
     const apps = catalog() || [];
     const holder = apps.length ? "＋ 添加一步…" : catalogStatus && catalogStatus() === "failed" ? "＋ 添加一步（应用目录没加载出来，点这里重试）" : "＋ 添加一步（应用目录加载中…）";
-    if (addSel.options.length !== apps.length + 1) {                      // 目录加载好了才补选项（下拉打开时不去动它）
+    if (addSel.options.length !== apps.length + 1) {                      // 目录加载好了才补选项（下拉打开时不去动它）；按分类（图片 / 文案与配音 / 视频）分组
       addSel.replaceChildren(h("option", { value: "", text: holder }),
-        ...apps.map((a) => h("option", { value: a.workflow, text: `${a.workflow} ${a.name}`, title: a.desc })));
+        ...lib.groupApps(apps).map((g) => h("optgroup", { label: g.group }, g.apps.map((a) => h("option", { value: a.workflow, text: `${a.workflow} ${a.name}`, title: a.desc })))));
     } else if (addSel.options[0].text !== holder) {
       addSel.options[0].text = holder;
     }
+    const pre = actions.presets();                                        // 一键方案：后端是旧版（没给清单）就不显示
+    presetSel.style.display = pre.length ? "" : "none";
+    if (presetSel.options.length !== pre.length + 1) presetSel.replaceChildren(h("option", { value: "", text: "⚡ 一键方案…" }), ...pre.map((p) => h("option", { value: p.id, text: p.name, title: p.desc })));
+    presetSel.disabled = running || !!state.busy;
+    foldBtn.style.display = hasPlan() && plan.steps.length >= 2 ? "" : "none";
+    foldBtn.textContent = hasPlan() && plan.steps.every((_, i) => lib.isCollapsed(plan, i)) ? "展开全部" : "折叠全部";
+    chainEl.textContent = chainText();
     addSel.disabled = running || !!state.busy || (!!plan && plan.steps.length >= lib.MAX_STEPS);
     clearBtn.style.display = hasPlan() ? "" : "none";
     clearBtn.disabled = running || !!state.busy;
@@ -497,9 +592,12 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
       stepsEl.replaceChildren();
       stepEls.length = 0;
       if (!hasPlan()) {
+        const pre = actions.presets();
         stepsEl.append(h("div", { class: "pcw-empty" },
           h("div", { text: "还没有方案。在左边说一句话，我来排步骤；也可以用上面的「＋ 添加一步」自己搭。" }),
-          h("div", { class: "pcw-muted", text: "每一步 = 一个应用（出图 / 出视频 / 配音 / 成片……）。前一步做出来的图、视频、音频，下一步可以直接用。" })));
+          h("div", { class: "pcw-muted", text: "每一步 = 一个应用（出图 / 出视频 / 配音 / 成片……）。前一步做出来的图、视频、音频，下一步可以直接用。" }),
+          pre.length ? h("div", { class: "pcw-muted", style: "margin-top:12px", text: "或者点一个一键方案（排好一组常用的步骤，设置再自己改）：" }) : null,
+          pre.length ? h("div", { class: "pcw-chips" }, pre.map((p) => h("button", { class: "pcw-chip", title: p.desc, text: "⚡ " + p.name + (p.image ? "（要先有商品图）" : ""), onclick: () => actions.applyPreset(p.id) }))) : null));
       } else {
         state.plan.steps.forEach((_, i) => { const c = stepCard(i); stepEls[i] = c; stepsEl.append(c); });
       }
@@ -507,12 +605,84 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     });
   }
 
+  // ── 大图预览 ────────────────────────────────────────────────────────────────────────────────────────
+  let lbEl = null;
+
+  function closeLightbox() {
+    if (lbEl) { lbEl.remove(); lbEl = null; }
+  }
+
+  // items: [{src, kind, name, asset, label}]；idx：先看哪一个；stepIdx：这些结果属于第几步（下标，素材库里的写 -1）：
+  // 这一步用了一张图当输入时，可以在「结果 / 原图 / 左右对比」之间切换；← → 翻页，Esc 或点空白处关闭
+  function openLightbox(items, idx, stepIdx) {
+    if (!items.length) return;
+    closeLightbox();
+    let cur = Math.max(0, Math.min(idx, items.length - 1)), mode = "result";
+    const source = stepIdx >= 0 && hasPlan() ? lib.sourceImage(state.plan, state.assets, stepIdx) : null;
+    const srcUrl = source ? url(lib.inputPath(source.name)) : "";
+    const top = h("div", { class: "pcw-lb-top" });
+    const stage = h("div", { class: "pcw-lb-stage" });
+    const info = h("div", { class: "pcw-lb-info" });
+    const prev = h("button", { class: "pcw-lb-nav pcw-lb-prev", title: "上一个（←）", text: "‹", onclick: () => go(-1) });
+    const next = h("button", { class: "pcw-lb-nav pcw-lb-next", title: "下一个（→）", text: "›", onclick: () => go(1) });
+    const media = (src, kind, label) => (kind === "video" ? h("video", { src, controls: true, preload: "metadata" })
+      : h("img", { src, alt: label || "", onload: (e) => { info.textContent = `${label ? label + " · " : ""}${e.target.naturalWidth} × ${e.target.naturalHeight}`; } }));
+    function go(d) {
+      const n = cur + d;
+      if (n < 0 || n >= items.length) return;
+      cur = n;
+      mode = "result";
+      draw();
+    }
+    function draw() {
+      const it = items[cur];
+      const showSource = !!source && it.kind === "image";
+      if (!showSource) mode = "result";
+      stage.classList.toggle("pcw-lb-two", mode === "both");
+      stage.replaceChildren(...(mode === "source" ? [media(srcUrl, "image", "原图")] : mode === "both" ? [media(srcUrl, "image", "原图"), media(it.src, it.kind, "结果")] : [media(it.src, it.kind, it.label || "结果")]));
+      const seg = (m, text) => h("button", { class: "pcw-btn pcw-btn-sm" + (mode === m ? " pcw-on" : ""), "data-lb": m, text, onclick: () => { mode = m; draw(); } });
+      top.replaceChildren(h("span", { text: `${cur + 1} / ${items.length}` }),
+        showSource ? seg("result", "结果") : null, showSource ? seg("source", "原图") : null, showSource ? seg("both", "左右对比") : null,
+        h("a", { class: "pcw-btn pcw-btn-sm", "data-lb": "download", href: mode === "source" ? srcUrl : it.src, download: mode === "source" ? lib.baseName(source.name) : it.name, text: "下载" }),
+        it.asset ? h("button", { class: "pcw-btn pcw-btn-sm", text: `在聊天里引用 #${it.asset}`, onclick: () => { closeLightbox(); actions.mention(it.asset); } }) : null,
+        h("button", { class: "pcw-btn pcw-btn-sm", "data-lb": "close", text: "关闭 ✕", onclick: closeLightbox }));
+      prev.style.display = cur > 0 ? "" : "none";
+      next.style.display = cur < items.length - 1 ? "" : "none";
+      if (lbEl && !lbEl.contains(document.activeElement)) lbEl.focus();                 // 刚点的按钮被重画掉了，焦点要回到预览上，不然 Esc / ← → 就没用了
+    }
+    lbEl = h("div", { class: "pcw-lb", tabindex: "-1", role: "dialog", "aria-label": "大图预览",
+      onclick: (e) => { if (e.target === lbEl || e.target === stage) closeLightbox(); },
+      onkeydown: (e) => { if (e.key === "Escape") closeLightbox(); else if (e.key === "ArrowLeft") go(-1); else if (e.key === "ArrowRight") go(1); else return; e.preventDefault(); e.stopPropagation(); } },
+      top, stage, info, prev, next);
+    root.append(lbEl);
+    draw();
+    lbEl.focus();
+  }
+
+  // 素材库里放大看：所有图片 / 视频素材一起翻
+  function previewAsset(n) {
+    const list = [];
+    state.assets.forEach((a, k) => { if (a.name && (a.kind === "image" || a.kind === "video")) list.push({ src: url(lib.inputPath(a.name)), kind: a.kind, name: lib.baseName(a.name), asset: k + 1, label: lib.assetLabel(a) }); });
+    const at = list.findIndex((x) => x.asset === n);
+    openLightbox(list, at < 0 ? 0 : at, -1);
+  }
+
   // ── 素材库 ──────────────────────────────────────────────────────────────────────────────────────────
   function renderAssets() {
     assetsEl.replaceChildren();
-    assetsEl.style.display = state.assets.length ? "" : "none";
-    assetsEl.append(h("div", { class: "pcw-assets-head", text: `素材库 · ${state.assets.length} 个（点一下可以在聊天里引用，比如「用 #3 做视频」）` }),
-      h("div", { class: "pcw-assets-list" }, state.assets.map((a, k) => { if (!a.name) return null; const t = thumb(a, k + 1); t.classList.add("pcw-asset"); t.addEventListener("click", () => actions.mention(k + 1)); return t; })));
+    const have = state.assets.filter((a) => a.name).length;                          // 去掉的素材留着空位（编号不能变），不算数
+    assetsEl.style.display = have ? "" : "none";
+    assetsEl.append(h("div", { class: "pcw-assets-head", text: `素材库 · ${have} 个（点一下可以在聊天里引用，比如「用 #3 做视频」；鼠标放上去可以放大或去掉）` }),
+      h("div", { class: "pcw-assets-list" }, state.assets.map((a, k) => {
+        if (!a.name) return null;
+        const t = thumb(a, k + 1);
+        t.classList.add("pcw-asset");
+        t.addEventListener("click", () => actions.mention(k + 1));
+        t.append(h("span", { class: "pcw-assettools" },
+          a.kind === "image" || a.kind === "video" ? h("button", { title: "放大预览", "aria-label": "放大预览", "data-tool": "zoom", text: "⤢", onclick: (e) => { e.stopPropagation(); previewAsset(k + 1); } }) : null,
+          h("button", { title: "从素材库里去掉（别的素材的编号不会变）", "aria-label": "从素材库里去掉", "data-tool": "remove", text: "×", onclick: (e) => { e.stopPropagation(); actions.removeAsset(k + 1); } })));
+        return t;
+      })));
     const list = assetsEl.querySelector(".pcw-assets-list");
     if (list) list.scrollLeft = list.scrollWidth;                                  // 新的在最右边，滚到能看见
   }

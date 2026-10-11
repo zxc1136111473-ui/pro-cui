@@ -11,6 +11,7 @@ import math
 import re
 
 from . import catalog as cat_mod
+from . import presets
 
 CHAT_API = "/compatible-mode/v1/chat/completions"
 GATEWAY_CHAT_API = "/v1/chat/completions"   # 网关（New API）的 OpenAI 兼容地址（没有阿里的 /compatible-mode）：谷歌的 gemini 走这里
@@ -32,6 +33,9 @@ SYSTEM = """你是「电商素材助手」，帮用户在 ComfyUI 里生成图�
 【应用目录】
 {catalog}
 
+【常用组合】（用户要的和下面某个差不多时，直接按它排，可以按需增减步骤；带视频的组合只在用户明确要视频时才用，视频额度很少；「步骤N.M」= 第 N 步产出的第 M 个文件）
+{combos}
+
 【素材库】（用户上传的文件，和前面步骤做出来的结果；编号从 1 开始，可以填进「文件字段」）
 {assets}
 
@@ -42,7 +46,7 @@ SYSTEM = """你是「电商素材助手」，帮用户在 ComfyUI 里生成图�
 1. 想做什么大致清楚 → 马上给出完整方案（plan 不能是 null）：reply 里用 1~3 句话说明分了几步、每步用哪个应用、什么模式、写了什么要点；plan.steps 按运行顺序写每一步。用户只给了商品名 / 主题就够了（比如只说「写红苹果的淘宝标题」，商品名就是全部信息：直接选文案应用，需求写「红苹果」），细节让后面的 AI 去补，用户可以在方案卡片里改，所以不要为了细节追问。用户没提到的设置不要写，保持默认；目录里的「高级设置」只有用户明确要求时才改。
 2. 一步能做完的就只写一步，别凑步骤；只有需要把前一步的结果交给后一步时才分步（例如：出图 → 用这张图出视频 → 给视频配音 / 做成片）。最多 6 步；用户没要的步骤不要加（尤其是视频：额度很少）。分步时别重复：配音、字幕、背景音乐整个方案只做一处——比如后面有「视频成片」负责配音，前面出视频的那一步就选「只出视频」的模式。
 3. 后一步要用前一步的结果：在 files 里把对应的文件字段填成「步骤N」（N 是排在前面的某一步的序号，取它产出的第 1 个该类型的文件）或「步骤N.M」（取第 M 个，比如「步骤1.2」是第 1 步出的第 2 张图）；要用素材库里已有的文件（用户上传的图片、之前做出来的某一张）就填素材库编号。只能引用排在前面的步骤，而且那个应用的「结果」里必须真的有该类型的文件。
-4. 只有这两种情况才追问（plan 设为 null，只问一个问题，reply 里不要说「已选择」「已准备」）：完全不知道要做什么；某一步需要图片 / 视频 / 音频，但素材库里没有、前面的步骤也做不出来（请用户点输入框旁的「附件」上传）。
+4. 只有这两种情况才追问（plan 设为 null，只问一个问题，reply 里不要说「已选择」「已准备」）：完全猜不出要做什么（没有图、没提商品、也没说要什么）；某一步需要图片 / 视频 / 音频，但素材库里没有、前面的步骤也做不出来（请用户点输入框旁的「附件」上传）。其余情况都不要追问：先给方案，用户不满意再改。
 5. 用户在修改方案 → 输出修改后的完整新方案（所有步骤，不是只写改动的部分）；没被要求改的步骤和字段原样保留（包括用户手动改过的值）。
 6. 闲聊、或问「你能做什么」→ 简短回答并举 2~3 个例子，plan 设为 null。
 7. 不要编造：workflow 填应用编号（字符串，如 "07"，必填）；mode 填该应用「模式」里的编号（数字）；选项类字段只能填列出的选项（选项后面括号里的说明不属于选项本身，填值只写括号前面的名字，或者完整的选项）；数字字段填数字（在给定范围内）；开关字段填 true / false；字段键、文件字段键必须是目录里给出的；素材只能填素材库里有的编号。目录里没有的需求（改视频内容、做 PPT 之类）直接说做不了，别硬凑。
@@ -52,7 +56,8 @@ SYSTEM = """你是「电商素材助手」，帮用户在 ComfyUI 里生成图�
 11. 两个人以上的对话 / 带角色的配音：用「多角色配音」（只要声音和字幕）或「对白成片」（配到视频 / 图片上）。对白脚本由你来写，填进「对白脚本」：每行「角色：台词」，口语化、每句 20 字以内、两三个来回就够；角色名填进「角色 N 名字」，要和脚本里的一字不差，最多 4 个角色。给每个角色挑音色时看选项后面写的性别和特点：男角色用男声、女角色用女声，老人 / 小孩 / 方言按人设挑，两个角色别用同一个音色，选项里没有的音色不要编。配到视频上时总字数别超过视频能念完的长度（每秒约 4~5 个字，Veo 视频约 10 秒，对白控制在 40 个字以内）。单人配音（只有一个声音）仍用「配音」或视频应用自带的配音，别用多角色。
 12. 想保持商品原样（形状、颜色、包装上的字一个像素都不能变）、只换背景 / 调位置大小 / 加阴影：先「商品抠图」做成透明底，再「图层合成」放到背景上（背景图用用户上传的，或先用「文生图」做一张只有背景、没有商品的图），要标签再接「图片后处理」；抠图和合成是分开的两步，改背景或位置只重做合成那一步。想让 AI 把商品和场景的光影融在一起（可以接受商品被重画一点），用「商品改图与合成」。两种做法差别要在 reply 里说清楚。
 13. reply 是给用户看的：用「你」称呼，语气简洁友好；说应用和模式时用名字，不要只说编号；reply 和 plan 要一致（plan 是 null 就不能说已经选好了）。
-14. 只回复一个 JSON 对象，不要任何别的文字、不要 markdown。键名必须一字不差（reply、plan、steps、workflow、mode、fields、files、note），每一步里一定要有 workflow：
+14. 用户的话含糊、但能猜出最可能的意思时，不要反问，直接按最常见的理解给方案，并在 reply 里用一句话说明你的理解（比如「我先按…做了，不对的话告诉我」）。例子：附了商品图只说「帮我写个提示词」「弄一下」→ 用「文案」应用的「看图写文案」模式（写电商用的图片 / 视频提示词也是它）；附了商品图只说「做点东西」「弄好看点」→ 用「商品一条龙」（主图 + 场景图 + 文案，不带视频）；只说「做个图」→ 用「文生图」；只说「做个视频」且有图 → 用「图生视频成片」；只说「写个文案 / 标题」→ 用「文案」。你上一轮如果已经追问过，这一轮不管信息够不够都必须给方案（缺的信息按最常见的情况定）。
+15. 只回复一个 JSON 对象，不要任何别的文字、不要 markdown。键名必须一字不差（reply、plan、steps、workflow、mode、fields、files、note），每一步里一定要有 workflow：
 {{"reply": "给用户看的话", "plan": null 或 {{"steps": [{{"workflow": "应用编号字符串", "mode": 模式编号（数字）或 null, "fields": {{"字段键": 值}}, "files": {{"文件字段键": 素材库编号（数字）或 "步骤N"}}, "note": "一句话：这一步做什么"}}], "note": "一句话说明整体思路"}}}}"""
 
 
@@ -185,7 +190,7 @@ def assets_text(assets):
 
 
 def system_prompt(cat, assets, plan):
-    return SYSTEM.format(catalog=cat_mod.catalog_text(cat), assets=assets_text(assets), plan=plan_text(plan, cat))
+    return SYSTEM.format(catalog=cat_mod.catalog_text(cat), combos=presets.combos_text(cat) or "（没有）", assets=assets_text(assets), plan=plan_text(plan, cat))
 
 
 def build_messages(system, history, vision):
@@ -372,6 +377,41 @@ def missing_required(plan):
     return [(i, f["label"], f["kind"]) for i, st in enumerate(plan["steps"], 1) for f in cat_mod.required_files(st["schema"], st["mode"]) if f["key"] not in st["files"]]
 
 
+ASK_MARK = re.compile(r"[？?]|还是|请问|告诉我")                                   # 回复里在问问题
+CAPABILITY = re.compile(r"你能做什么|能做什么|你会什么|你是谁|有什么功能|有哪些功能|怎么用|介绍一下")      # 问你能干什么：这种问题本来就不用方案
+ACTION = re.compile(r"帮我|给我|替我|请你|想要|需要|来一|做|写|生成|出一|弄|配音|画|改|抠|合成|拍|剪")     # 用户在提要求
+NUDGE = ("用户不会再补充信息了，请不要追问：按最常见的情况直接给出完整方案（plan 不能是 null），缺的信息你自己定，"
+         "在 reply 里用一句话说明你的理解（比如「我先按…做了，不对的话告诉我」）。仍然只回复要求的那个 JSON 对象。")
+
+
+def last_user_text(history):
+    for m in reversed(history):
+        if isinstance(m, dict) and m.get("role") == "user" and str(m.get("content", "")).strip():
+            return str(m["content"])
+    return ""
+
+
+def asked_before(history):
+    """用户这一句是不是在回答上一轮的追问：上一条助手消息没给方案、而且在问问题。"""
+    for m in reversed(history):
+        if isinstance(m, dict) and m.get("role") == "assistant":
+            try:
+                d = json.loads(str(m.get("content", "")))
+            except ValueError:
+                return False
+            return isinstance(d, dict) and not d.get("plan") and bool(ASK_MARK.search(str(d.get("reply", ""))))
+    return False
+
+
+def nudge_wanted(history, reply, has_images):
+    """模型没给方案、反过来在问用户：用户这一轮附了图并且提了要求（图就是商品，不用再问），或者这一句是在回答它上一轮的追问（不能再问第二遍）时，催它直接给方案；
+    闲聊 / 问你能做什么不催；没图没商品的含糊要求（只说「做个图」）也不催：那是真的猜不出，问一句是对的。"""
+    text = last_user_text(history)
+    if not ASK_MARK.search(reply) or CAPABILITY.search(text):
+        return False
+    return (has_images and bool(ACTION.search(text))) or asked_before(history[:-1])
+
+
 def chat_turn(payload, cat, key, base, assets, vision, post=None, model=None):
     """一轮对话：payload = {messages, plan}；assets = normalize_assets 的结果（usable 已设好）；vision = [(素材库编号, data URL)]（这一轮新附的图片）；
     model = resolve_model 给的模型条目（没给 = 自动）；key / base 要和它的 provider 对得上（阿里的 Key + 阿里地址，或网关的 Key + 网关地址）。
@@ -383,20 +423,29 @@ def chat_turn(payload, cat, key, base, assets, vision, post=None, model=None):
         raise ChatError(400, "没有收到消息")
     msgs = build_messages(system_prompt(cat, assets, payload.get("plan")), history, vision)
     entry = model or MODEL_BY_ID[VISION_MODEL if vision else TEXT_MODEL]
-    for attempt in (1, 2):                    # 格式不对 / 方案里没有可用的应用编号：把问题告诉模型，让它重写一次
+    first = None                              # 第一次的回复（没给方案、在追问）：催了一次还是没方案，就用它
+    for attempt in (1, 2):                    # 格式不对 / 方案里没有可用的应用编号 / 该给方案却在追问：把问题告诉模型，让它重写一次
         text = call_llm(msgs, key, base, entry["id"], post=post, provider=entry["provider"], temperature=None if entry.get("no_temperature") else 0.2)
         try:
             reply, raw_plan = parse_reply(text)
         except ValueError:
             if attempt == 2:
+                if first:                         # 催的那次格式坏了：不报错，用第一次的回复
+                    reply, plan, warns = first[0], None, first[1]
+                    break
                 raise ChatError(502, "模型两次都没有按格式回复，换个说法再试一次")
             fix = "你的回复不是合法的 JSON。请只回复要求的那个 JSON 对象。"
         else:
             plan, warns = make_plan(raw_plan, cat, assets)
             need = missing_required(plan) if plan else []
-            if raw_plan is None or (plan is not None and not need) or attempt == 2:
+            if raw_plan is None and attempt == 1 and nudge_wanted(history, reply, bool(vision)):
+                first = (reply, warns)
+                fix = NUDGE
+            elif raw_plan is None or (plan is not None and not need) or attempt == 2:
+                if first and plan is None:        # 催了一次还是没给方案：用第一次的回复（它的追问）
+                    reply, warns = first
                 break
-            if plan is not None:                   # 有的步骤漏了必填的文件（比如改商品图却没有图）：让它改一次，还不行就带着提示给用户
+            elif plan is not None:                   # 有的步骤漏了必填的文件（比如改商品图却没有图）：让它改一次，还不行就带着提示给用户
                 what = "、".join(f"步骤 {i} 的「{label}」" for i, label, _ in need)
                 fix = (f"你的方案里{what}必须有文件，但你没有给它指定。请重新输出完整的 JSON：素材库里有合适的就填编号；前面某一步能做出来就填「步骤N」；"
                        "都没有的话，改用不需要上传文件的应用（比如 01 文生图 / 02 海报），或者把 plan 设为 null、在 reply 里请用户先点「附件」上传。")

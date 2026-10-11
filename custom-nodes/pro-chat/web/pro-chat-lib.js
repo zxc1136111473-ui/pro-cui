@@ -364,6 +364,7 @@ export function adoptPlan(oldPlan, newPlan) {
     st.run = o ? o.run : undefined;
     st.result = o ? o.result : undefined;
     st.runs = o ? o.runs || 0 : 0;
+    if (o && typeof o.collapsed === "boolean") st.collapsed = o.collapsed;                    // 用户折叠 / 展开过的，换了新方案（同一个步骤）也保持
     st.ran = o && o.ran ? { base: o.ran.base, refs: remapRefs(o.ran.refs, map) } : undefined;
     st.usedRuns = {};
     if (o) for (const [d, n] of Object.entries(o.usedRuns || {})) if (map[d]) st.usedRuns[map[d]] = n;
@@ -428,6 +429,11 @@ export function valueToRef(v) {
   return m[1] === "a" ? { asset: Number(m[2]) } : { step: Number(m[2]), n: Number(m[3] || 1) };
 }
 
+// 方案里有没有「动过的东西」：跑过 / 有结果 / 改过设置 / 换过模式 / 选过文件。换方案之前要不要先问一声用
+export function planHasWork(plan) {
+  return !!plan && (plan.steps || []).some((st) => st.state !== "idle" || st.result || st.mode || Object.keys(st.fields || {}).length || Object.keys(st.files || {}).length);
+}
+
 // 方案里用到的费用 / 注意（给方案顶部的提醒）：[{index, name, text}]
 export function costNotes(plan) {
   return (plan ? plan.steps : []).map((s, i) => ({ index: i + 1, name: s.name, text: (s.schema && s.schema.cost) || "" })).filter((c) => c.text);
@@ -435,6 +441,164 @@ export function costNotes(plan) {
 
 export function planSummary(plan) {
   return (plan ? plan.steps : []).map((s, i) => `${i + 1}. ${s.name}`).join(" → ");
+}
+
+// ── 分类 / 预计时间 / 报错说人话 / 折叠 / 对比原图 ────────────────────────────────────────────────────────
+// 应用目录 → [{group, apps}]（按目录里出现的先后；没有分类的归「其他」）：「添加一步」的下拉按它分组
+export function groupApps(apps) {
+  const order = [], by = {};
+  for (const a of apps || []) {
+    if (!a) continue;
+    const g = String(a.group || "") || "其他";
+    if (!by[g]) { by[g] = []; order.push(g); }
+    by[g].push(a);
+  }
+  return order.map((group) => ({ group, apps: by[group] }));
+}
+
+// 一次运行耗时的记录（存在这个浏览器里）：key = 应用 + 模式（同一个应用不同模式差很多：网关出图约 1 分钟、阿里约半分钟、视频要好几分钟），
+// 每个 key 只留最近 5 次，预计时间取中位数（偶尔一次卡很久不会带偏）
+export const MAX_DURATIONS = 5;
+
+export function durationKey(step) {
+  const m = step.schema && step.schema.mode;
+  return `${step.workflow}|${m && Array.isArray(m.options) ? m.options.indexOf(currentMode(step)) : -1}`;
+}
+
+export function recordDuration(durations, key, ms) {
+  if (!durations || typeof durations !== "object" || !Number.isFinite(ms) || ms < 1000) return;      // 不到 1 秒的是缓存命中 / 没真跑，不当「用时」
+  const list = (durations[key] = (Array.isArray(durations[key]) ? durations[key] : []).filter((x) => Number.isFinite(x) && x > 0));
+  list.push(Math.round(ms));
+  while (list.length > MAX_DURATIONS) list.shift();
+}
+
+export function estimateMs(durations, key) {
+  const list = ((durations && durations[key]) || []).filter((x) => Number.isFinite(x) && x > 0).sort((a, b) => a - b);
+  return list.length ? list[Math.floor(list.length / 2)] : 0;
+}
+
+// 「约 40 秒」「约 1 分钟」「约 3 分钟」：不装精确
+export function etaText(ms) {
+  const s = Math.max(1, Math.round(ms / 1000));
+  if (s < 50) return `约 ${Math.max(5, Math.round(s / 5) * 5)} 秒`;
+  if (s < 90) return "约 1 分钟";
+  return `约 ${Math.round(s / 60)} 分钟`;
+}
+
+// 已经过去 / 预计，0~95：到不了 100（预计只是估的，没跑完就不显示满）；没有预计返回 null
+export function progressPercent(elapsedMs, estMs) {
+  if (!(estMs > 0) || !(elapsedMs >= 0)) return null;
+  return Math.min(95, Math.round((elapsedMs / estMs) * 100));
+}
+
+// 第 i 步（下标）跑完之后，「运行全部」还会接着跑的步骤（下标）：本来就要跑的，加上用到它们结果的（前面的一重跑，后面用它结果的就过期了，也要重跑）
+export function pendingAfter(plan, i) {
+  const will = new Set([i]);
+  const out = [];
+  for (let j = i + 1; j < plan.steps.length; j++) {
+    if (needsRun(plan, j) || depsOf(plan.steps[j]).some((d) => will.has(d - 1))) { will.add(j); out.push(j); }
+  }
+  return out;
+}
+
+// 从第 fromIdx 步（下标，正在跑的那一步）起，把后面要接着跑的步骤也算上，大概还要多久；任何一步没有记录就返回 null（不瞎猜）
+export function remainingMs(plan, durations, fromIdx, elapsedMs) {
+  let total = 0;
+  for (const i of [fromIdx, ...pendingAfter(plan, fromIdx)]) {
+    const est = estimateMs(durations, durationKey(plan.steps[i]));
+    if (!est) return null;
+    total += i === fromIdx ? Math.max(est - (elapsedMs || 0), 5000) : est;
+  }
+  return total;
+}
+
+// 报错说人话：认得的几种错误给一句人话和怎么办，认不出返回 null（界面就只显示原文）。规则按「先匹配到的」，原文都是这个系统里真出现过的写法
+export const ERROR_RULES = [
+  [/没有拿到网关的 Key|没有 API Key|还没有(?:阿里|网关) Key|Key 没填/i, "还没填 Key", "到 ComfyUI 的节点图里展开标题是「Key：阿里」或「Key：网关」的节点，填一次 apikey（填过一次，其他应用也能用）"],
+  [/HTTP 401|invalid_api_key|Invalid token|Incorrect API key|API key.*(?:invalid|incorrect)|未授权/i, "Key 不对或者已经失效", "检查「Key：…」节点里填的 Key；也可能是在服务商后台被停用 / 过期了"],
+  [/HTTP 429|Throttling|限流|rate limit|too many requests/i, "调用太频繁，被对方限流了", "等一分钟再点「再试一次」"],
+  [/model_not_found|Model not exist|不认识的模型|The model .* does not exist/i, "这个模型对方没有", "名字写错了或者已经下线：在这一步的设置里换一个模型"],
+  [/等了 \d+ 秒没有回应|回得太慢|ReadTimeout|timed out|超时/i, "对方这次回得太慢了", "请求已经发出去了，可能已经计费——先别连着重跑，等一会儿再点「再试一次」"],
+  [/不知道这次请求有没有送到/, "没收到服务器的回复", "服务器可能已经收到了请求：再点「再试一次」，会带着同一个编号重试，服务器收到过的不会重复提交，也不会重复计费"],       // 工作台自己的提示（网页到服务器之间断了），要排在「连不上」前面：那条说的是「请求没发出去」
+  [/连不上|ConnectionError|Connection aborted|Connection refused|Name or service not known/i, "网络没连上", "请求没有发出去（不会计费）：稍等几秒再点「再试一次」"],
+  [/额度|quota|insufficient|余额不足/i, "额度用完了", "视频（Veo）每天只有约 3 个额度；其他的到服务商后台看看余额"],
+  [/safety|审核|违规|敏感|blocked|content policy/i, "内容没通过对方的审核", "换一种说法，或者换一张图再试"],
+];
+
+export function explainError(text) {
+  const t = String(text || "");
+  for (const [re, title, tip] of ERROR_RULES) if (re.test(t)) return { title, tip };
+  return null;
+}
+
+// 步骤折叠：step.collapsed 是 true / false 时按用户选的；没选过（undefined）时，方案有 4 步以上就只展开最该看的那一步（第一个还没做完的），其余折叠成一行，一屏看得下
+// （2~3 步的方案都展开：步骤少，一屏放得下，设置也都摆在眼前）
+export const AUTO_COLLAPSE_FROM = 4;
+
+export function focusIndex(plan) {
+  const i = plan.steps.findIndex((_, k) => needsRun(plan, k));
+  return i < 0 ? 0 : i;
+}
+
+export function isCollapsed(plan, i) {
+  const s = plan.steps[i];
+  if (typeof s.collapsed === "boolean") return s.collapsed;
+  return plan.steps.length >= AUTO_COLLAPSE_FROM && i !== focusIndex(plan);
+}
+
+export function setAllCollapsed(plan, on) {
+  for (const s of plan.steps) s.collapsed = !!on;
+}
+
+// 折叠起来的步骤只剩一行，补一句：用的什么模式、改过几项设置
+export function stepSummary(step) {
+  const parts = [];
+  const mode = currentMode(step);
+  if (step.schema && step.schema.mode && mode) parts.push(mode);
+  const n = Object.keys(step.fields || {}).length;
+  if (n) parts.push(`改过 ${n} 项设置`);
+  return parts.join(" · ");
+}
+
+// 折叠起来的步骤后面补一句结果有什么：「结果：2 张图片、2 段文字」（出错信息那种只在出错时出现的文字不算）
+const RESULT_NOUN = { image: "张图片", video: "个视频", audio: "段音频", text: "段文字" };
+export function resultBrief(result) {
+  const c = {};
+  for (const it of (result && result.items) || []) if (!it.isError) c[it.kind] = (c[it.kind] || 0) + 1;
+  const parts = ["image", "video", "audio", "text"].filter((k) => c[k]).map((k) => `${c[k]} ${RESULT_NOUN[k]}`);
+  return parts.length ? "结果：" + parts.join("、") : "";
+}
+
+// 这一步的「原图」：它用的第一个图片文件（素材库里的，或前面步骤做出来的）→ 素材库里的素材 {name, kind, label, n}，没有返回 null。结果大图的「对比原图」用
+export function sourceImage(plan, assets, i) {
+  const step = plan.steps[i];
+  const files = (step.schema && step.schema.files) || {};
+  for (const [k, ref] of Object.entries(step.files || {})) {
+    if (!files[k] || files[k].kind !== "image" || !ref) continue;
+    let n = 0;
+    if (ref.asset) n = ref.asset;
+    else if (ref.step && ref.step <= i) n = stepOutputs(plan.steps[ref.step - 1]).image[(ref.n || 1) - 1] || 0;
+    const a = n ? assets[n - 1] : null;
+    if (a && a.name && a.kind === "image") return { ...a, n };
+  }
+  return null;
+}
+
+// 素材库里的第 n 个被哪些步骤用着（步骤序号，从 1 数）
+export function usersOfAsset(plan, n) {
+  const hit = [];
+  (plan ? plan.steps : []).forEach((st, i) => { if (Object.values(st.files || {}).some((r) => r && r.asset === n)) hit.push(i + 1); });
+  return hit;
+}
+
+// 删掉素材库里的第 n 个：编号是位置，不能让后面的编号移位（方案里的引用、聊天里说过的「素材 3」都靠它），所以留一个空位（和存档里坏掉的条目一样）；
+// 方案里直接引用它的文件设置也去掉（那一步会变成「还缺文件」/ 要重跑）。返回被改动的步骤序号
+export function removeAsset(assets, plan, n) {
+  if (!Number.isInteger(n) || n < 1 || !assets[n - 1] || !assets[n - 1].name) return [];
+  assets[n - 1] = { name: "", kind: "other", label: "" };
+  const hit = usersOfAsset(plan, n);
+  for (const st of plan ? plan.steps : []) for (const [k, r] of Object.entries(st.files || {})) if (r && r.asset === n) delete st.files[k];
+  return hit;
 }
 
 // ── 小工具 ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -598,6 +762,7 @@ function cleanStep(s) {
   if (result) st.result = result;
   const run = cleanRun(s.run);
   if (run) st.run = run;
+  if (typeof s.collapsed === "boolean") st.collapsed = s.collapsed;
   if (typeof s.lostRunId === "string" && s.lostRunId) st.lostRunId = s.lostRunId.slice(0, 80);       // 上次提交时网络断了、不知道服务器收没收到：再试这一步时沿用的 run_id
   if (isObj(s.ran) && typeof s.ran.base === "string") st.ran = { base: s.ran.base, refs: isObj(s.ran.refs) ? s.ran.refs : {} };
   if (st.state === "running" && !(st.run && (st.run.promptId || st.run.runId))) st.state = "interrupted";

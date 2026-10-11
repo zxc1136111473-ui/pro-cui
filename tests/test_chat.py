@@ -19,7 +19,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 WF_DIR = os.path.join(ROOT, "workflows")
 OI = json.load(open(os.path.join(os.path.dirname(__file__), "object_info_subset.json"), encoding="utf-8"))
 pc = _load.load("pro-chat")
-cat_mod, chat, run = pc.cat_mod, pc.chat, pc.run
+cat_mod, chat, run, presets = pc.cat_mod, pc.chat, pc.run, pc.presets
 ChatError = chat.ChatError
 
 _spec = importlib.util.spec_from_file_location("t_pro_flow_chat", os.path.join(ROOT, "custom-nodes", "pro-flow", "__init__.py"))
@@ -951,6 +951,171 @@ class ChatTurn(unittest.TestCase):
         self.assertEqual(cm.exception.status, 503)
 
 
+class Groups(unittest.TestCase):
+    """应用按文件夹分类：「添加一步」的下拉和给模型看的目录都按它分组。"""
+
+    def test_group_name_comes_from_the_folder_without_its_number(self):
+        g = cat_mod.group_name
+        self.assertEqual([g("1-图片/01-文生图.app.json"), g("2-文案与配音/07-文案.app.json"), g("3-视频/10-x.app.json")], ["图片", "文案与配音", "视频"])
+        self.assertEqual([g("工具/a.app.json"), g("x-y/z.app.json"), g("12-/a.app.json"), g("a.app.json"), g("")], ["工具", "x-y", "其他", "其他", "其他"])
+        self.assertEqual(g("1-图片\\01.app.json".replace("\\", os.sep)), "图片" if os.sep == "/" else g("1-图片/01.app.json"))
+
+    def test_every_app_has_a_group_and_the_catalog_text_is_split_by_it(self):
+        self.assertEqual({a["group"] for a in CAT.values()}, {"图片", "文案与配音", "视频"})
+        self.assertEqual([CAT[k]["group"] for k in ("01", "06", "16", "07", "13", "10", "14")], ["图片"] * 3 + ["文案与配音"] * 2 + ["视频"] * 2)
+        text = cat_mod.catalog_text(CAT)
+        heads = [l for l in text.split("\n") if l.startswith("══")]
+        self.assertEqual(heads, ["══ 图片 ══", "══ 文案与配音 ══", "══ 视频 ══"])
+        self.assertLess(text.index("══ 图片 ══"), text.index("应用 01「文生图」"))
+        self.assertLess(text.index("应用 16「图层合成」"), text.index("══ 文案与配音 ══"))
+        self.assertLess(text.index("应用 13「多角色配音」"), text.index("══ 视频 ══"))
+        self.assertLess(text.index("══ 视频 ══"), text.index("应用 10「文生视频成片」"))
+
+
+class Presets(unittest.TestCase):
+    """一键方案：每一个都要能在真实的应用目录上排出来，必填的文件有着落。"""
+
+    @staticmethod
+    def with_image():
+        a = assets_of(("助手/a.png", "商品图"))
+        return a
+
+    def test_every_preset_builds_on_the_real_catalog(self):
+        ids = [p["id"] for p in presets.PRESETS]
+        self.assertEqual(ids, ["product_full", "cutout_bg", "image_to_video", "promo_set"])
+        self.assertEqual(len(set(ids)), len(ids))
+        for p in presets.PRESETS:
+            self.assertTrue(presets.usable(CAT, p), p["id"])
+            for assets, need_note in ((self.with_image(), False), (assets_of(), p["image"])):
+                plan, warns = chat.make_plan(presets.raw_plan(p, assets), CAT, assets)
+                self.assertEqual([st["workflow"] for st in plan["steps"]], [st["workflow"] for st in p["steps"]], p["id"])
+                self.assertEqual(plan["note"], p["name"])
+                if not need_note:
+                    self.assertEqual(warns, [], p["id"])                                              # 有图（或根本不要图）：一句提示都没有
+                    self.assertEqual(chat.missing_required(plan), [], p["id"])                         # 必填的文件都有着落
+                else:                                                                                  # 要图却没有图：只有「商品图必须有」这一句
+                    self.assertEqual(len(warns), 1, (p["id"], warns))
+                    self.assertIn("必须有", warns[0])
+                for st in plan["steps"]:
+                    self.assertTrue(st["note"], p["id"])                                               # 每步都有一句说明
+
+    def test_the_references_between_steps_point_at_files_the_earlier_step_really_makes(self):
+        plan, _ = chat.make_plan(presets.raw_plan(presets.find("product_full"), self.with_image()), CAT, self.with_image())
+        s1, s2 = plan["steps"]
+        self.assertEqual(s1["files"], {"3:image": {"asset": 1}})
+        self.assertEqual(s2["files"], {"2:image": {"step": 1, "n": 2}})                                  # 06 出两张图：白底主图、场景图；用第 2 张（场景图）做视频
+        self.assertIn("图片 ×2", CAT["06"]["results"])
+        self.assertEqual(s2["mode"], CAT["12"]["mode"]["options"][0])
+        plan, _ = chat.make_plan(presets.raw_plan(presets.find("cutout_bg"), self.with_image()), CAT, self.with_image())
+        self.assertEqual((plan["steps"][1]["mode"], plan["steps"][1]["files"]), (CAT["16"]["mode"]["options"][1], {"2:image": {"step": 1, "n": 1}}))
+        self.assertEqual(plan["steps"][1]["mode"], "放到纯色背景上")
+
+    def test_the_latest_usable_image_is_the_one_used(self):
+        assets = assets_of(("助手/a.png", "旧图"), ("助手/b.png", "坏了的图"), ("助手/c.mp3", "音频"), ("助手/d.png", "新图"), ("助手/e.mp4", "视频"), usable=["助手/a.png", "助手/c.mp3", "助手/d.png", "助手/e.mp4"])
+        raw = presets.raw_plan(presets.find("product_full"), assets)
+        self.assertEqual(raw["steps"][0]["files"], {"3:image": 4})                                        # 第 4 个（d.png）：最近的、还在的图片，不是视频 / 音频，不是坏了的
+        self.assertEqual(raw["steps"][1]["files"], {"2:image": "步骤1.2"})
+        for none in (assets_of(), assets_of(("助手/c.mp3", "音频")), assets_of(("助手/b.png", "坏"), usable=[])):
+            self.assertEqual(presets.raw_plan(presets.find("product_full"), none)["steps"][0]["files"], {})
+        self.assertEqual(presets.find("product_full")["steps"][0]["files"], {"3:image": "image"})        # 模板本身不被改
+
+    def test_listing_only_has_presets_whose_apps_exist(self):
+        self.assertEqual([p["id"] for p in presets.listing(CAT)], [p["id"] for p in presets.PRESETS])
+        self.assertEqual([sorted(p) for p in presets.listing(CAT)], [["desc", "id", "image", "name"]] * 4)
+        no12 = {k: v for k, v in CAT.items() if k != "12"}
+        self.assertEqual([p["id"] for p in presets.listing(no12)], ["cutout_bg", "promo_set"])
+        self.assertNotIn("商品全套", presets.combos_text(no12))
+        self.assertIsNone(presets.find("nope"))
+        self.assertIsNone(presets.find(None))
+        self.assertIsNone(presets.find(["product_full"]))
+
+    def test_the_combos_are_in_the_system_prompt_with_the_video_warning(self):
+        sp = chat.system_prompt(CAT, [], None)
+        self.assertIn("【常用组合】", sp)
+        self.assertIn("- 商品全套（主图 + 场景图 + 文案 → 视频）：06「商品一条龙」", sp)
+        self.assertIn("12「图生视频成片」（模式 1，2:image 填步骤1.2）", sp)
+        self.assertIn("带视频的组合只在用户明确要视频时才用", sp)
+        self.assertNotIn("{combos}", sp)
+
+
+class FewerQuestions(unittest.TestCase):
+    """含糊的要求（附了图只说「帮我写个提示词」）不要反问：提示词里写明了，模型还是反问时后端催一次。"""
+    ASKING = {"reply": "你想让我帮你写提示词，但没说具体用在哪儿——是想生成产品宣传图？还是做电商详情页文案？", "plan": None}
+    PLANNED = {"reply": "我先按「看图写文案」做了，不对的话告诉我。", "plan": {"steps": [{"workflow": "07", "mode": 2, "fields": {}, "files": {"3:image": 1}, "note": "看图写文案"}]}}
+    IMG = [(1, "data:image/jpeg;base64,AA")]
+
+    def turn(self, post, history, vision=(), assets=()):
+        return chat.chat_turn({"messages": history, "plan": None}, CAT, "k", "https://x", list(assets), list(vision), post=post)
+
+    def user(self, text):
+        return {"role": "user", "content": text}
+
+    def test_the_prompt_says_not_to_ask_when_the_meaning_can_be_guessed(self):
+        sp = chat.system_prompt(CAT, [], None)
+        self.assertIn("含糊、但能猜出最可能的意思时，不要反问", sp)
+        self.assertIn("「帮我写个提示词」", sp)
+        self.assertIn("你上一轮如果已经追问过，这一轮不管信息够不够都必须给方案", sp)
+        self.assertIn("完全猜不出要做什么（没有图、没提商品、也没说要什么）", sp)
+
+    def test_nudge_wanted_rules(self):
+        ask = self.ASKING["reply"]
+        nw = chat.nudge_wanted
+        h1 = [self.user("帮我写一段提示词")]
+        self.assertTrue(nw(h1, ask, True))                                                                  # 附了图 + 提了要求 + 模型在反问 → 催
+        self.assertFalse(nw(h1, ask, False))                                                                # 没附图的含糊要求：真猜不出，问一句是对的
+        self.assertFalse(nw(h1, "好的，已经写好了。", True))                                                 # 没在问问题
+        self.assertFalse(nw([self.user("你能做什么")], ask, True))                                         # 问你能做什么：本来就没有方案
+        self.assertFalse(nw([self.user("（附了素材）")], ask, True))                                       # 只附了图什么都没说：问一句是对的
+        answered = [self.user("帮我写一段提示词"), {"role": "assistant", "content": json.dumps(self.ASKING, ensure_ascii=False)}, self.user("红苹果")]
+        self.assertTrue(nw(answered, "还想确认一下：要横版还是竖版？", False))                                # 这句是在回答它上一轮的追问，不能再问第二遍
+        calm = [self.user("你好"), {"role": "assistant", "content": json.dumps({"reply": "我能帮你出图、出视频。", "plan": None}, ensure_ascii=False)}, self.user("谢谢")]
+        self.assertFalse(nw(calm, "不客气，还有别的要做的吗？", False))                                      # 上一轮没追问：这只是客气话
+        planned = [self.user("做个图"), {"role": "assistant", "content": json.dumps(self.PLANNED, ensure_ascii=False)}, self.user("再亮一点")]
+        self.assertFalse(nw(planned, "要亮多少？", False))                                                   # 上一轮给了方案：改方案时问一句可以
+
+    def test_a_question_instead_of_a_plan_gets_one_nudge_and_the_plan_is_used(self):
+        post = FakePost(llm(self.ASKING), llm(self.PLANNED))
+        out = self.turn(post, [self.user("帮我写一段提示词\n（这条消息附带了素材库的 1 号）")], vision=self.IMG, assets=assets_of(("助手/a.png", "商品")))
+        self.assertEqual(len(post.calls), 2)
+        self.assertEqual([st["workflow"] for st in out["plan"]["steps"]], ["07"])
+        self.assertEqual(out["reply"], self.PLANNED["reply"])
+        msgs = post.calls[1]["json"]["messages"]
+        self.assertEqual(msgs[-1]["content"], chat.NUDGE)                                                    # 催的话原样发给模型
+        self.assertEqual(json.loads(msgs[-2]["content"])["reply"], self.ASKING["reply"])                    # 它自己的追问也带着，它知道自己问过了
+        self.assertIn("不要追问", chat.NUDGE)
+        self.assertIn("plan 不能是 null", chat.NUDGE)
+
+    def test_if_the_nudge_does_not_help_the_first_reply_is_kept(self):
+        for second in (llm(self.ASKING), llm("这不是 JSON"), llm({"reply": "还是想问：你要什么风格？", "plan": None})):
+            post = FakePost(llm(self.ASKING), second)
+            out = self.turn(post, [self.user("帮我写一段提示词")], vision=self.IMG, assets=assets_of(("助手/a.png", "商品")))
+            self.assertEqual(len(post.calls), 2)
+            self.assertEqual((out["plan"], out["reply"]), (None, self.ASKING["reply"]))                     # 只催一次；催完还是没方案 / 格式坏了，原样给用户第一次的话，不报错
+
+    def test_no_nudge_for_chit_chat_or_text_only_vague_requests_or_plans(self):
+        for hist, vision, first in (([self.user("你好")], (), {"reply": "你好！有什么要做的吗？", "plan": None}),
+                                    ([self.user("你能做什么")], self.IMG, {"reply": "我能出图、写文案、配音，你想做哪个？", "plan": None}),
+                                    ([self.user("做个图")], (), {"reply": "想做什么样的图？", "plan": None}),
+                                    ([self.user("帮我写一段提示词")], self.IMG, self.PLANNED)):
+            post = FakePost(llm(first), llm(self.PLANNED))
+            out = self.turn(post, hist, vision=vision, assets=assets_of(("助手/a.png", "商品")) if vision else ())
+            self.assertEqual(len(post.calls), 1, hist)
+            self.assertEqual(out["reply"], first["reply"])
+
+    def test_answering_its_question_and_being_asked_again_gets_a_nudge(self):
+        hist = [self.user("帮我写一段提示词"), {"role": "assistant", "content": json.dumps(self.ASKING, ensure_ascii=False)}, self.user("帮我写个提示词")]
+        post = FakePost(llm({"reply": "那你要电商主图还是详情页？", "plan": None}), llm(self.PLANNED))
+        out = self.turn(post, hist, assets=assets_of(("助手/a.png", "商品")))
+        self.assertEqual(len(post.calls), 2)
+        self.assertEqual([st["workflow"] for st in out["plan"]["steps"]], ["07"])
+
+    def test_a_bad_format_first_reply_and_the_nudge_do_not_stack_up(self):
+        post = FakePost(llm("不是 JSON"), llm(self.ASKING), llm(self.PLANNED))
+        out = self.turn(post, [self.user("帮我写一段提示词")], vision=self.IMG, assets=assets_of(("助手/a.png", "商品")))
+        self.assertEqual(len(post.calls), 2)                                                                 # 最多两次：第一次格式坏了、重写的是追问 → 不再催第三次，追问原样给用户
+        self.assertEqual((out["plan"], out["reply"]), (None, self.ASKING["reply"]))
+
+
 class ChatModels(unittest.TestCase):
     """助手（聊天）能选的模型：清单、选择规则、阿里 / 网关（谷歌）两条路。"""
     GW = "http://airelay-newapi:3000"
@@ -1609,6 +1774,34 @@ class Glue(unittest.TestCase):
             out, sent = self.chat_with(weird)
             self.assertEqual((sent["json"]["model"], out["model"]), (chat.TEXT_MODEL, chat.TEXT_MODEL), repr(weird))
             self.assertTrue(sent["url"].startswith("https://dashscope.aliyuncs.com/"))
+
+    def test_handle_preset_builds_the_plan_with_the_latest_image_and_never_calls_the_model(self):
+        out = pc.handle_preset({"id": "product_full", "assets": [{"name": "助手/a.png", "label": "商品"}]})
+        self.assertEqual((out["name"], out["image"], out["warnings"]), ("商品全套（主图 + 场景图 + 文案 → 视频）", True, []))
+        self.assertEqual([st["workflow"] for st in out["plan"]["steps"]], ["06", "12"])
+        self.assertEqual(out["plan"]["steps"][0]["files"], {"3:image": {"asset": 1}})
+        self.assertEqual(out["plan"]["steps"][1]["files"], {"2:image": {"step": 1, "n": 2}})
+        self.assertIn("schema", out["plan"]["steps"][0])                                               # 和 /pro/chat 给的方案一样，前端直接画卡片
+        out = pc.handle_preset({"id": "product_full", "assets": [{"name": "助手/gone.png"}]})          # 文件已经不在了：不当成可用的图，卡片上提示还缺图片
+        self.assertEqual(out["plan"]["steps"][0]["files"], {})
+        self.assertEqual(len(out["warnings"]), 1)
+        out = pc.handle_preset({"id": "promo_set", "assets": "不是列表"})
+        self.assertEqual((len(out["plan"]["steps"]), out["warnings"], out["image"]), (3, [], False))
+        for bad in (None, [], "x"):
+            with self.assertRaises(ChatError) as cm:
+                pc.handle_preset(bad)
+            self.assertEqual(cm.exception.status, 400)
+        for bad_id in ("nope", None, 5, ["product_full"], {"id": "x"}):
+            with self.assertRaises(ChatError) as cm:
+                pc.handle_preset({"id": bad_id, "assets": []})
+            self.assertEqual(cm.exception.status, 404, repr(bad_id))
+
+    def test_the_catalog_gives_groups_and_presets_for_the_dropdowns(self):
+        d = pc.handle_catalog()
+        self.assertEqual({a["group"] for a in d["apps"]}, {"图片", "文案与配音", "视频"})
+        self.assertEqual([a["workflow"] for a in d["apps"] if a["group"] == "视频"], ["10", "11", "12", "14"])
+        self.assertEqual([p["id"] for p in d["presets"]], [p["id"] for p in presets.PRESETS])
+        self.assertTrue(all(p["name"] and p["desc"] for p in d["presets"]))
 
     def test_the_catalog_lists_the_chat_models(self):
         self.assertEqual(pc.handle_catalog()["models"], chat.model_list())

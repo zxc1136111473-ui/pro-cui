@@ -32,7 +32,7 @@ const state = { messages: [], assets: [], plan: null, draft: [], chain: null, bu
 const INSTANCE = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 let seq = 0;
 const nextId = () => `${INSTANCE}-${++seq}`;
-let view, saveTimer, tickTimer, lockTimer, sendToken = 0, catalogApps = null, chatModels = [], ui = { open: true };      // chatModels：聊天助手能选的模型（后端 /pro/catalog 一起给）；ui.model：选了哪个（"" = 自动）
+let view, saveTimer, tickTimer, lockTimer, sendToken = 0, catalogApps = null, chatModels = [], catalogPresets = [], ui = { open: true };      // chatModels：聊天助手能选的模型（后端 /pro/catalog 一起给）；ui.model：选了哪个（"" = 自动）
 let catalogStatus = "loading", catalogFails = 0, catalogLoading = null;       // 应用目录：loading（加载中）/ ready / failed（没读到）
 let driving = false;                           // 这个标签页正在拿运行锁 / 运行（拿锁要等一下，这期间也不能再开始别的）
 let lostLock = false;                          // 没有 Web Locks 时：运行记录被别的标签页写了，这里已经不是持有的那个
@@ -179,7 +179,7 @@ async function resumeRunning() {
 
 // ── 应用目录（手动加步骤用；也用它刷新存在浏览器里的旧方案的设置项）──────────────────────────────────
 function fetchCatalog() {
-  return api.fetchApi("/pro/catalog").then(readJson).then((d) => ({ apps: d.apps || [], models: Array.isArray(d.models) ? d.models : [] })).catch(() => null);
+  return api.fetchApi("/pro/catalog").then(readJson).then((d) => ({ apps: d.apps || [], models: Array.isArray(d.models) ? d.models : [], presets: Array.isArray(d.presets) ? d.presets : [] })).catch(() => null);
 }
 // 模块一加载就把请求发出去：setup() 要等 ComfyUI 把整个页面准备好才会被调用（慢的时候是十几二十秒以后），下拉能早一点可以用
 let firstCatalog = fetchCatalog();
@@ -202,6 +202,7 @@ function loadCatalog() {
     }
     catalogApps = got.apps;
     chatModels = got.models;
+    catalogPresets = got.presets;
     catalogStatus = "ready";
     catalogFails = 0;
     for (const st of state.plan ? state.plan.steps : []) {
@@ -343,6 +344,52 @@ function addStep(workflow) {
   save();
 }
 
+// 折叠 / 展开一步（只是界面状态，运行中也能点）
+function toggleStep(i) {
+  const p = state.plan;
+  if (!p || !p.steps[i]) return;
+  p.steps[i].collapsed = !lib.isCollapsed(p, i);
+  view.renderPlan();
+  save();
+}
+
+function toggleAll() {
+  const p = state.plan;
+  if (!p) return;
+  lib.setAllCollapsed(p, !p.steps.every((_, i) => lib.isCollapsed(p, i)));
+  view.renderPlan();
+  save();
+}
+
+// 一键方案：后端按应用目录排好一组常用的步骤（第一步要的商品图用素材库里最近的一张），换到方案里。现在的方案已经有动过的东西（改过设置 / 选过文件 / 跑过）时先问一声
+async function applyPreset(id) {
+  const p = catalogPresets.find((x) => x.id === id);
+  if (!p || planLocked()) return;
+  if (state.plan && lib.planHasWork(state.plan) && !window.confirm(`现在的方案里有改过的设置或做好的结果，换成「${p.name}」会把它们换掉（素材库里的文件不受影响）。继续吗？`)) return;
+  try {
+    const d = await readJson(await post("/pro/preset", { id, assets: state.assets.map((a) => ({ name: a.name, label: a.label })) }));
+    if (!d.plan || !Array.isArray(d.plan.steps)) throw new Error("服务器上的助手后端还是旧版本（没有一键方案）：重启一下 ComfyUI 容器（deploy.sh --sync）再刷新网页");
+    if (planLocked()) return;                                   // 等回复的时候开始运行了 / AI 在回复：不去换正在用的方案
+    adoptPlan(d.plan);
+    addMessage({ role: "note", text: `已按「${d.name}」排好 ${d.plan.steps.length} 步：${lib.planSummary(state.plan)}${(d.warnings || []).length ? "（" + d.warnings.join("；") + "）" : ""}` });
+  } catch (e) {
+    addMessage({ role: "error", text: "一键方案没排出来：" + (e.message || e) });
+  }
+}
+
+// 把素材库里的一个素材去掉（编号留空位不移位）；方案里有步骤正在用它时先问一声，去掉后那一步会提示还缺文件
+function removeAsset(n) {
+  if (planLocked()) return;
+  const a = state.assets[n - 1];
+  if (!a || !a.name) return;
+  const users = lib.usersOfAsset(state.plan, n);
+  if (users.length && !window.confirm(`素材 #${n} 正在被步骤 ${users.join("、")} 用着，去掉后那一步会提示还缺文件。还要去掉吗？`)) return;
+  lib.removeAsset(state.assets, state.plan, n);
+  view.renderAssets();
+  view.renderPlan();
+  save();
+}
+
 function removeStep(i) {
   if (planLocked() || !state.plan) return;
   const plan = lib.removeStep(state.plan, i);
@@ -452,6 +499,8 @@ async function finishStep(i) {
       step.result = { items, error, warnings, elapsed, byKind };
       if (lib.runOutcome(items, error) === "done") {
         step.state = "done";
+        lib.recordDuration(durations(), lib.durationKey(step), elapsed);          // 记下这一步这次用了多久：下次运行时显示「预计 …」和进度条
+        persistUi();
         step.runs = (step.runs || 0) + 1;
         step.ran = run.snap ? run.snap.parts : undefined;       // 没有开始时的记录（老存档）：当作设置改过，下次会提示重跑
         step.usedRuns = run.snap ? run.snap.usedRuns : {};
@@ -648,6 +697,11 @@ function loadText(it, src, done) {
 }
 
 // ── 打开 / 关闭 ──────────────────────────────────────────────────────────────────────────────────────
+function durations() {
+  if (!ui.durations || typeof ui.durations !== "object" || Array.isArray(ui.durations)) ui.durations = {};
+  return ui.durations;
+}
+
 function persistUi() {
   try { localStorage.setItem(UI_KEY, JSON.stringify(ui)); } catch (e) { /* 不存就不存 */ }
 }
@@ -698,6 +752,8 @@ const actions = {
   examples: EXAMPLES,
   send, attach, onPaste, onDrop, uploadForField, changed, open, close, clearAll, clearPlan, runAll, runStep, stop, addStep, removeStep, openInApp, copyText, loadText,
   reloadCatalog: () => { catalogFails = 0; return loadCatalog(); },
+  toggleStep, toggleAll, applyPreset, removeAsset, durations,
+  presets: () => catalogPresets,
   models: () => chatModels,
   getModel: () => ui.model || "",
   setModel: (id) => { ui.model = typeof id === "string" ? id : ""; persistUi(); },
@@ -744,4 +800,4 @@ app.registerExtension({
 });
 
 // 给测试 / 调试用：控制台里可以 window.__proChat.state 看状态
-window.__proChat = { state, view: () => view, actions, lib, catalog: () => ({ apps: catalogApps ? catalogApps.length : 0, models: chatModels.length, status: catalogStatus, fails: catalogFails }) };
+window.__proChat = { state, view: () => view, actions, lib, catalog: () => ({ apps: catalogApps ? catalogApps.length : 0, models: chatModels.length, presets: catalogPresets.length, status: catalogStatus, fails: catalogFails }) };

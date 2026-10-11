@@ -59,6 +59,16 @@ class FakeLLM:
             time.sleep(self.delay)
         user = [m for m in json["messages"] if m["role"] == "user"][-1]["content"]
         text = user if isinstance(user, str) else " ".join(c.get("text", "") for c in user)
+        users = [m["content"] for m in json["messages"] if m["role"] == "user"]
+        as_str = lambda c: c if isinstance(c, str) else " ".join(x.get("text", "") for x in c)
+        nudged = bool(users) and as_str(users[-1]).startswith("用户不会再补充信息了")                     # 后端催了一次：最后一条用户消息是催的话，用户真正说的是它前面那条
+        asked = as_str(users[-2] if nudged and len(users) >= 2 else users[-1]) if users else ""
+        if "含糊求助" in asked:                                   # 含糊的要求：第一次反问；被催了一次才给方案（只看这一轮，不看更早的对话）
+            if nudged:
+                out = {"reply": "我先按「看图写文案」做了，不对的话告诉我。", "plan": {"steps": [{"workflow": "07", "mode": 2, "fields": {}, "files": {"3:image": 1}, "note": "看图写文案"}]}}
+            else:
+                out = {"reply": "你想让我做什么？是写文案还是做图？", "plan": None}
+            return Resp(200, {"choices": [{"message": {"content": __import__("json").dumps(out, ensure_ascii=False)}}]})
         if "让它出错" in text:                                  # 模拟阿里返回错误（比如 Key 不对）
             return Resp(401, {"error": {"code": "invalid_api_key", "message": "Incorrect API key provided: sk-hari****ss"}})
         return Resp(200, {"choices": [{"message": {"content": __import__("json").dumps(self.reply(text), ensure_ascii=False)}}]})
@@ -189,6 +199,7 @@ class Harness:
         self.app = self.make_app()
         self.runner = self.loop = self.port = None
         self.run_delay = 0                                     # /pro/run 提交成功后先等几秒再回给网页（测「提交到一半刷新网页」）
+        self.run_error = None                                  # 不是 None：/pro/run 一律回 502 + 这段文字
         self.drop_run = 0                                      # 接下来这么多次 /pro/run：提交成功之后不回话直接断开连接（模拟「服务器收到了，回复没回到网页」）
 
     # ── 路由 ──
@@ -210,6 +221,8 @@ class Harness:
 
         async def run(request):
             try:
+                if self.run_error:                                       # 模拟提交时就出错（报错说人话）
+                    return web.json_response({"error": self.run_error}, status=502)
                 out = await call(lambda p: pc.handle_run(p, post=self.comfy), await request.json())
                 if self.run_delay:
                     await asyncio.sleep(self.run_delay)
@@ -229,6 +242,12 @@ class Harness:
         async def stage(request):
             try:
                 return web.json_response(await call(pc.handle_stage, await request.json()))
+            except pc.ChatError as e:
+                return err(e)
+
+        async def preset(request):
+            try:
+                return web.json_response(await call(pc.handle_preset, await request.json()))
             except pc.ChatError as e:
                 return err(e)
 
@@ -297,7 +316,7 @@ class Harness:
             web.get("/", index),
             web.get("/scripts/app.js", script("scripts_app.js")), web.get("/scripts/api.js", script("scripts_api.js")),
             web.get("/extensions/pro-chat/{name}", static(WEB)),
-            web.post("/api/pro/chat", chat), web.post("/api/pro/run", run), web.post("/api/pro/stage", stage), web.get("/api/pro/catalog", catalog),
+            web.post("/api/pro/chat", chat), web.post("/api/pro/run", run), web.post("/api/pro/stage", stage), web.post("/api/pro/preset", preset), web.get("/api/pro/catalog", catalog),
             web.get("/api/history/{pid}", history), web.get("/api/queue", queue), web.post("/api/queue", queue_edit), web.post("/api/interrupt", interrupt),
             web.get("/api/view", view), web.post("/api/upload/image", upload), web.get("/api/userdata/{path:.*}", userdata),
         ])
