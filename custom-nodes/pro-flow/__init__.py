@@ -94,6 +94,13 @@ MODES = {
                        ["上传视频 + 配音文案（替换原声）", "上传视频 + 听写字幕（保留原声）", "图片轮播 + 配音文案"],
                        [("source", "INT", [0, 0, 1]), ("subs", "INT", [0, 1, 0]), ("use_voice", "BOOLEAN", [True, False, True]),
                         ("use_bgm", "BOOLEAN", [True, False, True]), ("keep_original", "BOOLEAN", [False, True, False])]),
+    # 出图引擎（04 多尺寸套图 / 06 商品一条龙）：一个下拉选「网关 Gemini」还是「阿里的哪个模型」。branch 接选择分支；model 接阿里改图节点的 use_model（网关那一项是空字符串）。
+    # 阿里模型清单和 pro-ali 的 EDIT_MODELS 一一对应（测试里对过）
+    "ProModeEngine": ("模式：出图引擎和模型",
+                      ["网关 Gemini（gemini-image，默认）", "阿里 qwen-image-2.0-pro（约 40 秒）", "阿里 qwen-image-2.1-pro（约 30 秒）",
+                       "阿里 qwen-image-2.0（最快）", "阿里 qwen-image-3.0（只支持 1K）", "阿里 qwen-image-3.0-pro（最细，约 1~1.5 分钟，只支持 1K）"],
+                      [("branch", "INT", [0, 1, 1, 1, 1, 1]),
+                       ("model", "STRING", ["", "qwen-image-2.0-pro", "qwen-image-2.1-pro", "qwen-image-2.0", "qwen-image-3.0", "qwen-image-3.0-pro"])]),
     "ProModeLayer": ("模式：图层合成",
                      ["放到背景图上", "放到纯色背景上"],
                      [("use_bg", "BOOLEAN", [True, False])]),

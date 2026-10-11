@@ -20,7 +20,7 @@ _spec.loader.exec_module(FLOW)
 
 # 有「★ 只填这里：一句话需求」（阿里 写提示词节点，编号 70）/ 有「★ 先选模式」（模式节点，编号 77）的工作流
 WRITER_NUMS = {"01", "02", "03", "04", "06", "07", "08", "09", "10", "12"}
-MODE_NUMS = {"01", "02", "03", "05", "07", "08", "09", "10", "11", "12", "14", "16"}
+MODE_NUMS = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "14", "16"}
 
 # ComfyUI 核心 / 插件里工作流用到的节点；自带节点从源码里的 NODE_CLASS_MAPPINGS 读（pro-flow 是函数生成的，直接 import）
 KNOWN_EXTERNAL = {
@@ -253,11 +253,41 @@ class Workflows(unittest.TestCase):
         "RelayVideoGenerator": {"prompt", "ratio", "size", "duration", "seed", "enhance_prompt", "enable_HD"},
         "ImageScaleBy": {"upscale_method", "scale_by"}, "ImageSharpen": {"sharpen_radius", "sigma", "alpha"},
         "RelaySoundGenerator": {"generation_mode", "title", "tags", "prompt", "make_instrumental", "version", "seed", "negative_tags", "extend_mode", "continue_clip_id", "continue_at"},
+        # 网关 Settings：故意不含 apikey —— Key 绝不能当「可调设置」登记出来（工作台 / 聊天里会明文显示、存进浏览器）
+        "RelayAPISettings": {"api_base", "api_format", "model", "platform", "task_type", "custom_api_base", "custom_model"},
     }
     APP_OUTPUT_TYPES = {"SaveImage", "SaveVideo", "SaveAudioAdvanced", "ProVideoDub", "ProAppText", "ProSaveCutout", "ProLayerCompose"}
     # 应用界面默认显示「最后执行完的那一条」。这些预览节点的文字不放进应用：它们和成片几乎同时执行完，会把成片挤到第二位（11：字幕已烧进成片、也存了 .srt）
     APP_TEXT_EXEMPT = {"11": {20}}
     MEDIA_SAVERS = {"SaveImage", "SaveVideo", "SaveAudioAdvanced", "ProVideoDub", "ProSaveCutout", "ProLayerCompose"}
+
+    def test_the_engine_mode_offers_exactly_the_ali_models_the_ali_node_accepts(self):
+        """04 / 06 的「出图引擎和模型」下拉：第 1 项是网关（不指定阿里模型），后面每一项对应阿里改图节点真能用的一个模型（顺序也一样）；
+        每个阿里改图节点的 use_model 接的都是模式节点的 model 输出，选择分支的 branch 接的是它的 branch 输出。"""
+        ali = load_node_pkg("pro-ali")
+        _title, options, outs = FLOW.MODES["ProModeEngine"]
+        outputs = {name: vals for name, _t, vals in outs}
+        self.assertEqual(outputs["model"][0], "")
+        self.assertEqual(outputs["model"][1:], ali.EDIT_MODELS)
+        self.assertEqual(outputs["branch"], [0] + [1] * len(ali.EDIT_MODELS))
+        self.assertEqual(len(options), len(outputs["model"]))
+        for opt, model in zip(options[1:], outputs["model"][1:]):
+            self.assertIn(model, opt)                                                        # 每个选项的文字里写着它用的模型名
+        self.assertIn("gemini-image", options[0])
+        for num, n_ali in (("04", 4), ("06", 2)):
+            wf = load(num)
+            nodes = {n["id"]: n for n in wf["nodes"]}
+            src = {l[0]: (l[1], l[2]) for l in wf["links"]}
+            ali_nodes = [n for n in wf["nodes"] if n["type"] == "ProAliImageEdit"]
+            self.assertEqual(len(ali_nodes), n_ali, num)
+            for n in ali_nodes:
+                sid, slot = src[next(i for i in n["inputs"] if i["name"] == "use_model")["link"]]
+                self.assertEqual((nodes[sid]["type"], nodes[sid]["outputs"][slot]["name"]), ("ProModeEngine", "model"), num)
+            picks = [n for n in wf["nodes"] if n["type"] == "ProPick2x1"]
+            self.assertEqual(len(picks), 2 * n_ali, num)                                       # 每个出图步骤两个：取图 + 取状态
+            for n in picks:
+                sid, slot = src[next(i for i in n["inputs"] if i["name"] == "branch")["link"]]
+                self.assertEqual((nodes[sid]["type"], nodes[sid]["outputs"][slot]["name"]), ("ProModeEngine", "branch"), num)
 
     def test_dubbing_voice_is_selectable_in_every_app_with_a_dubbing_node(self):
         """有「阿里 配音」节点的应用（08 / 10 / 11 / 12），右栏都要能选音色：音色是配音最常想换的东西，聊天里（pro-chat）也靠右栏登记的控件来设。"""
@@ -362,7 +392,7 @@ class Workflows(unittest.TestCase):
                     mode_type = next(n["type"] for n in wf["nodes"] if n["type"].startswith("ProMode"))
                     self.assertTrue(entry[2] and entry[2] == sorted(set(entry[2])) and 1 <= entry[2][0] and entry[2][-1] <= len(FLOW.MODES[mode_type][1]), f"{name}: {entry} 的模式编号不对")
         self.assertGreater(extras_seen, 40, "几个工作流都该登记了可调设置")
-        self.assertEqual(load("04")["extra"]["linearData"]["inputs"], [[70, "idea"], [2, "image"]], "没改的应用右栏保持原样")
+        self.assertEqual(load("04")["extra"]["linearData"]["inputs"], [[77, "mode"], [70, "idea"], [2, "image"]], "04 右栏：出图引擎和模型 + 一句话 + 商品图")
 
     def test_image_to_video_app_is_the_text_to_video_one_plus_a_reference_image(self):
         wf10, wf12 = load("10"), load("12")
@@ -386,7 +416,11 @@ class Workflows(unittest.TestCase):
         self.assertEqual(by_id[src[next(i["link"] for i in scaler["inputs"] if i["name"] == "image")][1]]["type"], "LoadImage")
         self.assertTrue(wf12["extra"]["appCost"].startswith(wf10["extra"]["appCost"]))              # 12 在 10 的费用说明后面多一句参考图没证实
         self.assertIn("没能证实", wf12["extra"]["appCost"])
-        self.assertEqual(wf12["extra"]["appExtra"], wf10["extra"]["appExtra"])             # 视频 / 配音 / 字幕的可调设置两个应用一样
+        no_writer = lambda wf: [e for e in wf["extra"]["appExtra"] if e[:2] != [70, "model"]]
+        self.assertEqual(no_writer(wf12), no_writer(wf10))                                  # 视频 / 配音 / 字幕的可调设置两个应用一样（只有「写提示词的模型」的说明不同：12 要看图，默认 omni）
+        hint = lambda wf: next(e[3] for e in wf["extra"]["appExtra"] if e[:2] == [70, "model"])
+        self.assertIn("看图", hint(wf12))
+        self.assertIn("qwen3.8-flash", hint(wf10))
 
     def assert_widget_values(self, num, node, klass):
         """工作流里这个节点的控件值（widgets_values）按节点定义逐项校验：个数、顺序、类型、范围、下拉选项。"""
@@ -586,7 +620,12 @@ EXPECT = {
            2: ({3: "阿里生图"}, {2: "网关生图", 6: "商品图"})},
     "03": {0: ({2: "网关", 4: "商品图"}, {3: "阿里", 5: "场景图"}), 1: ({2: "网关", 4: "商品图", 5: "场景图"}, {3: "阿里"}),
            2: ({3: "阿里", 4: "商品图"}, {2: "网关", 5: "场景图"}), 3: ({3: "阿里", 4: "商品图", 5: "场景图"}, {2: "网关"})},
+    # 04 多尺寸套图 / 06 商品一条龙：模式 0 = 网关 Gemini（4 个 / 2 个网关生图节点），模式 1~5 = 阿里的 5 个模型（同样数量的阿里改图节点）；没选中的引擎不能跑（不然没填 Key 的那一路会报错、白花钱）
+    "04": {0: ({10: "网关 1:1", 11: "网关 3:4", 12: "网关 9:16", 13: "网关 16:9", 2: "商品图", 70: "写提示词"}, {40: "阿里 1:1", 41: "阿里 3:4", 42: "阿里 9:16", 43: "阿里 16:9"}),
+           **{m: ({40: "阿里 1:1", 41: "阿里 3:4", 42: "阿里 9:16", 43: "阿里 16:9", 2: "商品图", 70: "写提示词"}, {10: "网关 1:1", 11: "网关 3:4", 12: "网关 9:16", 13: "网关 16:9"}) for m in range(1, 6)}},
     "05": {0: ({3: "放大"}, {6: "标签"}), 1: ({6: "标签"}, {3: "放大"}), 2: ({3: "放大", 6: "标签"}, {})},
+    "06": {0: ({4: "网关白底主图", 8: "网关场景图", 10: "文案", 70: "写场景指令", 3: "商品图"}, {24: "阿里白底主图", 28: "阿里场景图"}),
+           **{m: ({24: "阿里白底主图", 28: "阿里场景图", 10: "文案", 70: "写场景指令", 3: "商品图"}, {4: "网关白底主图", 8: "网关场景图"}) for m in range(1, 6)}},
     "07": {0: ({70: "写文案"}, {3: "商品图"}), 1: ({70: "写文案", 3: "商品图"}, {}), 2: ({70: "翻译"}, {3: "商品图"})},
     # 设计 / 克隆会在阿里账号里建音色，没选就绝不能跑；AI 写音色描述只有设计模式用
     "08": {0: ({3: "配音"}, {2: "设计音色", 7: "克隆音色", 70: "写音色描述", 6: "样音"}),
@@ -621,8 +660,8 @@ class LazyExecution(unittest.TestCase):
                     self.assertNotIn(nid, got, f"{num} 模式 {mi}「{opts[mi]}」：{what}（节点 {nid}）不该执行")
 
     def test_every_workflow_without_mode_runs_all_non_output_nodes(self):
-        """没有模式的工作流（04 06 13）所有节点都该参与；否则说明有节点没接到输出。"""
-        for num in ("04", "06", "13", "15"):
+        """没有模式的工作流（13 15）所有节点都该参与；否则说明有节点没接到输出。"""
+        for num in ("13", "15"):
             wf = load(num)
             got, nodes = ran(wf, None)
             self.assertEqual(got, set(nodes), f"{num}: 有节点没被任何输出用到：{sorted(set(nodes) - got)}")

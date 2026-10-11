@@ -615,6 +615,46 @@ def main():
         node8 = h.comfy.runs[-1]["prompt"]["8"]["inputs"] if len(h.comfy.runs) > n_runs else {}
         check("提交给 ComfyUI 的是数字 1080 / 30（它的下拉是严格比对的，文字 \"30\" 会被拒）", node8.get("short_side") == 1080 and node8.get("fps") == 30 and isinstance(node8.get("fps"), int), str(node8))
 
+        # 模型：写提示词的模型 / 阿里出图模型是常用设置（下拉），网关出图模型在高级设置里（文字框）；改了之后提交给 ComfyUI 的就是它
+        pg.click("text=清空方案")
+        pg.locator(".pcw-bar select").select_option("01")
+        pg.wait_for_selector(".pcw-step")
+        pg.locator(".pcw-step details.pcw-settings").first.evaluate("e => { e.open = true }")
+        wm, am = pg.locator("select[data-pc='0:70:model']"), pg.locator("select[data-pc='0:3:model']")
+        check("01：「写提示词的模型」是常用设置里的下拉，6 个模型，默认 qwen3.8-flash（不用展开高级设置就看得到）", wm.locator("option").count() == 6 and "qwen3.8-flash" in wm.locator("option:checked").inner_text() and pg.locator(".pcw-adv select[data-pc='0:70:model']").count() == 0, wm.locator("option").all_inner_texts().__str__())
+        check("「阿里·出图模型」也在常用设置里：5 个模型，默认 qwen-image-2.0-pro", am.locator("option").count() == 5 and pg.locator(".pcw-adv select[data-pc='0:3:model']").count() == 0 and "qwen-image-2.0-pro" in am.locator("option:checked").inner_text())
+        pg.locator("details.pcw-adv").first.evaluate("e => { e.open = true }")
+        gm = pg.locator("input[type=text][data-pc='0:1:custom_model']")
+        check("「网关·出图模型」在高级设置里，是文字框，默认 gemini-image", gm.count() == 1 and gm.input_value() == "gemini-image" and pg.locator(".pcw-adv input[data-pc='0:1:custom_model']").count() == 1)
+        wm.select_option("qwen3.8-max")
+        am.select_option("qwen-image-3.0-pro")
+        gm.fill("gemini-image-test")
+        check("改了的三项都标成「已改」", pg.locator(".pcw-field.pcw-changed").count() >= 3)
+        n_runs = len(h.comfy.runs)
+        pg.locator(".pcw-step .pcw-btn-sm").first.click()
+        wait3(pg, lambda b: b and b[0].startswith("已完成"), 30)
+        sub = h.comfy.runs[-1]["prompt"] if len(h.comfy.runs) > n_runs else {}
+        check("提交给 ComfyUI 的就是选的：写提示词 qwen3.8-max、阿里出图 qwen-image-3.0-pro、网关 gemini-image-test",
+              sub.get("70", {}).get("inputs", {}).get("model") == "qwen3.8-max" and sub.get("3", {}).get("inputs", {}).get("model") == "qwen-image-3.0-pro" and sub.get("1", {}).get("inputs", {}).get("custom_model") == "gemini-image-test", str({k: v.get("inputs", {}).get("model") or v.get("inputs", {}).get("custom_model") for k, v in sub.items() if k in ("70", "3", "1")}))
+
+        # 出图引擎和模型：06 商品一条龙顶上的「模式」= 网关 Gemini 或阿里的 5 个模型之一；选了哪个，提交给 ComfyUI 的模式节点就是哪个
+        pg.click("text=清空方案")
+        pg.locator(".pcw-bar select").select_option("06")
+        pg.wait_for_selector(".pcw-step")
+        mode6 = pg.locator("select[data-pc='0:mode']")
+        opts6 = mode6.locator("option").all_inner_texts()
+        check("06：顶上多了「模式」下拉，6 项：网关 Gemini（默认）+ 阿里 5 个模型", len(opts6) == 6 and "默认" in mode6.locator("option:checked").inner_text() and "网关 Gemini" in opts6[0] and all("qwen-image" in o for o in opts6[1:]), str(opts6))
+        pg.locator(".pcw-step details.pcw-settings").first.evaluate("e => { e.open = true }")
+        check("阿里的场景图比例（常用）和清晰度（高级）也在", pg.locator("select[data-pc='0:28:ratio']").count() == 1 and pg.locator(".pcw-adv select[data-pc='0:28:level']").count() == 1)
+        pg.locator("input[type=file][accept='image/*']").first.set_input_files(prod)
+        pg.wait_for_function("document.querySelector(\"select[data-pc='0:3:image']\").value !== ''", timeout=15000)
+        mode6.select_option(label=opts6[5])
+        n_runs = len(h.comfy.runs)
+        pg.locator(".pcw-step .pcw-btn-sm").first.click()
+        wait3(pg, lambda b: b and b[0].startswith("已完成"), 30)
+        sub6 = h.comfy.runs[-1]["prompt"] if len(h.comfy.runs) > n_runs else {}
+        check("选了「阿里 qwen-image-3.0-pro」：提交给 ComfyUI 的模式节点就是它，两个阿里改图节点和取图选择分支都在提示词里", sub6.get("77", {}).get("inputs", {}).get("mode") == opts6[5] and {"24", "28", "21", "23"} <= set(sub6), str(sub6.get("77")))
+
         # 提交到一半刷新网页：用同一个 run_id 再提交，ComfyUI 那边只会收到一次
         pg.click("text=清空方案")
         say3(pg, "写文案")

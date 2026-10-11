@@ -109,14 +109,18 @@ class Catalog(unittest.TestCase):
             node_type = next(n["type"] for n in load_wf(app_id)["nodes"] if n["type"].startswith("ProMode"))
             self.assertEqual(app["mode"]["options"], FLOW.MODES[node_type][1], app_id)
             self.assertEqual(app["mode"]["default"], app["mode"]["options"][0], app_id)
-        self.assertIsNone(CAT["04"]["mode"])
-        self.assertIsNone(CAT["06"]["mode"])
+        self.assertIsNone(CAT["13"]["mode"])                                                   # 没有模式的应用：13 多角色配音、15 商品抠图
+        self.assertIsNone(CAT["15"]["mode"])
+        for app_id in ("04", "06"):                                                              # 04 / 06 的模式 = 出图引擎和模型：网关 Gemini + 阿里 5 个模型，默认网关
+            m = CAT[app_id]["mode"]
+            self.assertEqual((len(m["options"]), m["default"]), (6, "网关 Gemini（gemini-image，默认）"), app_id)
+            self.assertTrue(all("qwen-image" in o for o in m["options"][1:]), app_id)
 
     def test_fields_and_files(self):
         common = lambda app: {k for k, f in CAT[app]["fields"].items() if not f.get("advanced")}
         advanced = lambda app: {k for k, f in CAT[app]["fields"].items() if f.get("advanced")}
-        self.assertEqual(common("01"), {"70:idea", "2:ratio", "3:ratio", "3:level"})
-        self.assertEqual(advanced("01"), {"2:size", "2:quality", "3:model"})
+        self.assertEqual(common("01"), {"70:idea", "70:model", "2:ratio", "3:ratio", "3:level", "3:model"})       # 写提示词的模型、阿里出图模型都是常用设置
+        self.assertEqual(advanced("01"), {"2:size", "2:quality", "1:custom_model"})                                # 网关出图模型（现在网关只有 gemini-image 一个）放高级设置
         self.assertEqual(CAT["01"]["fields"]["2:ratio"]["label"], "网关·比例")
         self.assertIn("16:9", CAT["01"]["fields"]["2:ratio"]["options"])
         self.assertEqual(CAT["01"]["fields"]["2:ratio"]["default"], "1:1")                    # 默认值取自工作流里存的值
@@ -347,6 +351,36 @@ class Catalog(unittest.TestCase):
         for app_id in ("10", "12", "01"):                                                            # 别的应用的费用说明不带这个条件
             self.assertNotIn("appCostUnlessModelFile", load_wf(app_id)["extra"])
 
+    def test_model_choices_are_visible_settings_in_every_app_that_uses_a_model(self):
+        """AI 写提示词的模型、出图的模型要在工作台里看得到、选得了（以前写提示词的模型谁都没登记，出图的阿里模型在 01 里藏在高级设置）。"""
+        writer_apps = sorted(a for a, app in CAT.items() if "70:model" in app["fields"])
+        self.assertEqual(writer_apps, ["01", "02", "03", "04", "06", "07", "08", "09", "10", "12"])          # 有「AI 写提示词」节点的应用
+        options = OI["ProAliPromptWriter"]["input"]["required"]["model"][0]
+        self.assertIn("qwen3.8-flash", options)
+        self.assertIn("qwen3.8-omni-flash", options)
+        for a in writer_apps:
+            f = CAT[a]["fields"]["70:model"]
+            self.assertEqual((f["kind"], f["label"], f["options"]), ("choice", "写提示词的模型", options), a)
+            self.assertFalse(f.get("advanced"), a)                                                           # 常用设置：不用展开高级设置就能看到
+            self.assertEqual(f["default"], "qwen3.8-omni-flash" if a in ("07", "12") else "qwen3.8-flash", a)  # 要看图的应用默认能看图的模型
+            self.assertIn("用户没点名要换就别改", f["hint"], a)                                                 # AI 助手不能自己乱换模型
+        self.assertIn("看图", CAT["12"]["fields"]["70:model"]["hint"])
+        self.assertIn("写文案", CAT["07"]["fields"]["70:model"]["hint"])
+        ali_models = ["qwen-image-2.0-pro", "qwen-image-2.1-pro", "qwen-image-2.0", "qwen-image-3.0", "qwen-image-3.0-pro"]
+        for a in ("01", "02", "03"):                                                                         # 阿里出图模型：有阿里引擎的应用里常用（5 个，都在服务器上试过）
+            f = CAT[a]["fields"]["3:model"]
+            self.assertEqual((f["label"], f["default"], f["options"]), ("阿里·出图模型", "qwen-image-2.0-pro", ali_models), a)
+            self.assertFalse(f.get("advanced"), a)
+        for key in ("3:ratio", "3:level"):                                                                   # 03 的阿里改图：比例（默认跟原图）和清晰度放高级设置
+            self.assertTrue(CAT["03"]["fields"][key].get("advanced"), key)
+        self.assertEqual(CAT["03"]["fields"]["3:ratio"]["default"], "跟原图一样")
+        for a in ("01", "02", "03", "04", "06"):                                                             # 网关出图模型：文字框、高级设置；网关现在只有 gemini-image
+            f = CAT[a]["fields"]["1:custom_model"]
+            self.assertEqual((f["kind"], f["label"], f["default"], bool(f.get("advanced"))), ("text", "网关·出图模型", "gemini-image", True), a)
+            self.assertIs(f.get("multiline"), False, a)                                                          # 模型名是一行字：界面里用单行输入框
+        for app in CAT.values():                                                                              # Key 绝不能出现在可调设置里
+            self.assertFalse([k for k in app["fields"] if "apikey" in k.lower() or "api_key" in k.lower()], app["id"])
+
     def test_plain_voice_dropdowns_borrow_the_descriptions_but_keep_plain_values(self):
         for app_id in ("08", "10", "11", "12"):
             f = CAT[app_id]["fields"]["3:voice"]
@@ -438,7 +472,14 @@ class Selection(unittest.TestCase):
         self.assertIsNone(sel["mode"])
         self.assertTrue(warns)
         self.assertEqual(self.sel("03", None)[0]["mode"], None)
-        self.assertEqual(self.sel("04", 1)[0]["mode"], None)                           # 没有模式的应用忽略 mode
+        self.assertEqual(self.sel("15", 1)[0]["mode"], None)                           # 没有模式的应用忽略 mode
+        self.assertEqual(self.sel("06", 3)[0]["mode"], CAT["06"]["mode"]["options"][2])   # 06 的模式是出图引擎和模型：第 3 项是阿里 qwen-image-2.1-pro
+        o6 = CAT["06"]["mode"]["options"]
+        self.assertEqual(self.sel("06", "阿里 qwen-image-3.0-pro")[0]["mode"], o6[5])   # 少写后面的说明也认
+        self.assertEqual(self.sel("06", "阿里 qwen-image-3.0")[0]["mode"], o6[4])       # 几个选项只差一个版本号：不能被模糊匹配挑成 3.0-pro / 2.0 的
+        self.assertEqual(self.sel("06", "阿里 qwen-image-2.1-pro（约 30 秒）")[0]["mode"], o6[2])
+        self.assertEqual(self.sel("06", "网关 Gemini")[0]["mode"], o6[0])
+        self.assertIsNone(self.sel("06", "阿里 qwen-image")[0]["mode"])                # 光写「阿里 qwen-image」分不清是哪个模型：不猜，用默认
 
     def test_text_choice_and_unknown_fields(self):
         sel, warns = self.sel("01", None, {"70:idea": "  一只橘猫  ", "2:ratio": "16:9", "3:level": "8K", "99:x": "y", "31:apikey": "偷偷改 Key"})
@@ -461,9 +502,12 @@ class Selection(unittest.TestCase):
         self.assertEqual(self.sel("01", None, {"70:idea": "字" * cat_mod.MAX_TEXT})[1], [])
 
     def test_bare_node_id_keys_are_accepted_when_unambiguous(self):
-        s, w = self.sel("08", None, {"70": "温暖的女声", "3": "你好"})                      # 08 的 70 号节点只有一个可填字段；3 号节点有「要念的文字」和「音色」两个，不唯一
-        self.assertEqual(s["fields"], {"70:idea": "温暖的女声"})                            # 写进的是规整后的键「70:idea」
-        self.assertEqual(len(w), 1)                                                       # 「3」认不出，仍然提示
+        s, w = self.sel("08", None, {"70": "温暖的女声", "3": "你好"})                      # 70 号节点有「一句话需求」和「模型」两个，3 号有「要念的文字」「音色」等好几个：再看值，只有一个字段收这个值才认
+        self.assertEqual(s["fields"], {"70:idea": "温暖的女声", "3:text": "你好"})          # 写进的是规整后的键
+        self.assertEqual(w, [])
+        s, w = self.sel("08", None, {"70": "qwen3.8-max", "3": "Cherry"})                  # 值既像文字又像下拉的选项：分不清是哪个，宁可不认也别写错地方
+        self.assertEqual(s["fields"], {})
+        self.assertEqual(len(w), 2)
         self.assertEqual(self.sel("01", None, {"2": "16:9"})[0]["fields"], {"2:ratio": "16:9"})   # 01 的 2 号节点只有比例一个
         s, w = self.sel("03", None, None, {"4": "助手/a.png", "5": "助手/b.png"})
         self.assertEqual(s["files"], {"4:image": "助手/a.png", "5:image": "助手/b.png"})

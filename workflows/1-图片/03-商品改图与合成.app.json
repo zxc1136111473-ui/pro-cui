@@ -326,6 +326,14 @@
           }
         },
         {
+          "name": "use_model",
+          "type": "STRING",
+          "link": null,
+          "widget": {
+            "name": "use_model"
+          }
+        },
+        {
           "name": "image1",
           "type": "IMAGE",
           "link": 12
@@ -372,11 +380,13 @@
       },
       "widgets_values": [
         "（由 AI 扩写节点提供）",
-        "qwen-image-edit-max",
+        "qwen-image-2.0-pro",
         1,
-        "randomize"
+        "randomize",
+        "跟原图一样",
+        "1K"
       ],
-      "title": "引擎 ② 阿里 qwen-image-edit"
+      "title": "引擎 ② 阿里 qwen-image（改图 / 合成）"
     },
     {
       "id": 8,
@@ -930,7 +940,7 @@
       70,
       0,
       3,
-      4,
+      5,
       "STRING"
     ],
     [
@@ -954,7 +964,7 @@
       4,
       0,
       3,
-      1,
+      2,
       "IMAGE"
     ],
     [
@@ -962,7 +972,7 @@
       6,
       0,
       3,
-      2,
+      3,
       "*"
     ],
     [
@@ -1125,10 +1135,22 @@
     "appDescription": "修改商品图（换背景、去水印、换色……商品保持原样），或把商品放进另一张场景图里。必须上传商品图；「放进场景图」模式还要再上传一张场景图。",
     "appExtra": [
       [
+        70,
+        "model",
+        "写提示词的模型",
+        "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3。用户没点名要换就别改"
+      ],
+      [
         2,
         "ratio",
         "网关·比例",
         ""
+      ],
+      [
+        3,
+        "model",
+        "阿里·出图模型",
+        "默认 qwen-image-2.0-pro（1K / 2K 都行）；qwen-image-2.1-pro 更快一点、2K 也行；qwen-image-2.0 最快（几秒到半分钟）、只支持 1K；qwen-image-3.0 / 3.0-pro 更细但只支持 1K、更慢（3.0-pro 约 1~1.5 分钟）。用户没点名要换就别改"
       ]
     ],
     "appAdvanced": [
@@ -1143,6 +1165,24 @@
         "quality",
         "网关·画质",
         ""
+      ],
+      [
+        1,
+        "custom_model",
+        "网关·出图模型",
+        "网关现在只有 gemini-image 一个出图模型，一般不用改；网关加了别的出图模型再换"
+      ],
+      [
+        3,
+        "ratio",
+        "阿里·出图比例",
+        "默认跟原图一样；想改成别的比例（比如 3:4）在这里选"
+      ],
+      [
+        3,
+        "level",
+        "阿里·清晰度",
+        "2K 只有 qwen-image-2.0-pro / 2.1-pro 能用"
       ]
     ],
     "appRequired": [

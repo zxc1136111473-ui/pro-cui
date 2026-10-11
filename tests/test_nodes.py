@@ -101,6 +101,85 @@ def fake_session(post):
     return mock.patch.object(ali, "_open", lambda base, what: FakeSession(post))
 
 
+class AliImageNodes(unittest.TestCase):
+    """阿里出图节点（纯文字出图 / 带商品图的改图）：模型清单、出图尺寸、2K 拦截、「跟原图一样」的比例。请求本身换成假的，只看发出去的内容。"""
+    INFO = json.dumps({"apikey": "k", "custom_api_base": "https://dashscope.aliyuncs.com/compatible-mode"})
+
+    class Img:                                           # 假的图片张量：只需要 shape = (批, 高, 宽, 通道)
+        def __init__(self, w, h):
+            self.shape = (1, h, w, 3)
+
+    def call(self, node, *args, **kw):
+        seen = {}
+
+        def post(base, key, body, timeout, what, path=None):
+            seen["body"] = body
+            return {"output": {"choices": [{"message": {"content": [{"image": "https://x/y.png"}]}}]}}
+        with mock.patch.object(ali, "_post", post), mock.patch.object(ali, "_download", lambda url, what: b"png"), \
+                mock.patch.object(ali, "_to_tensor", lambda data: "T"), mock.patch.object(ali, "_to_data_url", lambda t: "data:image/jpeg;base64,x"):
+            node.run(*args, info=self.INFO, **kw)
+        return seen.get("body")
+
+    def test_the_models_are_the_verified_list_and_the_retired_edit_model_is_gone(self):
+        """这五个模型都在服务器上试过（纯文字出图、带商品图出图都能用）；原来的 qwen-image-edit-max 阿里已经下线（Model not exist），不能再出现。"""
+        self.assertEqual(ali.IMAGE_MODELS, ["qwen-image-2.0-pro", "qwen-image-2.1-pro", "qwen-image-2.0", "qwen-image-3.0", "qwen-image-3.0-pro"])
+        self.assertEqual(ali.EDIT_MODELS, ali.IMAGE_MODELS)
+        self.assertNotIn("qwen-image-edit-max", ali.IMAGE_MODELS + ali.EDIT_MODELS)
+        spec = ali.ProAliImageEdit.INPUT_TYPES()
+        self.assertEqual(spec["required"]["model"][1]["default"], "qwen-image-2.0-pro")
+        self.assertEqual(spec["optional"]["ratio"][1]["default"], ali.SAME_AS_INPUT)
+        self.assertEqual(spec["optional"]["ratio"][0], [ali.SAME_AS_INPUT] + list(ali.RATIOS))
+        self.assertEqual(ali.MODELS_2K, {"qwen-image-2.0-pro", "qwen-image-2.1-pro"})
+
+    def test_edit_sends_the_images_the_prompt_and_the_size_of_the_chosen_ratio(self):
+        body = self.call(ali.ProAliImageEdit(), self.Img(1024, 1024), "放进厨房", "qwen-image-2.1-pro", 7, ratio="3:4", level="1K")
+        self.assertEqual(body["model"], "qwen-image-2.1-pro")
+        self.assertEqual(body["parameters"], {"watermark": False, "seed": 7, "size": ali._size("3:4", "1K")})
+        self.assertEqual(ali._size("3:4", "1K"), "880*1184")                                    # 1K ≈ 100 万像素
+        self.assertEqual(body["input"]["messages"][0]["content"], [{"image": "data:image/jpeg;base64,x"}, {"text": "放进厨房"}])
+        body = self.call(ali.ProAliImageEdit(), self.Img(1024, 1024), "合成", "qwen-image-2.0-pro", 1, image2=self.Img(10, 10), ratio="1:1", level="2K")
+        self.assertEqual(len(body["input"]["messages"][0]["content"]), 3)                       # 两张图 + 一段文字
+        self.assertEqual(body["parameters"]["size"], "2048*2048")
+
+    def test_the_engine_mode_node_can_override_the_model(self):
+        """04 / 06：「出图引擎和模型」模式节点把选中的模型名送进 use_model，以它为准；空的就用节点自己的「模型」；不认识的模型直接报错（不发请求）。"""
+        body = self.call(ali.ProAliImageEdit(), self.Img(10, 10), "改", "qwen-image-2.0-pro", 1, use_model="qwen-image-3.0-pro")
+        self.assertEqual(body["model"], "qwen-image-3.0-pro")
+        body = self.call(ali.ProAliImageEdit(), self.Img(10, 10), "改", "qwen-image-2.1-pro", 1, use_model="")
+        self.assertEqual(body["model"], "qwen-image-2.1-pro")
+        body = self.call(ali.ProAliImageEdit(), self.Img(10, 10), "改", "qwen-image-2.1-pro", 1, use_model="  qwen-image-2.0  ")
+        self.assertEqual(body["model"], "qwen-image-2.0")
+        with self.assertRaises(RuntimeError) as cm:
+            self.call(ali.ProAliImageEdit(), self.Img(10, 10), "改", "qwen-image-2.0-pro", 1, use_model="qwen-image-edit-max")
+        self.assertIn("不认识的模型", str(cm.exception))
+        with self.assertRaises(RuntimeError):                                                  # 选了不能出 2K 的模型 + 2K：模式节点送来的模型也要拦
+            self.call(ali.ProAliImageEdit(), self.Img(10, 10), "改", "qwen-image-2.0-pro", 1, use_model="qwen-image-3.0", level="2K")
+
+    def test_edit_follows_the_input_image_by_default(self):
+        for w, h, want in ((1024, 1024, "1:1"), (768, 1024, "3:4"), (1920, 1080, "16:9"), (1080, 1920, "9:16"), (1000, 1030, "1:1")):
+            body = self.call(ali.ProAliImageEdit(), self.Img(w, h), "改", "qwen-image-2.0-pro", 1)
+            self.assertEqual(body["parameters"]["size"], ali._size(want, "1K"), (w, h))
+        body = self.call(ali.ProAliImageEdit(), object(), "改", "qwen-image-2.0-pro", 1)           # 读不出尺寸就当 1:1，不报错
+        self.assertEqual(body["parameters"]["size"], ali._size("1:1", "1K"))
+
+    def test_2k_is_refused_before_sending_for_models_that_cannot_do_it(self):
+        for model in ali.IMAGE_MODELS:
+            for node, args in ((ali.ProAliImageEdit(), (self.Img(10, 10), "改", model, 1)), (ali.ProAliImage(), ("画", model, "1:1", "2K", 1))):
+                kw = {"level": "2K"} if isinstance(node, ali.ProAliImageEdit) else {}
+                if model in ali.MODELS_2K:
+                    body = self.call(node, *args, **kw)
+                    self.assertEqual(body["parameters"]["size"], "2048*2048")
+                else:
+                    with self.assertRaises(RuntimeError) as cm:
+                        self.call(node, *args, **kw)
+                    self.assertIn("只用 1K", str(cm.exception))
+                    self.assertIn(model, str(cm.exception))
+
+    def test_text_to_image_sends_the_model_and_the_size(self):
+        body = self.call(ali.ProAliImage(), "一杯咖啡", "qwen-image-3.0-pro", "9:16", "1K", 3)
+        self.assertEqual((body["model"], body["parameters"]["size"], body["input"]["messages"][0]["content"]), ("qwen-image-3.0-pro", ali._size("9:16", "1K"), [{"text": "一杯咖啡"}]))
+
+
 class PromptWriter(unittest.TestCase):
     INFO = json.dumps({"apikey": "k", "custom_api_base": "https://dashscope.aliyuncs.com/compatible-mode"})
 
@@ -113,6 +192,13 @@ class PromptWriter(unittest.TestCase):
     def run_node(self, post, idea="一个红苹果", instruction="写提示词"):
         with fake_session(post):
             return ali.ProAliPromptWriter().run(idea, instruction, "", 0, self.INFO)
+
+    def test_the_model_dropdown_is_the_verified_list_with_the_default_first(self):
+        """下拉里的每个模型都在服务器上用本节点的请求体（关思考、不流式）试过能用；glm-5.3 只能开思考所以不能放。加新模型之前先试，再改这里。"""
+        self.assertEqual(ali.WRITER_MODELS, ["qwen3.8-flash", "qwen3.8-max", "qwen3.7-plus", "qwen3.8-omni-flash", "deepseek-v4-pro", "kimi-k3"])
+        spec = ali.ProAliPromptWriter.INPUT_TYPES()["required"]["model"]
+        self.assertEqual((spec[0], spec[1]["default"]), (ali.WRITER_MODELS, ali.WRITER_MODEL))
+        self.assertEqual(ali.WRITER_MODEL, ali.WRITER_MODELS[0])
 
     def test_success_and_request_shape(self):
         post = mock.Mock(return_value=self.resp(body={"choices": [{"message": {"content": "  完整提示词 \n"}}], "usage": {"total_tokens": 9}}))

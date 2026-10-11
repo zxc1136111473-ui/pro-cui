@@ -10,6 +10,7 @@ import base64
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import wave
@@ -31,6 +32,9 @@ TTS_TIMEOUT = 90      # 实测 2.5~6 秒
 ASR_TIMEOUT = 90      # 实测 6 秒音频约 4.5 秒
 WRITER_TIMEOUT = 60   # 关掉思考后实测约 3 秒（开着约 12~20 秒）
 WRITER_MODEL = "qwen3.8-flash"
+# 「写提示词」能选的文字模型：2026-10-10 逐个用本节点的请求体在服务器上试过（一句话需求 → 扩写），都能用，2~4 秒；glm-5.3 只能开思考（本节点关着思考），用不了。
+# qwen3.8-omni-flash 能看图（「看图写文案」/ 图生视频要用它或同类），其余只能读文字
+WRITER_MODELS = [WRITER_MODEL, "qwen3.8-max", "qwen3.7-plus", "qwen3.8-omni-flash", "deepseek-v4-pro", "kimi-k3"]
 CHAT_API = "/compatible-mode/v1/chat/completions"
 ASR_MAX_SECONDS = 300  # 阿里 qwen3-asr-flash 单次上限约 5 分钟
 DOWNLOAD_TIMEOUT = 60
@@ -64,8 +68,13 @@ VOICE_INFO = {
 VOICE_LABELS = [f"{v} · {VOICE_INFO[v][0]} · {VOICE_INFO[v][1]}" for v in VOICES]
 # 首字母大写：instruct 模型只认大写（Chinese），小写会 400；flash 两种都认
 LANGS = ["Chinese", "English", "Japanese", "Korean", "German", "French", "Spanish", "Italian", "Portuguese", "Russian", "Auto"]
-IMAGE_MODELS = ["qwen-image-2.0-pro", "qwen-image-3.0"]
-EDIT_MODELS = ["qwen-image-edit-max"]
+# 阿里出图模型：2026-10-10~11 在服务器上逐个试过，纯文字出图和「带商品图当素材」都能用，出图尺寸听话。
+# 1K 约要：2.0 4~26 秒、2.1-pro 15~30 秒、2.0-pro 约 47 秒、3.0 约 35~66 秒、3.0-pro 约 46~83 秒；2K 只有 2.0-pro / 2.1-pro 试过（约 40 秒）。
+IMAGE_MODELS = ["qwen-image-2.0-pro", "qwen-image-2.1-pro", "qwen-image-2.0", "qwen-image-3.0", "qwen-image-3.0-pro"]
+# 改图 / 以图为素材出图：同一批模型，请求里多带图。原来用的 qwen-image-edit-max 阿里已经下线（返回 Model not exist）
+EDIT_MODELS = IMAGE_MODELS
+MODELS_2K = {"qwen-image-2.0-pro", "qwen-image-2.1-pro"}      # 2K 试过能出的；3.x 的 2K 实测会超过 200 秒超时（超时也照样计费），2.0 的 2K 没试过
+SAME_AS_INPUT = "跟原图一样"
 TTS_MODELS = ["qwen3-tts-flash", "qwen3-tts-instruct-flash"]
 ASR_LANGS = ["auto", "zh", "en", "ja", "ko"]
 # 比例 × 档位 → 宽*高（1K≈1 百万像素，2K 最长边 2048）
@@ -79,6 +88,18 @@ def _size(ratio, level):
     else:
         k = (1024 * 1024 / (w * h)) ** 0.5
     return f"{int(round(w * k / 16) * 16)}*{int(round(h * k / 16) * 16)}"
+
+
+def _check_level(model, level, what):
+    """不能出 2K 的模型选了 2K：直接拦住，不发请求（超时也照样计费）。"""
+    if level == "2K" and model not in MODELS_2K:
+        raise RuntimeError(f"[阿里 {what}] {model} 目前只用 1K（3.x 的 2K 实测超时，2.0 的 2K 没试过）；要 2K 请选 qwen-image-2.0-pro 或 qwen-image-2.1-pro")
+
+
+def _closest_ratio(width, height):
+    """宽高 → 最接近的常用比例（RATIOS 里的一个）。"""
+    r = width / max(height, 1)
+    return min(RATIOS, key=lambda k: abs(math.log(r / (RATIOS[k][0] / RATIOS[k][1]))))
 
 
 def _creds(info):
@@ -199,9 +220,7 @@ class ProAliImage:
 
     def run(self, prompt, model, ratio, level, seed, info=""):
         key, base = _creds(info)
-        if model == "qwen-image-3.0" and level == "2K":
-            # 实测 3.0 出 2K 会超过 200 秒超时（1K 约 66 秒），超时也照样计费，所以直接拦住
-            raise RuntimeError("[阿里 生图] qwen-image-3.0 目前只用 1K（2K 实测超时）；要 2K 请选 qwen-image-2.0-pro")
+        _check_level(model, level, "生图")
         size = _size(ratio, level)
         d = _post(base, key, {"model": model, "input": {"messages": [{"role": "user", "content": [{"text": prompt}]}]},
                               "parameters": {"size": size, "watermark": False, "seed": seed}}, IMAGE_TIMEOUT, "生图")
@@ -215,20 +234,34 @@ class ProAliImageEdit:
         return {"required": {
             "image1": ("IMAGE",),
             "prompt": ("STRING", {"multiline": True, "default": "请编辑这张商品照片：把原来的背景完全去掉，换成干净、无缝的纯白色（#FFFFFF）影棚背景；商品本身保持原样（形状、细节、颜色、角度都不要改），在商品下方加柔和自然的接触阴影；专业电商产品图。"}),
-            "model": (EDIT_MODELS, {"default": "qwen-image-edit-max"}),
+            "model": (EDIT_MODELS, {"default": "qwen-image-2.0-pro"}),
             "seed": ("INT", {"default": 0, "min": 0, "max": 2147483646, "control_after_generate": True})},
-            "optional": {"image2": ("IMAGE",), "image3": ("IMAGE",), "info": ("STRING", {"default": "", "forceInput": True})}}
+            "optional": {"image2": ("IMAGE",), "image3": ("IMAGE",), "info": ("STRING", {"default": "", "forceInput": True}),
+                         "ratio": ([SAME_AS_INPUT] + list(RATIOS), {"default": SAME_AS_INPUT, "tooltip": "出图的比例；默认跟第一张图一样（取最接近的常用比例）"}),
+                         "level": (["1K", "2K"], {"default": "1K", "tooltip": "1K 约 100 万像素；2K 只有 qwen-image-2.0-pro / 2.1-pro 能用"}),
+                         # 「出图引擎」模式节点把选中的模型名送进来（一个下拉管整个应用里所有的阿里出图节点）：接了就以它为准，没接就用上面的「模型」
+                         "use_model": ("STRING", {"default": "", "forceInput": True})}}
 
     RETURN_TYPES = ("IMAGE", "STRING")
     RETURN_NAMES = ("image", "response")
     FUNCTION = "run"
     CATEGORY = "pro/aliyun"
 
-    def run(self, image1, prompt, model, seed, image2=None, image3=None, info=""):
+    def run(self, image1, prompt, model, seed, image2=None, image3=None, info="", ratio=SAME_AS_INPUT, level="1K", use_model=""):
         key, base = _creds(info)
+        model = (use_model or "").strip() or model
+        if model not in EDIT_MODELS:
+            raise RuntimeError(f"[阿里 改图] 不认识的模型「{model}」：可选 {'、'.join(EDIT_MODELS)}")
+        _check_level(model, level, "改图")
+        if ratio not in RATIOS:                                        # 「跟原图一样」：按第一张图的宽高取最接近的常用比例
+            try:
+                ratio = _closest_ratio(int(image1.shape[2]), int(image1.shape[1]))
+            except Exception:
+                ratio = "1:1"
+        size = _size(ratio, level)
         content = [{"image": _to_data_url(t)} for t in (image1, image2, image3) if t is not None] + [{"text": prompt}]
         d = _post(base, key, {"model": model, "input": {"messages": [{"role": "user", "content": content}]},
-                              "parameters": {"watermark": False, "seed": seed}}, IMAGE_TIMEOUT, "改图")
+                              "parameters": {"watermark": False, "seed": seed, "size": size}}, IMAGE_TIMEOUT, "改图")
         data = _download(_image_from(d, "改图"), "改图")
         return (_to_tensor(data), json.dumps({"code": "success", "model": model, "usage": d.get("usage")}, ensure_ascii=False))
 
@@ -396,7 +429,8 @@ class ProAliPromptWriter:
             # display_name：前端用它当控件的显示名
             "idea": ("STRING", {"multiline": True, "default": "", "display_name": "一句话需求", "tooltip": "想要什么，一句话说清楚；模型会按下面的「扩写指令」写成完整提示词"}),
             "instruction": ("STRING", {"multiline": True, "default": "", "display_name": "扩写指令（一般不用改）", "tooltip": "告诉模型怎么写、写成什么样；各工作流已经按用途写好"}),
-            "model": ("STRING", {"default": WRITER_MODEL, "display_name": "模型"}),
+            "model": (WRITER_MODELS, {"default": WRITER_MODEL, "display_name": "模型",
+                                      "tooltip": "写提示词用哪个文字模型。默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；要看图的（看图写文案、图生视频）必须选 qwen3.8-omni-flash，其余模型只能读文字"}),
             # seed 不参与请求：只是让每次运行都重新扩写（ComfyUI 输入没变就直接用上次的结果）
             "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "display_name": "随机数（变一下就重新扩写）"})},
             "optional": {"info": ("STRING", {"default": "", "forceInput": True}), "image": ("IMAGE",)}}

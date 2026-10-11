@@ -11,6 +11,7 @@
 import asyncio
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -25,6 +26,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "tests"))
 import _load  # noqa: E402
+
+# 真节点（pro-flow 的 ProAppText）存文字结果时的文件名规整：标题里的 \ / : * ? " < > | 和换行换成 -
+SAFE_NAME = re.compile(r'[\\/:*?"<>|\r\n]+')
 
 WEB = os.environ.get("PC_WEB_DIR") or os.path.join(ROOT, "custom-nodes", "pro-chat", "web")      # PC_WEB_DIR：换一份前端（做变异检查时用改坏的副本，不动仓库里的文件）
 WF_DIR = os.path.join(ROOT, "workflows")
@@ -159,7 +163,7 @@ class FakeComfy:
                 outs[nid] = {"audio": [{"filename": name, "subfolder": "audio", "type": "output"}]}
             elif ct == "ProAppText" and not inp.get("only_on_error"):
                 os.makedirs(os.path.join(self.out_dir, "text"), exist_ok=True)
-                name = f"{inp.get('label', '文字')}_{n:05d}.txt"
+                name = f"{SAFE_NAME.sub('-', str(inp.get('label', '文字'))).strip() or '文字结果'}_{n:05d}.txt"       # 和真节点一样：标题里的斜杠等换成 -（「标题 / 卖点文案」）
                 with open(os.path.join(self.out_dir, "text", name), "w", encoding="utf-8") as f:
                     f.write(f"（假的文字结果）{inp.get('label', '')}")
                 outs[nid] = {"files": [{"filename": name, "subfolder": "text", "type": "output", "display_name": inp.get("label", "")}]}

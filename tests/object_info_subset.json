@@ -963,7 +963,10 @@
     "model": [
      [
       "qwen-image-2.0-pro",
-      "qwen-image-3.0"
+      "qwen-image-2.1-pro",
+      "qwen-image-2.0",
+      "qwen-image-3.0",
+      "qwen-image-3.0-pro"
      ],
      {
       "default": "qwen-image-2.0-pro"
@@ -1045,6 +1048,39 @@
       "default": "",
       "forceInput": true
      }
+    ],
+    "level": [
+     [
+      "1K",
+      "2K"
+     ],
+     {
+      "default": "1K",
+      "tooltip": "1K 约 100 万像素；2K 只有 qwen-image-2.0-pro / 2.1-pro 能用"
+     }
+    ],
+    "ratio": [
+     [
+      "跟原图一样",
+      "1:1",
+      "3:4",
+      "4:3",
+      "9:16",
+      "16:9",
+      "2:3",
+      "3:2"
+     ],
+     {
+      "default": "跟原图一样",
+      "tooltip": "出图的比例；默认跟第一张图一样（取最接近的常用比例）"
+     }
+    ],
+    "use_model": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
     ]
    },
    "required": {
@@ -1053,10 +1089,14 @@
     ],
     "model": [
      [
-      "qwen-image-edit-max"
+      "qwen-image-2.0-pro",
+      "qwen-image-2.1-pro",
+      "qwen-image-2.0",
+      "qwen-image-3.0",
+      "qwen-image-3.0-pro"
      ],
      {
-      "default": "qwen-image-edit-max"
+      "default": "qwen-image-2.0-pro"
      }
     ],
     "prompt": [
@@ -1081,7 +1121,10 @@
    "optional": [
     "image2",
     "image3",
-    "info"
+    "info",
+    "ratio",
+    "level",
+    "use_model"
    ],
    "required": [
     "image1",
@@ -1141,10 +1184,18 @@
      }
     ],
     "model": [
-     "STRING",
+     [
+      "qwen3.8-flash",
+      "qwen3.8-max",
+      "qwen3.7-plus",
+      "qwen3.8-omni-flash",
+      "deepseek-v4-pro",
+      "kimi-k3"
+     ],
      {
       "default": "qwen3.8-flash",
-      "display_name": "模型"
+      "display_name": "模型",
+      "tooltip": "写提示词用哪个文字模型。默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；要看图的（看图写文案、图生视频）必须选 qwen3.8-omni-flash，其余模型只能读文字"
      }
     ],
     "seed": [
@@ -2225,6 +2276,47 @@
    "branch",
    "compose",
    "instruction"
+  ],
+  "output_node": false
+ },
+ "ProModeEngine": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "网关 Gemini（gemini-image，默认）",
+      "阿里 qwen-image-2.0-pro（约 40 秒）",
+      "阿里 qwen-image-2.1-pro（约 30 秒）",
+      "阿里 qwen-image-2.0（最快）",
+      "阿里 qwen-image-3.0（只支持 1K）",
+      "阿里 qwen-image-3.0-pro（最细，约 1~1.5 分钟，只支持 1K）"
+     ],
+     {
+      "default": "网关 Gemini（gemini-image，默认）",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeEngine",
+  "output": [
+   "INT",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "branch",
+   "model"
   ],
   "output_node": false
  },

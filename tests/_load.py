@@ -37,7 +37,9 @@ def object_info_entry(klass):
 
 # tests/object_info_subset.json 里不是从服务器抓、而是按节点定义生成的那几个 pro-* 节点（服务器上还没有它们）：{节点名: (包名, 类名)}
 NEW_NODES = {"ProAliDialogue": ("pro-ali", "ProAliDialogue"), "ProMatte": ("pro-image", "ProMatte"), "ProSaveCutout": ("pro-image", "ProSaveCutout"),
-             "ProLayerCompose": ("pro-image", "ProLayerCompose"), "ProModeDialogueVideo": ("pro-flow", "ProModeDialogueVideo"), "ProModeLayer": ("pro-flow", "ProModeLayer")}
+             "ProLayerCompose": ("pro-image", "ProLayerCompose"), "ProModeDialogueVideo": ("pro-flow", "ProModeDialogueVideo"), "ProModeLayer": ("pro-flow", "ProModeLayer"),
+             "ProAliPromptWriter": ("pro-ali", "ProAliPromptWriter"), "ProAliImage": ("pro-ali", "ProAliImage"), "ProAliImageEdit": ("pro-ali", "ProAliImageEdit"),
+             "ProModeEngine": ("pro-flow", "ProModeEngine")}      # 这个服务器上有，但「模型」从文字框改成了下拉：定义以仓库里的为准，部署之后可以改回从 /object_info 抓
 
 
 def new_node_classes():

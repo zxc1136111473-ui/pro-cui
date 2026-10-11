@@ -39,6 +39,8 @@ FIELD_HINTS = {("ProAliPromptWriter", "idea"): "写 1~2 句具体的中文描述
 # 下拉控件一般不拿节点的 tooltip 当说明（别家节点的下拉 tooltip 是写给节点图看的，进目录只会多出一堆字）；
 # 这几个自带节点的下拉，说明就是节点控件的 tooltip（图层合成的位置 / 阴影 / 比例，抠图的模型）：只写一处，工作台、AI 提示词、节点图里的悬停提示是同一句
 TOOLTIP_HINTS = {("ProLayerCompose", "position"), ("ProLayerCompose", "shadow"), ("ProLayerCompose", "ratio"), ("ProMatte", "model")}
+# 别家的节点没写 multiline: False、但本来就是一行的短文字（模型名）：界面里也用单行输入框
+SINGLE_LINE_FIELDS = {("RelayAPISettings", "custom_model")}
 
 
 def file_kind(name):
@@ -188,7 +190,7 @@ def load_app(wf, rel, oi):
             continue
         if kind == "text":
             f = {"key": key, "label": label, "kind": "text", "default": str(default or "")[:300], "hint": hint}
-            if meta.get("multiline") is False:
+            if meta.get("multiline") is False or (n["type"], widget) in SINGLE_LINE_FIELDS:
                 f["multiline"] = False                  # 节点明确写了「单行」（角色名、颜色这类短文字）：界面里用单行输入框
         elif kind == "choice" and options:
             if only:
@@ -410,6 +412,14 @@ def pick_option(v, options, allow_index):
                 return hits[0]
         return None
     if len(s) >= 6:
+        heads = [o for o in options if _loose(_bare(o)) == _loose(_bare(s))]      # 括号前面那段一样（「阿里 qwen-image-3.0-pro」少写了后面的说明）：唯一就认
+        if len(heads) == 1:                                                       # 要在模糊匹配之前：几个选项只差一个版本号时，模糊匹配会挑错（3.0-pro 被当成 2.0-pro）
+            return heads[0]
+        pre = [o for o in options if _loose(o).startswith(_loose(s))]             # 只写了开头：唯一就认；开头一样的有好几个就分不清，不猜（模糊匹配会随便挑一个）
+        if len(pre) == 1:
+            return pre[0]
+        if len(pre) > 1:
+            return None
         hit = get_close_matches(s, options, n=1, cutoff=0.75)
         return hit[0] if hit else None
     return None
@@ -464,8 +474,21 @@ def coerce_bool(val):
     return None
 
 
-def lookup_key(table, key):
-    """字段键 → 目录里的条目。键应该是「节点 id:控件名」；模型偶尔只写节点 id（"70"）或只写控件名（"script"），这时能唯一确定就认它。"""
+def field_accepts(f, value):
+    """这个字段收不收这个值（选项里有、数字能转、开关认得、文字非空）：只写节点 id 时，拿值来分辨它说的是同一个节点里的哪个字段。"""
+    kind = f["kind"]
+    if kind == "text":
+        return as_text(value).strip() != ""
+    if kind == "choice":
+        return pick_option(value, f["options"], False) is not None
+    if kind in NUMBER_KINDS:
+        return coerce_number(value, f) is not None
+    return coerce_bool(value) is not None
+
+
+def lookup_key(table, key, value=None):
+    """字段键 → 目录里的条目。键应该是「节点 id:控件名」；模型偶尔只写节点 id（"70"）或只写控件名（"script"），这时能唯一确定就认它。
+    只写节点 id、而这个节点有好几个字段时（写提示词节点有「一句话需求」和「模型」），再看值：只有一个字段收这个值就认它（「温暖的女声」只能是文字，不是模型名）。"""
     if key in table:
         return table[key]
     if isinstance(key, str) and key.isascii() and key.isdigit():
@@ -473,6 +496,12 @@ def lookup_key(table, key):
         common = [v for v in hits if not v.get("advanced")]
         if len(hits) == 1 or len(common) == 1:              # 该节点只有一个可填的，或只有一个常用的（其余是高级设置）
             return (hits if len(hits) == 1 else common)[0]
+        if value is not None and hits:
+            ok = [v for v in hits if field_accepts(v, value)]
+            if len(ok) > 1:
+                ok = [v for v in ok if not v.get("advanced")]
+            if len(ok) == 1:
+                return ok[0]
     elif isinstance(key, str) and key.strip() and ":" not in key:
         hits = [v for k, v in table.items() if k.split(":", 1)[-1].lower() == key.strip().lower()]
         if len(hits) == 1:                                  # 模型漏写了节点编号（"script"），整个应用里只有一个叫这个名字的控件就认它
@@ -524,7 +553,7 @@ def clean_selection(app, mode, fields, files, resolve_file, cast=False):
         else:
             sel["mode"] = m
     for key, val in (fields if isinstance(fields, dict) else {}).items():
-        f = lookup_key(app["fields"], key)
+        f = lookup_key(app["fields"], key, val)
         if f is None:
             warns.append(f"没有字段「{key}」，已忽略")
             continue

@@ -72,7 +72,7 @@ SPEC = {
     "RelaySoundGenerator": ([("info", "STRING", True)], [("audio", "AUDIO"), ("clip_id", "STRING"), ("task_id", "STRING"), ("response", "STRING"), ("audio_url", "STRING")], ["prompt"]),
     "ProGeminiMusic": ([("info", "STRING", True)], [("audio", "AUDIO"), ("response", "STRING")], ["prompt"]),
     "ProAliImage": ([("info", "STRING", True)], [("image", "IMAGE"), ("response", "STRING")], ["prompt"]),
-    "ProAliImageEdit": ([("info", "STRING", True), ("image1", "IMAGE", False), ("image2", "IMAGE", False), ("image3", "IMAGE", False)],
+    "ProAliImageEdit": ([("info", "STRING", True), ("use_model", "STRING", True), ("image1", "IMAGE", False), ("image2", "IMAGE", False), ("image3", "IMAGE", False)],
                         [("image", "IMAGE"), ("response", "STRING")], ["prompt"]),
     "ProAliPromptWriter": ([("info", "STRING", True), ("image", "IMAGE", False)], [("text", "STRING"), ("response", "STRING")], ["instruction"]),
     "ProAliTTS": ([("info", "STRING", True)], [("audio", "AUDIO"), ("response", "STRING")], ["text", "custom_voice"]),
@@ -401,6 +401,21 @@ def gateway_extras(g, nid, who, ratio=True):
     g.app_extra(nid, "quality", f"{who}·画质", advanced=True)
 
 
+def gateway_model(g):
+    """网关 Settings 节点（编号 1）的「模型名」（custom_model）：网关出图用哪个模型。现在网关（New API）只有 gemini-image 一个出图模型，所以放在高级设置里，
+    只是让人看得到用的是哪个、以后网关加了别的出图模型能直接换（2026-10-10 问过网关的 /v1/models：只有 gemini-image 能出图）。"""
+    g.app_extra(1, "custom_model", "网关·出图模型", "网关现在只有 gemini-image 一个出图模型，一般不用改；网关加了别的出图模型再换", advanced=True)
+
+
+ALI_IMAGE_HINT = ("默认 qwen-image-2.0-pro（1K / 2K 都行）；qwen-image-2.1-pro 更快一点、2K 也行；qwen-image-2.0 最快（几秒到半分钟）、只支持 1K；"
+                  "qwen-image-3.0 / 3.0-pro 更细但只支持 1K、更慢（3.0-pro 约 1~1.5 分钟）。用户没点名要换就别改")
+
+
+def ali_image_model(g, nid):
+    """阿里生图 / 改图节点（ProAliImage / ProAliImageEdit）的「模型」：常用设置（01 / 02 / 03 的阿里引擎）。"""
+    g.app_extra(nid, "model", "阿里·出图模型", ALI_IMAGE_HINT)
+
+
 def tts_extras(g, nid):
     """配音节点（ProAliTTS）的可调设置：语速（常用）；语种、音量、模型、语气指令（高级；语气指令只有 instruct 模型才有效）。"""
     g.app_extra(nid, "speed", "配音语速", "1 是正常；慢一点 0.85，快一点 1.2")
@@ -443,6 +458,8 @@ def status(g, gen, out="response", pos=(0, 0), title="状态（出错时这里�
 # ── 画布最上面：「★ 先选模式」+「★ 只填这里：一句话需求」，其余节点整体下移 ───────────────────────────────────
 # 节点编号固定：70 写提示词、74 它的预览、75 海报文案拆分、77 模式。阿里 Settings 固定 31（Key 按节点 id 存）。
 IDEA_TITLE = "★ 只填这里：一句话需求"
+WRITER_HINT = "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3。用户没点名要换就别改"
+WRITER_HINT_VISION = "这个应用要让 AI 看图，默认 qwen3.8-omni-flash（能看图）；换成别的模型只能读文字、看不了图，会出错。用户没点名要换就别改"
 
 
 def top_block(g, mode=None, writer=None, settings_id=31):
@@ -468,6 +485,7 @@ def top_block(g, mode=None, writer=None, settings_id=31):
         # idea, instruction, model, seed, control_after_generate
         g.add(70, "ProAliPromptWriter", (60, wy), (520, 560), [w["idea"], instruction, w.get("model", "qwen3.8-flash"), 1, "randomize"],
               title=w.get("idea_title", IDEA_TITLE))
+        g.app_extra(70, "model", "写提示词的模型", w.get("model_hint") or (WRITER_HINT_VISION if w.get("model") == "qwen3.8-omni-flash" else WRITER_HINT))
         g.connect(settings_id, "STRING", 70, "info")
         if not w.get("kind"):
             g.connect(77, "instruction", 70, "instruction")
@@ -518,7 +536,7 @@ def wf_text_to_image():       # 01 文生图（原 01 / 03 / 14）：改比例�
     g.app_in(2, "ratio", "网关·比例"); g.app_in(3, "ratio", "阿里·比例"); g.app_in(3, "level", "阿里·清晰度")
     g.app_out(4); app_text(g, 70, "text", "AI 写的提示词"); app_text(g, 12, "out0", "出错信息", True)
     gateway_extras(g, 2, "网关", ratio=False)               # 比例已经在应用右栏里了
-    g.app_extra(3, "model", "阿里·模型", advanced=True)
+    ali_image_model(g, 3); gateway_model(g)
     g.app_desc("根据文字描述生成一张图片（通用出图，不需要上传图片）。引擎：网关 Gemini（自然、约 1K）或阿里 qwen-image（2K，中文字更准）；比例可选，做封面横图选 16:9。")
     return g.build()
 
@@ -556,6 +574,7 @@ def wf_poster():              # 02 海报（原 10 / 11 / 17）
     g.app_extra(5, "extra", "补充要求", "想额外交代的画面要求（比如「不要出现人物」），会原样加进提示词；没有就留空")
     gateway_extras(g, 2, "网关", ratio=False)
     g.app_extra(3, "level", "阿里·清晰度", advanced=True)
+    ali_image_model(g, 3); gateway_model(g)
     g.app_desc("生成电商促销海报：AI 按「标题 / 副标题 / 角标 / 画面元素」写文案，文字原样嵌进海报。可以不带商品图，也可以带上商品图（要上传商品图）；风格可选。")
     return g.build()
 
@@ -569,7 +588,7 @@ def wf_edit():                # 03 商品改图与合成（原 02 / 15 / 13）
     g.add(4, "LoadImage", (60, 470), (400, 420), DEMO, title="① 上传商品图（图1）")
     g.add(5, "LoadImage", (60, 950), (400, 420), DEMO, title="② 场景图（图2，只在「放进场景图」模式用，换成你的场景）")
     g.add(2, "RelayImageGenerator", (520, 120), (380, 420), [AI_NOTE, "1:1", "1K", "medium", "jpeg", "low", 42, "randomize"], title="引擎 ① 网关 Gemini")
-    g.add(3, "ProAliImageEdit", (960, 120), (440, 460), [AI_NOTE, "qwen-image-edit-max", 1, "randomize"], title="引擎 ② 阿里 qwen-image-edit")
+    g.add(3, "ProAliImageEdit", (960, 120), (440, 460), [AI_NOTE, "qwen-image-2.0-pro", 1, "randomize", "跟原图一样", "1K"], title="引擎 ② 阿里 qwen-image（改图 / 合成）")
     g.add(8, "SaveImage", (1820, 120), (340, 320), ["edit"])
     top_block(g, mode="ProModeEdit", writer=dict(kind=None, idea=EDIT_IDEA, idea_title="★ 只填这里：一句话需求（改图：怎么改；合成：放在哪、多大）"))
     gate(g, 6, (520, 780), (77, "compose"), (5, "IMAGE"), title="场景图开关（跟模式走）")
@@ -586,11 +605,15 @@ def wf_edit():                # 03 商品改图与合成（原 02 / 15 / 13）
     g.app_required(4, "image")
     g.app_required(5, "image", modes=[2, 4])     # 「把商品放进场景图」两个模式要场景图
     gateway_extras(g, 2, "网关")
+    gateway_model(g)
+    ali_image_model(g, 3)
+    g.app_extra(3, "ratio", "阿里·出图比例", "默认跟原图一样；想改成别的比例（比如 3:4）在这里选", advanced=True)
+    g.app_extra(3, "level", "阿里·清晰度", "2K 只有 qwen-image-2.0-pro / 2.1-pro 能用", advanced=True)
     g.app_desc("修改商品图（换背景、去水印、换色……商品保持原样），或把商品放进另一张场景图里。必须上传商品图；「放进场景图」模式还要再上传一张场景图。")
     return g.build()
 
 
-def wf_sizes():               # 04 多尺寸套图：同一张商品图、同一段提示词，一次出 4 个平台尺寸（ComfyUI 队列按顺序跑，约 1.5 分钟）
+def wf_sizes():               # 04 多尺寸套图：同一张商品图、同一段提示词，一次出 4 个平台尺寸（ComfyUI 队列按顺序跑，约 1.5 分钟）；出图引擎在顶上选：网关 Gemini，或阿里的某个模型
     g = Graph()
     g.add(1, "RelayAPISettings", (60, 60), (400, 300), IMG_SET)
     g.add(2, "LoadImage", (60, 420), (400, 420), DEMO, title="① 上传商品图")
@@ -598,23 +621,31 @@ def wf_sizes():               # 04 多尺寸套图：同一张商品图、同一
              ("9:16", "抖音 / 视频号 9:16", "sizes/抖音9x16"), ("16:9", "封面 16:9", "sizes/封面16x9")]
     for i, (ratio, title, prefix) in enumerate(plats):
         y = 60 + i * 680
-        gid, sid = 10 + i, 20 + i
-        g.add(gid, "RelayImageGenerator", (540, y), (400, 420), [AI_NOTE, ratio, "1K", "medium", "jpeg", "low", 100 + i, "randomize"], title=title)
+        gid, aid, pid, sid = 10 + i, 40 + i, 60 + i, 20 + i
+        g.add(gid, "RelayImageGenerator", (540, y), (400, 420), [AI_NOTE, ratio, "1K", "medium", "jpeg", "low", 100 + i, "randomize"], title=title + " · 网关 Gemini")
+        g.add(aid, "ProAliImageEdit", (540, y + 440), (400, 230), [AI_NOTE, "qwen-image-2.0-pro", 1, "randomize", ratio, "1K"], title=title + " · 阿里 qwen-image")
         g.add(sid, "SaveImage", (1000, y), (340, 300), [prefix], title="保存：" + title)
-        g.connect(1, "STRING", gid, "info"); g.connect(2, "IMAGE", gid, "image1")
-        g.connect(gid, "image", sid, "images")
-        status(g, gid, pos=(1000, y + 340), title="状态：" + title, nid=50 + i)  # 31 号留给阿里 Settings（Key 按节点 id 存）
-    top_block(g, writer=dict(kind="promo", idea="干净明亮的浅色背景，商品居中突出，柔和自然的光影和阴影", idea_title="★ 只填这里：一句话需求（4 个尺寸共用）"))
-    for gid in (10, 11, 12, 13):
-        g.connect(70, "text", gid, "prompt")
-    g.app_in(70, "idea"); g.app_in(2, "image", "商品图")
+    top_block(g, mode="ProModeEngine", writer=dict(kind="promo", idea="干净明亮的浅色背景，商品居中突出，柔和自然的光影和阴影", idea_title="★ 只填这里：一句话需求（4 个尺寸共用）"))
+    for i, (ratio, title, prefix) in enumerate(plats):
+        gid, aid, pid, qid, sid = 10 + i, 40 + i, 60 + i, 80 + i, 20 + i
+        y = 60 + i * 680
+        g.connect(1, "STRING", gid, "info"); g.connect(2, "IMAGE", gid, "image1"); g.connect(70, "text", gid, "prompt")
+        g.connect(31, "STRING", aid, "info"); g.connect(2, "IMAGE", aid, "image1"); g.connect(70, "text", aid, "prompt"); g.connect(77, "model", aid, "use_model")
+        pick(g, pid, 2, 1, (1000, y + 330), (77, "branch"), [[(gid, "image")], [(aid, "image")]], title=f"按引擎取图（{ratio}，没选中的引擎不会运行）")
+        g.connect(pid, "out0", sid, "images")
+        pick(g, qid, 2, 1, (1000, y + 500), (77, "branch"), [[(gid, "response")], [(aid, "response")]], title=f"按引擎取状态（{ratio}）")
+        status(g, qid, "out0", pos=(1400, y + 330), title="状态：" + title, nid=50 + i)   # 31 号留给阿里 Settings（Key 按节点 id 存）
+    g.app_in(77, "mode"); g.app_in(70, "idea"); g.app_in(2, "image", "商品图")
     for sid in (20, 21, 22, 23):
         g.app_out(sid)
     g.app_required(2, "image")
+    gateway_model(g)
     app_text(g, 70, "text", "AI 写的提示词")
-    for gid, (ratio, name) in zip((10, 11, 12, 13), [("1:1", "主图"), ("3:4", "小红书"), ("9:16", "抖音"), ("16:9", "封面")]):
-        app_text(g, gid, "response", f"出错信息：{name} {ratio}", True)
-    g.app_desc("同一张商品图 + 一句话需求，一次生成 4 个平台尺寸（主图 1:1、小红书 3:4、抖音 9:16、封面 16:9），约 75 秒。必须上传商品图。")
+    for qid, (ratio, name) in zip((80, 81, 82, 83), [("1:1", "主图"), ("3:4", "小红书"), ("9:16", "抖音"), ("16:9", "封面")]):
+        app_text(g, qid, "out0", f"出错信息：{name} {ratio}", True)
+    g.app_cost("出图引擎默认是网关 Gemini（gemini-image）；选「阿里…」会按张向阿里付费（一次套图 4 张，每张约几毛钱，不同模型价格不同），而且比网关慢（每张约 0.5~1.5 分钟，共约 2~6 分钟）。")
+    g.app_desc("同一张商品图 + 一句话需求，一次生成 4 个平台尺寸（主图 1:1、小红书 3:4、抖音 9:16、封面 16:9），网关约 75 秒。必须上传商品图。"
+               "出图引擎在「模式」里选：默认「网关 Gemini」（gemini-image，网关只有这一个出图模型）；用户点名要阿里 / qwen-image 才选「阿里 qwen-image-…」那几项（每一项是一个阿里模型，没点名具体模型就选 2.0-pro）。")
     return g.build()
 
 
@@ -649,46 +680,60 @@ def wf_post_process():        # 05 图片后处理（原 06 / 24）：放大 2 �
     return g.build()
 
 
-def wf_pipeline():            # 06 商品一条龙：一张商品图 → 白底主图(放大 2 倍) + 场景图 + 标题/卖点文案，一次跑完
+def wf_pipeline():            # 06 商品一条龙：一张商品图 → 白底主图(放大 2 倍) + 场景图 + 标题/卖点文案，一次跑完；出图引擎在顶上选：网关 Gemini，或阿里的某个模型
     g = Graph()
     g.add(1, "RelayAPISettings", (60, 60), (400, 300), IMG_SET)
     g.add(31, "RelayAPISettings", (60, 1240), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-omni-flash"), title="Relay API Settings（阿里文字）")
     g.add(3, "LoadImage", (60, 420), (400, 420), DEMO, title="① 上传商品图")
     # A 白底主图 → 放大 → 保存
-    g.add(4, "RelayImageGenerator", (540, 60), (400, 420), [WHITE_BG, "1:1", "1K", "medium", "jpeg", "low", 42, "randomize"], title="② 白底主图")
+    g.add(4, "RelayImageGenerator", (540, 60), (400, 420), [WHITE_BG, "1:1", "1K", "medium", "jpeg", "low", 42, "randomize"], title="② 白底主图 · 网关 Gemini")
+    g.add(24, "ProAliImageEdit", (540, 500), (400, 230), [WHITE_BG, "qwen-image-2.0-pro", 1, "randomize", "1:1", "1K"], title="② 白底主图 · 阿里 qwen-image")
     g.add(5, "ImageScaleBy", (1000, 60), (300, 90), ["lanczos", 2.0], title="放大 2 倍")
     g.add(6, "ImageSharpen", (1000, 200), (300, 120), [1, 1.0, 0.5])
     g.add(7, "SaveImage", (1360, 60), (340, 300), ["pipeline/白底主图"], title="保存：白底主图")
     # B 场景图
-    g.add(8, "RelayImageGenerator", (540, 740), (400, 420), [AI_NOTE, "3:4", "1K", "medium", "jpeg", "low", 43, "randomize"], title="③ 场景图")
-    g.add(9, "SaveImage", (1000, 740), (340, 300), ["pipeline/场景图"], title="保存：场景图")
+    g.add(8, "RelayImageGenerator", (540, 780), (400, 420), [AI_NOTE, "3:4", "1K", "medium", "jpeg", "low", 43, "randomize"], title="③ 场景图 · 网关 Gemini")
+    g.add(28, "ProAliImageEdit", (540, 1220), (400, 230), [AI_NOTE, "qwen-image-2.0-pro", 1, "randomize", "3:4", "1K"], title="③ 场景图 · 阿里 qwen-image")
+    g.add(9, "SaveImage", (1000, 780), (340, 300), ["pipeline/场景图"], title="保存：场景图")
     # C 文案
-    g.add(10, "RelayTextGenerator", (540, 1440), (420, 300),
+    g.add(10, "RelayTextGenerator", (540, 1500), (420, 300),
           ["看这张商品图，写 1 个电商标题（30 字内）和 3 条卖点（每条 15 字内），中文，不要写图里看不出来的参数。", 44, "randomize"], title="④ 标题 / 卖点文案")
-    g.add(11, "PreviewAny", (1000, 1440), (460, 260), title="生成的文案")
-    for a, b in [(1, 4), (1, 8)]:
-        g.connect(a, "STRING", b, "info")
+    g.add(11, "PreviewAny", (1000, 1500), (460, 260), title="生成的文案")
+    for a_, b_ in [(1, 4), (1, 8)]:
+        g.connect(a_, "STRING", b_, "info")
     g.connect(31, "STRING", 10, "info")
-    for t in (4, 8):
+    for t in (4, 8, 24, 28):
         g.connect(3, "IMAGE", t, "image1")
     # 文字分支的图先缩到最长边 768：大图从服务器传到阿里很慢（实测 1024 的 PNG 超过 180 秒，缩小后约 10 秒）
-    g.add(15, "ImageScaleToMaxDimension", (540, 1780), (320, 90), ["lanczos", 768], title="缩到最长边 768（别删）")
+    g.add(15, "ImageScaleToMaxDimension", (540, 1840), (320, 90), ["lanczos", 768], title="缩到最长边 768（别删）")
     g.connect(3, "IMAGE", 15, "image"); g.connect(15, "IMAGE", 10, "image1")
-    g.connect(4, "image", 5, "image"); g.connect(5, "IMAGE", 6, "image"); g.connect(6, "IMAGE", 7, "images")
-    g.connect(8, "image", 9, "images")
     g.connect(10, "text", 11, "source")
-    status(g, 4, pos=(1000, 380), title="状态：白底主图"); status(g, 8, pos=(1000, 1080), title="状态：场景图"); status(g, 10, pos=(1000, 1740), title="状态：文案")
-    top_block(g, writer=dict(kind="scene", idea="明亮的现代厨房台面，窗边自然光", idea_title="★ 只填这里：场景一句话（只管③场景图，白底主图和文案不受影响）"))
-    g.connect(70, "text", 8, "prompt")
-    g.app_in(70, "idea", "场景一句话"); g.app_in(3, "image", "商品图")
+    status(g, 10, pos=(1000, 1800), title="状态：文案", nid=43)
+    top_block(g, mode="ProModeEngine", writer=dict(kind="scene", idea="明亮的现代厨房台面，窗边自然光", idea_title="★ 只填这里：场景一句话（只管③场景图，白底主图和文案不受影响）"))
+    # 下面要连 77 号模式节点（top_block 才建出来）。两个出图步骤各有「网关 / 阿里」两路，按引擎取一路（没选中的那一路不会运行）；状态也按引擎取
+    for t in (24, 28):
+        g.connect(31, "STRING", t, "info"); g.connect(77, "model", t, "use_model")
+    g.connect(70, "text", 8, "prompt"); g.connect(70, "text", 28, "prompt")
+    pick(g, 21, 2, 1, (1000, 380), (77, "branch"), [[(4, "image")], [(24, "image")]], title="按引擎取白底主图（没选中的引擎不会运行）")
+    pick(g, 22, 2, 1, (1000, 560), (77, "branch"), [[(4, "response")], [(24, "response")]], title="按引擎取状态：白底主图")
+    pick(g, 23, 2, 1, (1000, 1100), (77, "branch"), [[(8, "image")], [(28, "image")]], title="按引擎取场景图（没选中的引擎不会运行）")
+    pick(g, 25, 2, 1, (1000, 1280), (77, "branch"), [[(8, "response")], [(28, "response")]], title="按引擎取状态：场景图")
+    g.connect(21, "out0", 5, "image"); g.connect(5, "IMAGE", 6, "image"); g.connect(6, "IMAGE", 7, "images")
+    g.connect(23, "out0", 9, "images")
+    status(g, 22, "out0", pos=(1360, 380), title="状态：白底主图", nid=41); status(g, 25, "out0", pos=(1360, 1100), title="状态：场景图", nid=42)
+    g.app_in(77, "mode"); g.app_in(70, "idea", "场景一句话"); g.app_in(3, "image", "商品图")
     g.app_out(7); g.app_out(9)
     app_text(g, 10, "text", "标题 / 卖点文案"); app_text(g, 70, "text", "AI 写的场景指令")
-    app_text(g, 4, "response", "出错信息：白底主图", True); app_text(g, 8, "response", "出错信息：场景图", True); app_text(g, 10, "response", "出错信息：文案", True)
+    app_text(g, 22, "out0", "出错信息：白底主图", True); app_text(g, 25, "out0", "出错信息：场景图", True); app_text(g, 10, "response", "出错信息：文案", True)
     g.app_required(3, "image")
-    g.app_extra(8, "ratio", "场景图比例")
+    g.app_extra(8, "ratio", "网关·场景图比例"); g.app_extra(28, "ratio", "阿里·场景图比例", "只在选了「阿里…」引擎时用；「跟原图一样」就是和商品图的比例一样")
     g.app_extra(5, "scale_by", "白底主图放大倍数", "默认 2 倍（1K 放大到 2048）", advanced=True)
-    g.app_extra(8, "size", "场景图清晰度", advanced=True)
-    g.app_desc("一张商品图一次出齐：白底主图（放大到 2048）+ 场景图 + 标题和卖点文案，约 1 分钟。必须上传商品图；只需要说想要的场景（场景一句话）。")
+    g.app_extra(8, "size", "网关·场景图清晰度", advanced=True)
+    g.app_extra(28, "level", "阿里·场景图清晰度", "2K 只有 qwen-image-2.0-pro / 2.1-pro 能用，别的模型选 2K 会提示", advanced=True)
+    gateway_model(g)
+    g.app_cost("出图引擎默认是网关 Gemini（gemini-image）；选「阿里…」会按张向阿里付费（一次 2 张：白底主图 + 场景图，每张约几毛钱，不同模型价格不同），也比网关慢（每张约 0.5~1.5 分钟）。")
+    g.app_desc("一张商品图一次出齐：白底主图（放大到 2048）+ 场景图 + 标题和卖点文案，网关约 1 分钟。必须上传商品图；只需要说想要的场景（场景一句话）。"
+               "出图引擎在「模式」里选：默认「网关 Gemini」（gemini-image，网关只有这一个出图模型）；用户点名要阿里 / qwen-image 才选「阿里 qwen-image-…」那几项（每一项是一个阿里模型，没点名具体模型就选 2.0-pro）。")
     return g.build()
 
 
@@ -713,6 +758,7 @@ def wf_copy():                # 07 文案（原 08 / 09 / 21）：写文案 / �
     g.add(5, "ImageScaleToMaxDimension", (520, 520), (320, 90), ["lanczos", 768], title="缩到最长边 768（别删）")
     g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-omni-flash"), title="Relay API Settings（阿里文字）")
     top_block(g, mode="ProModeCopy", writer=dict(kind=None, idea=COPY_IDEA, model="qwen3.8-omni-flash", preview_title="生成的文案", preview_is_result=True,
+                                                  model_hint="「看图写文案」模式要让 AI 看图，必须用 qwen3.8-omni-flash（默认）；「写文案」「翻译」只读文字，可以换 qwen3.8-max 等别的模型试试。用户没点名要换就别改",
                                                   idea_title="★ 只填这里：商品信息（翻译模式：贴上要翻译的中文文案）"))
     gate(g, 6, (900, 520), (77, "use_image"), (5, "IMAGE"), title="商品图开关（跟模式走）")
     g.connect(3, "IMAGE", 5, "image"); g.connect(6, "value", 70, "image")
