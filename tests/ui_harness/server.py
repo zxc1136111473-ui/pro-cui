@@ -75,6 +75,11 @@ class FakeLLM:
 
     @staticmethod
     def reply(text):
+        if "视频换人" in text or "标准质量" in text:          # 先出视频，再把视频里的人换成素材库里的人像；AI 擅自把「我确认已授权」勾上了——后端要去掉（用户自己勾过的才保留）
+            q = "标准" if "标准质量" in text else "专业"
+            return {"reply": "先用图出一段视频，再把视频里的人换成这张人像（这张人像要是本人或已获授权的）。", "plan": {"steps": [
+                {"workflow": "12", "mode": 1, "fields": {"70:idea": "人物微笑着挥手"}, "files": {"2:image": 1}, "note": "出视频"},
+                {"workflow": "19", "fields": {"5:authorized": True, "5:quality": q}, "files": {"2:image": 1, "3:file": "步骤1"}, "note": "视频换人"}]}}
         if "做一套" in text:                                  # 套图（4 张）→ 用第 2 张出视频
             return {"reply": "好的：先出 4 个尺寸的套图，再用第 2 张做 8 秒竖屏视频（视频会占 Veo 额度）。", "plan": {"steps": [
                 {"workflow": "04", "fields": {"70:idea": "红苹果，干净明亮的浅色背景"}, "files": {"2:image": 1}, "note": "先出套图"},
@@ -163,7 +168,7 @@ class FakeComfy:
                         Image.new("RGBA", (512, 512), (0, 0, 0, 0)).save(os.path.join(self.out_dir, "pro", layer))
                         files.append({"filename": layer, "subfolder": "pro", "type": "output"})
                 outs[nid] = {"images": files}
-            elif ct in ("SaveVideo", "ProVideoDub"):
+            elif ct in ("SaveVideo", "ProVideoDub", "ProVideoSave"):
                 os.makedirs(os.path.join(self.out_dir, "video"), exist_ok=True)
                 name = f"成片_{n:05d}_.mp4"
                 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=0x3366aa:s=270x480:d=1:r=10", "-pix_fmt", "yuv420p", os.path.join(self.out_dir, "video", name)], check=True)

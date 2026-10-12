@@ -97,7 +97,7 @@ class Convert(unittest.TestCase):
 
 class Catalog(unittest.TestCase):
     def test_every_app_has_a_description_and_results(self):
-        self.assertEqual(sorted(CAT), [f"{i:02d}" for i in range(1, 17)])                   # 目录按类别文件夹排（图片 / 文案与配音 / 视频），编号不一定连着
+        self.assertEqual(sorted(CAT), [f"{i:02d}" for i in range(1, 20)])                   # 目录按类别文件夹排（图片 / 文案与配音 / 视频），编号不一定连着
         for app in CAT.values():
             self.assertTrue(app["desc"], f"{app['id']} 缺用途描述")
             self.assertTrue(app["results"] and app["outputs"], app["id"])
@@ -187,7 +187,8 @@ class Catalog(unittest.TestCase):
 
     def test_required_files_are_marked_and_shown_to_the_model(self):
         required = {a: [k for k, f in app["files"].items() if f.get("required")] for a, app in CAT.items()}
-        self.assertEqual({a: k for a, k in required.items() if k}, {"03": ["4:image"], "04": ["2:image"], "05": ["2:image"], "06": ["3:image"], "12": ["2:image"], "15": ["2:image"], "16": ["2:image"]})
+        self.assertEqual({a: k for a, k in required.items() if k}, {"03": ["4:image"], "04": ["2:image"], "05": ["2:image"], "06": ["3:image"], "12": ["2:image"], "15": ["2:image"], "16": ["2:image"],
+                          "17": ["2:file"], "18": ["2:file", "3:file"], "19": ["2:image", "3:file"]})
         self.assertIn("4:image｜商品图｜图片（必填）", cat_mod.catalog_text({"03": CAT["03"]}))
         self.assertNotIn("（必填）", cat_mod.catalog_text({"02": CAT["02"]}))                       # 02 的商品图只在「带商品图」模式才用
         wf = load_wf("03")
@@ -1038,6 +1039,109 @@ class Presets(unittest.TestCase):
         self.assertNotIn("{combos}", sp)
 
 
+class VideoApps(unittest.TestCase):
+    """17 视频改视频 / 18 视频拼接 / 19 视频换人：目录里的样子、必填文件、只能用户自己勾的授权确认。"""
+
+    def test_the_catalog_describes_the_three_new_apps(self):
+        a17, a18, a19 = CAT["17"], CAT["18"], CAT["19"]
+        self.assertEqual((a17["name"], a18["name"], a19["name"]), ("视频改视频", "视频拼接", "视频换人"))
+        self.assertTrue(all(CAT[i]["group"] == "视频" and CAT[i]["produces"] == ["video"] for i in ("17", "18", "19")))
+        self.assertEqual(a17["mode"]["options"], FLOW.MODES["ProModeVideoEdit"][1])
+        self.assertIsNone(a18["mode"])
+        self.assertIsNone(a19["mode"])
+        # 17：视频必填；参考图只在带参考图的模式必填（槽位没选就不会传给模型）
+        self.assertEqual({k: (f["kind"], f.get("required"), f.get("required_modes")) for k, f in a17["files"].items()},
+                         {"2:file": ("video", True, None), "3:image": ("image", None, [2, 3]), "4:image": ("image", None, [3])})
+        self.assertEqual([f["key"] for f in cat_mod.required_files(a17, a17["mode"]["options"][0])], ["2:file"])
+        self.assertEqual([f["key"] for f in cat_mod.required_files(a17, a17["mode"]["options"][1])], ["2:file", "3:image"])
+        self.assertEqual([f["key"] for f in cat_mod.required_files(a17, a17["mode"]["options"][2])], ["2:file", "3:image", "4:image"])
+        self.assertEqual({k: f["kind"] for k, f in a18["files"].items()}, {"2:file": "video", "3:file": "video", "4:file": "video", "5:file": "video"})
+        self.assertEqual([k for k, f in a18["files"].items() if f.get("required")], ["2:file", "3:file"])
+        self.assertEqual({k: (f["kind"], f.get("required")) for k, f in a19["files"].items()}, {"2:image": ("image", True), "3:file": ("video", True)})
+
+    def test_the_settings_the_assistant_can_set(self):
+        f17, f18, f19 = CAT["17"]["fields"], CAT["18"]["fields"], CAT["19"]["fields"]
+        self.assertEqual((f17["5:prompt"]["kind"], f17["5:prompt"]["default"]), ("text", ""))          # 「怎么改」默认留空：按秒收费，示例文字不能直接跑
+        self.assertEqual(f17["5:model"]["options"], ["wan2.7-videoedit", "happyhorse-1.0-video-edit"])
+        self.assertEqual(f17["5:model"]["default"], "wan2.7-videoedit")
+        self.assertFalse(f17["5:model"].get("advanced"))                                           # 用户要「能选模型」：模型选择放在常用设置里
+        self.assertEqual(f17["5:resolution"]["default"], "720P")
+        self.assertTrue(all(f17[k].get("advanced") for k in ("5:audio", "5:duration", "5:ratio", "5:prompt_extend", "5:watermark")))
+        self.assertEqual(f17["5:audio"]["default"], "保留原视频的声音")
+        self.assertEqual((f19["5:authorized"]["kind"], f19["5:authorized"]["default"]), ("bool", False))     # 授权确认默认不勾
+        self.assertEqual(f19["5:quality"]["default"], "标准（wan-std，快一点、便宜）")
+        self.assertEqual(f18["10:transition"]["default"], "淡入淡出")
+        self.assertEqual(f18["10:short_side"]["cast"], "int")                                       # 数字下拉：运行时要转回数字
+        self.assertTrue(f18["10:short_side"].get("advanced"))
+
+    def test_the_swap_node_title_names_the_most_likely_cause_for_the_native_error_card(self):
+        wf = load_wf("19")
+        self.assertIn("先勾选", next(n for n in wf["nodes"] if n["id"] == 5)["title"])
+
+    def test_the_cost_notes_say_what_it_costs(self):
+        self.assertIn("输入视频秒数 + 输出视频秒数", CAT["17"]["cost"])
+        self.assertIn("0.6 元", CAT["17"]["cost"])
+        self.assertIn("不收费", CAT["17"]["cost"])
+        self.assertIn("0.6 元/秒", CAT["19"]["cost"])
+        self.assertIn("不是只换脸", CAT["19"]["cost"])                                                # 工作台顶上每次都显示费用 / 注意：换的是整个人这件事不能只靠 AI 的回复提
+        self.assertIn("不花钱", CAT["18"]["cost"])
+        for i in ("17", "18", "19"):
+            self.assertIn("费用 / 注意：", cat_mod.catalog_text({i: CAT[i]}))
+
+    def test_the_consent_tick_is_part_of_the_description_for_the_model(self):
+        self.assertIn("必须由用户自己勾选", CAT["19"]["desc"])
+        self.assertIn("不是只换脸", CAT["19"]["desc"])
+        self.assertIn("「换脸」", CAT["19"]["desc"])                                                   # 用户嘴里的「换脸」要能对上这个应用
+        self.assertIn("本人或已经获得授权", CAT["19"]["desc"])
+        self.assertIn("「我确认人像是本人或已获授权」要用户自己勾选", chat.SYSTEM)
+        self.assertNotIn("改视频内容、做 PPT", chat.SYSTEM)                                           # 改视频现在能做了，不能再说「做不了」
+        self.assertIn("剪短 / 截取 / 加速视频", chat.SYSTEM)                                           # 但剪辑还是做不了：别拿按秒收费的「视频改视频」去凑（真模型试过会这样凑）
+        self.assertIn("不能当剪辑用", CAT["17"]["desc"])
+        self.assertIn("不是剪辑功能", CAT["17"]["fields"]["5:duration"]["hint"])
+        self.assertIn("视频改视频", chat.system_prompt(CAT, [], None))
+
+    def plan_of(self, fields, prev=None):
+        assets = assets_of(("助手/p.png", "人物"), ("助手/v.mp4", "视频"))
+        plan, warns = chat.make_plan({"steps": [{"workflow": "19", "fields": fields, "files": {"2:image": 1, "3:file": 2}}]}, CAT, assets)
+        warns += chat.strip_user_only(plan, prev)
+        return plan, warns
+
+    def test_the_assistant_cannot_tick_the_consent_box_for_the_user(self):
+        plan, warns = self.plan_of({"5:authorized": True, "5:quality": "专业"})
+        self.assertNotIn("5:authorized", plan["steps"][0]["fields"])
+        self.assertEqual(plan["steps"][0]["fields"], {"5:quality": "专业（wan-pro，更流畅、更贵）"})
+        self.assertTrue(any("要你自己勾选" in w for w in warns), warns)
+        plan, warns = self.plan_of({"5:authorized": False})                                         # 填 false 本来就是没勾：不用提示
+        self.assertNotIn("5:authorized", plan["steps"][0]["fields"])
+        self.assertEqual([w for w in warns if "勾选" in w], [])
+
+    def test_a_tick_the_user_made_survives_the_assistant_rewriting_the_plan(self):
+        prev = {"steps": [{"workflow": "19", "fields": {"5:authorized": True}}]}
+        plan, warns = self.plan_of({"5:authorized": True}, prev)
+        self.assertEqual(plan["steps"][0]["fields"], {"5:authorized": True})
+        self.assertEqual([w for w in warns if "勾选" in w], [])
+        for bad_prev in ({"steps": [{"workflow": "17", "fields": {"5:authorized": True}}]},          # 不是同一个应用
+                         {"steps": [{"workflow": "19", "fields": {"5:authorized": False}}]},         # 当时没勾
+                         {"steps": [{"workflow": "19", "fields": {"5:authorized": "yes"}}]},         # 不是 true
+                         {"steps": []}, {"steps": "x"}, "x", None, 5):
+            plan, _ = self.plan_of({"5:authorized": True}, bad_prev)
+            self.assertNotIn("5:authorized", plan["steps"][0]["fields"], repr(bad_prev))
+
+    def test_the_guard_runs_inside_a_real_chat_turn(self):
+        assets = assets_of(("助手/p.png", "人物"), ("助手/v.mp4", "视频"))
+        reply = {"reply": "好的，已经排好了", "plan": {"steps": [{"workflow": "19", "mode": None, "fields": {"5:authorized": True}, "files": {"2:image": 1, "3:file": 2}, "note": "换人"}]}}
+        out = chat.chat_turn({"messages": [{"role": "user", "content": "把视频里的人换成这张照片的人"}]}, CAT, "k", "https://dashscope.aliyuncs.com", assets, [], post=FakePost(llm(reply)))
+        self.assertNotIn("5:authorized", out["plan"]["steps"][0]["fields"])
+        self.assertTrue(any("要你自己勾选" in w for w in out["warnings"]))
+        prev = {"steps": [{"workflow": "19", "fields": {"5:authorized": True}}]}
+        out = chat.chat_turn({"messages": [{"role": "user", "content": "质量改成专业"}], "plan": prev}, CAT, "k", "https://dashscope.aliyuncs.com", assets, [], post=FakePost(llm(reply)))
+        self.assertEqual(out["plan"]["steps"][0]["fields"], {"5:authorized": True})
+
+    def test_replacing_words_count_as_asking_for_something(self):
+        self.assertTrue(chat.ACTION.search("把视频里的人换成这个"))
+        self.assertTrue(chat.ACTION.search("这三段拼起来"))
+
+
 class FewerQuestions(unittest.TestCase):
     """含糊的要求（附了图只说「帮我写个提示词」）不要反问：提示词里写明了，模型还是反问时后端催一次。"""
     ASKING = {"reply": "你想让我帮你写提示词，但没说具体用在哪儿——是想生成产品宣传图？还是做电商详情页文案？", "plan": None}
@@ -1799,7 +1903,7 @@ class Glue(unittest.TestCase):
     def test_the_catalog_gives_groups_and_presets_for_the_dropdowns(self):
         d = pc.handle_catalog()
         self.assertEqual({a["group"] for a in d["apps"]}, {"图片", "文案与配音", "视频"})
-        self.assertEqual([a["workflow"] for a in d["apps"] if a["group"] == "视频"], ["10", "11", "12", "14"])
+        self.assertEqual([a["workflow"] for a in d["apps"] if a["group"] == "视频"], ["10", "11", "12", "14", "17", "18", "19"])
         self.assertEqual([p["id"] for p in d["presets"]], [p["id"] for p in presets.PRESETS])
         self.assertTrue(all(p["name"] and p["desc"] for p in d["presets"]))
 

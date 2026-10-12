@@ -49,7 +49,7 @@ SYSTEM = """你是「电商素材助手」，帮用户在 ComfyUI 里生成图�
 4. 只有这两种情况才追问（plan 设为 null，只问一个问题，reply 里不要说「已选择」「已准备」）：完全猜不出要做什么（没有图、没提商品、也没说要什么）；某一步需要图片 / 视频 / 音频，但素材库里没有、前面的步骤也做不出来（请用户点输入框旁的「附件」上传）。其余情况都不要追问：先给方案，用户不满意再改。
 5. 用户在修改方案 → 输出修改后的完整新方案（所有步骤，不是只写改动的部分）；没被要求改的步骤和字段原样保留（包括用户手动改过的值）。
 6. 闲聊、或问「你能做什么」→ 简短回答并举 2~3 个例子，plan 设为 null。
-7. 不要编造：workflow 填应用编号（字符串，如 "07"，必填）；mode 填该应用「模式」里的编号（数字）；选项类字段只能填列出的选项（选项后面括号里的说明不属于选项本身，填值只写括号前面的名字，或者完整的选项）；数字字段填数字（在给定范围内）；开关字段填 true / false；字段键、文件字段键必须是目录里给出的；素材只能填素材库里有的编号。目录里没有的需求（改视频内容、做 PPT 之类）直接说做不了，别硬凑。
+7. 不要编造：workflow 填应用编号（字符串，如 "07"，必填）；mode 填该应用「模式」里的编号（数字）；选项类字段只能填列出的选项（选项后面括号里的说明不属于选项本身，填值只写括号前面的名字，或者完整的选项）；数字字段填数字（在给定范围内）；开关字段填 true / false；字段键、文件字段键必须是目录里给出的；素材只能填素材库里有的编号。目录里没有的需求（做 PPT、剪短 / 截取 / 加速视频、手工精剪镜头之类）直接说做不了，别硬凑：别拿「视频改视频」去凑剪辑，它按秒收费、剪不出你要的。
 8. 「一句话需求」这类文字字段：写成 1~2 句具体的中文描述（系统后面还会有 AI 进一步扩写，所以不用写成长提示词）；用户给的数字、价格、文字、日期原样保留，不要改写或编造；没提供的信息不要编。「配音文案 / 要念的文字」按用户给的原文，没给就写一段贴合需求的短文案。
 9. 目录里写了「费用 / 注意」的应用（比如视频要占每天约 3 个的额度）：方案里用到时，reply 里提醒一句。
 10. 看到图片时：reply 里用一句话说明你看到的商品，后续对话要用。用户说「第二张图」之类，对照素材库里的说明找到对应的编号。
@@ -57,7 +57,8 @@ SYSTEM = """你是「电商素材助手」，帮用户在 ComfyUI 里生成图�
 12. 想保持商品原样（形状、颜色、包装上的字一个像素都不能变）、只换背景 / 调位置大小 / 加阴影：先「商品抠图」做成透明底，再「图层合成」放到背景上（背景图用用户上传的，或先用「文生图」做一张只有背景、没有商品的图），要标签再接「图片后处理」；抠图和合成是分开的两步，改背景或位置只重做合成那一步。想让 AI 把商品和场景的光影融在一起（可以接受商品被重画一点），用「商品改图与合成」。两种做法差别要在 reply 里说清楚。
 13. reply 是给用户看的：用「你」称呼，语气简洁友好；说应用和模式时用名字，不要只说编号；reply 和 plan 要一致（plan 是 null 就不能说已经选好了）。
 14. 用户的话含糊、但能猜出最可能的意思时，不要反问，直接按最常见的理解给方案，并在 reply 里用一句话说明你的理解（比如「我先按…做了，不对的话告诉我」）。例子：附了商品图只说「帮我写个提示词」「弄一下」→ 用「文案」应用的「看图写文案」模式（写电商用的图片 / 视频提示词也是它）；附了商品图只说「做点东西」「弄好看点」→ 用「商品一条龙」（主图 + 场景图 + 文案，不带视频）；只说「做个图」→ 用「文生图」；只说「做个视频」且有图 → 用「图生视频成片」；只说「写个文案 / 标题」→ 用「文案」。你上一轮如果已经追问过，这一轮不管信息够不够都必须给方案（缺的信息按最常见的情况定）。
-15. 只回复一个 JSON 对象，不要任何别的文字、不要 markdown。键名必须一字不差（reply、plan、steps、workflow、mode、fields、files、note），每一步里一定要有 workflow：
+15. 视频类的三个应用别搞混：「视频改视频」= 改视频里的内容（换背景 / 物体 / 风格、删东西，可带 1~2 张参考图）；「视频换人」= 把视频里的人换成用户给的人物照片（整个人换，不是只换脸）；「视频拼接」= 把几段视频接成一条（本地合成，免费）。这三个都必须有视频（用户上传的，或前面步骤做出来的）；前两个按秒计费、比图片贵不少：只在用户明确要时才用，reply 里提醒一句大概花多少钱、要等几分钟。「视频换人」只能用用户本人或已获授权的人像，用户没说清照片是谁时 reply 里提醒一句；「我确认人像是本人或已获授权」要用户自己勾选，plan 里不要写这一项。
+16. 只回复一个 JSON 对象，不要任何别的文字、不要 markdown。键名必须一字不差（reply、plan、steps、workflow、mode、fields、files、note），每一步里一定要有 workflow：
 {{"reply": "给用户看的话", "plan": null 或 {{"steps": [{{"workflow": "应用编号字符串", "mode": 模式编号（数字）或 null, "fields": {{"字段键": 值}}, "files": {{"文件字段键": 素材库编号（数字）或 "步骤N"}}, "note": "一句话：这一步做什么"}}], "note": "一句话说明整体思路"}}}}"""
 
 
@@ -372,6 +373,24 @@ def make_plan(raw, cat, assets):
     return {"steps": steps, "note": str(raw.get("note") or "").strip()[:200]}, warns
 
 
+USER_ONLY_WIDGETS = {"authorized"}                 # 只能用户自己勾的开关（控件名）：「我确认人像是本人或已获授权」——AI 排方案时不能替用户填
+
+
+def strip_user_only(plan, prev):
+    """方案里「只能用户自己勾」的开关：AI 填的一律去掉；用户在当前方案（prev）里已经勾上的（同一位置、同一个应用）保留，不然 AI 每改一次方案用户的勾就没了。返回提示列表。"""
+    warns = []
+    old = prev.get("steps") if isinstance(prev, dict) and isinstance(prev.get("steps"), list) else []
+    for i, st in enumerate(plan["steps"] if plan else []):
+        o = old[i] if i < len(old) and isinstance(old[i], dict) else {}
+        had = o.get("fields") if isinstance(o.get("fields"), dict) and str(o.get("workflow")) == st["workflow"] else {}
+        for key in [k for k in st["fields"] if k.split(":", 1)[-1] in USER_ONLY_WIDGETS]:
+            if had.get(key) is True:
+                continue
+            if st["fields"].pop(key):
+                warns.append(f"「{st['schema']['fields'][key]['label']}」要你自己勾选，我没有替你勾")
+    return warns
+
+
 def missing_required(plan):
     """方案里没给必填文件的地方：[(步骤序号, 控件名, 文件类型)]。"""
     return [(i, f["label"], f["kind"]) for i, st in enumerate(plan["steps"], 1) for f in cat_mod.required_files(st["schema"], st["mode"]) if f["key"] not in st["files"]]
@@ -379,7 +398,7 @@ def missing_required(plan):
 
 ASK_MARK = re.compile(r"[？?]|还是|请问|告诉我")                                   # 回复里在问问题
 CAPABILITY = re.compile(r"你能做什么|能做什么|你会什么|你是谁|有什么功能|有哪些功能|怎么用|介绍一下")      # 问你能干什么：这种问题本来就不用方案
-ACTION = re.compile(r"帮我|给我|替我|请你|想要|需要|来一|做|写|生成|出一|弄|配音|画|改|抠|合成|拍|剪")     # 用户在提要求
+ACTION = re.compile(r"帮我|给我|替我|请你|想要|需要|来一|做|写|生成|出一|弄|配音|画|改|换|抠|合成|拼|拍|剪")     # 用户在提要求
 NUDGE = ("用户不会再补充信息了，请不要追问：按最常见的情况直接给出完整方案（plan 不能是 null），缺的信息你自己定，"
          "在 reply 里用一句话说明你的理解（比如「我先按…做了，不对的话告诉我」）。仍然只回复要求的那个 JSON 对象。")
 
@@ -437,6 +456,7 @@ def chat_turn(payload, cat, key, base, assets, vision, post=None, model=None):
             fix = "你的回复不是合法的 JSON。请只回复要求的那个 JSON 对象。"
         else:
             plan, warns = make_plan(raw_plan, cat, assets)
+            warns += strip_user_only(plan, payload.get("plan"))
             need = missing_required(plan) if plan else []
             if raw_plan is None and attempt == 1 and nudge_wanted(history, reply, bool(vision)):
                 first = (reply, warns)

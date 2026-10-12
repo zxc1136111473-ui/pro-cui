@@ -26,7 +26,7 @@ FLOW = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(FLOW)
 
 # 类别文件夹（侧栏里显示成树）；编号 = 文件名前两位
-FOLDERS = {"1-图片": ("01", "02", "03", "04", "05", "06", "15", "16"), "2-文案与配音": ("07", "08", "09", "13"), "3-视频": ("10", "11", "12", "14")}
+FOLDERS = {"1-图片": ("01", "02", "03", "04", "05", "06", "15", "16"), "2-文案与配音": ("07", "08", "09", "13"), "3-视频": ("10", "11", "12", "14", "17", "18", "19")}
 
 # 重新生成前清掉旧的，不留已经不再生成的文件
 for _f in glob.glob(os.path.join(OUT, "*", "*.json")):
@@ -96,6 +96,11 @@ SPEC = {
     "ProSaveCutout": ([("image", "IMAGE", False), ("mask", "MASK", False)], [], []),
     "ProLayerCompose": ([("product", "IMAGE", False), ("product_mask", "MASK", False), ("background", "IMAGE", False)], [("image", "IMAGE")], []),
     "ProSlideshow": ([(n, t, False) for n, t in _imgs(8)] + [("fit_audio", "AUDIO", False)], [("video", "VIDEO")], []),
+    "ProAliVideoEdit": ([("video", "VIDEO", False)] + [(f"ref_image{i}", "IMAGE", False) for i in range(1, 5)] + [("info", "STRING", True)],
+                        [("video", "VIDEO"), ("response", "STRING")], []),
+    "ProAliVideoSwap": ([("image", "IMAGE", False), ("video", "VIDEO", False), ("info", "STRING", True)], [("video", "VIDEO"), ("response", "STRING")], []),
+    "ProVideoConcat": ([(f"video{i}", "VIDEO", False) for i in range(1, 5)], [("video", "VIDEO")], []),
+    "ProVideoSave": ([("video", "VIDEO", False)], [], []),
 }
 
 # pro-flow：模式节点（输出由 MODES 表决定）、选择分支（惰性）、开关门
@@ -226,7 +231,7 @@ class Graph:
 # 分组框是矩形，框里不能混进别的角色的节点：三个区在空间上互相隔开（先填在最上，自动处理在左下，结果在右下），测试里检查。
 # ════════════════════════════════════════════════════════════════════════════
 IN_TYPES = {"LoadImage", "LoadAudio", "LoadVideo", "PrimitiveStringMultiline", "ProAliPromptWriter", "ProPosterFields"}
-OUT_TYPES = {"SaveImage", "SaveAudioAdvanced", "SaveVideo", "ProVideoDub", "PreviewAny", "ProAppText", "ProSaveCutout", "ProLayerCompose"}
+OUT_TYPES = {"SaveImage", "SaveAudioAdvanced", "SaveVideo", "ProVideoDub", "PreviewAny", "ProAppText", "ProSaveCutout", "ProLayerCompose", "ProVideoSave"}
 ROLE_COLORS = {"IN": ("#232", "#353"), "OUT": ("#223", "#335"), "KEY": ("#432", "#653")}   # (标题栏, 节点底色)：绿 / 蓝 / 黄
 GROUP_COLORS = {"IN": "#3f7f4f", "AUTO": "#6b6b6b", "OUT": "#3f6fa8"}
 KEY_TITLES = {"image": "Key：网关（填一次）", "video": "Key：geminiweb（填一次）", "sound": "Key：Suno（填一次）", "text": "Key：阿里（填一次）"}
@@ -380,7 +385,8 @@ DIALOGUE_WIDGETS = ["小美：老板，这个苹果怎么卖呀？\n阿强：新
 APP_WIDGET_TYPES = {"mode": "COMBO", "image": "COMBO", "audio": "COMBO", "file": "COMBO", "ratio": "COMBO", "level": "COMBO", "style": "COMBO", "voice": "COMBO",
                     "idea": "STRING", "value": "STRING", "text": "STRING", "text1": "STRING", "text2": "STRING", "text3": "STRING", "script": "STRING",
                     **{f"role{i}_name": "STRING" for i in (1, 2, 3, 4)}, **{f"role{i}_voice": "COMBO" for i in (1, 2, 3, 4)},
-                    "model": "COMBO", "position": "COMBO", "shadow": "COMBO", "scale_pct": "FLOAT", "bg_color": "STRING"}
+                    "model": "COMBO", "position": "COMBO", "shadow": "COMBO", "scale_pct": "FLOAT", "bg_color": "STRING",
+                    "prompt": "STRING", "authorized": "BOOLEAN", "quality": "COMBO", "transition": "COMBO", "transition_s": "FLOAT", "fit": "COMBO", "keep_audio": "BOOLEAN"}
 
 
 def app_text(g, src, out, label, only_on_error=False):
@@ -1068,6 +1074,102 @@ def wf_layers():              # 16 图层合成：抠好的商品 + 背景图（
     return g.build()
 
 
+# ════════════════════════════════════════════════════════════════════════════
+# 17~19 视频：AI 改视频 / 视频拼接 / 视频换人（阿里万相的视频任务 + 本地 ffmpeg）
+# ════════════════════════════════════════════════════════════════════════════
+EDIT_PROMPT = ""     # 默认留空：改视频按秒收费，没改过的示例文字不能直接跑出一条白花钱的视频（空着运行节点会在上传之前就报「怎么改是空的」）
+EDIT_DEFAULTS = [EDIT_PROMPT, "wan2.7-videoedit", "720P", "保留原视频的声音", 0, "跟原视频一样", True, False, 0, "randomize"]   # 怎么改、模型、清晰度、声音、时长、比例、润色、水印、seed（+ 控制）
+SWAP_DEFAULTS = [False, "标准（wan-std，快一点、便宜）", 0, "randomize", True, False]                                              # 授权确认、质量、seed（+ 控制）、先检查照片、水印
+CONCAT_DEFAULTS = ["淡入淡出", 0.6, "跟第一段", 720, "留黑边（画面完整）", True]                                                       # 转场、转场秒数、比例、短边、留黑边 / 铺满、保留声音
+VIDEO_PLACEHOLDER = ["请上传视频.mp4", "image"]
+SWAP_CONSENT = ("只能用用户本人或已经获得授权的人像（明星 / 他人的照片不要用）；「我确认人像是本人或已获授权」必须由用户自己勾选，你不能替用户填，方案里不要写这一项。")
+
+
+def wf_video_edit():          # 17 视频改视频：一段视频 + 一句话（+ 参考图）→ 改过的新视频（阿里万相 2.7 视频编辑 / HappyHorse 视频编辑）
+    g = Graph()
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里：改视频）")
+    g.add(2, "LoadVideo", (60, 470), (400, 400), VIDEO_PLACEHOLDER, title="① 上传要修改的视频（2~10 秒；点节点上的上传按钮）")
+    g.add(3, "LoadImage", (60, 930), (400, 420), DEMO, title="② 参考图 1（只在「带参考图」的模式用）")
+    g.add(4, "LoadImage", (60, 1410), (400, 420), DEMO, title="② 参考图 2（只在「带 2 张参考图」的模式用）")
+    g.add(5, "ProAliVideoEdit", (560, 120), (520, 780), EDIT_DEFAULTS, title="AI 改视频（阿里万相：视频先传到阿里，一般 1~5 分钟）")
+    g.add(6, "ProVideoSave", (1140, 120), (340, 140), ["video/改视频"], title="保存改好的视频")
+    top_block(g, mode="ProModeVideoEdit")
+    gate(g, 21, (560, 960), (77, "use_ref1"), (3, "IMAGE"), title="参考图 1 开关（跟模式走）")
+    gate(g, 22, (560, 1100), (77, "use_ref2"), (4, "IMAGE"), title="参考图 2 开关（跟模式走）")
+    g.in_ids.add(5)                              # 「怎么改」在这个节点里填
+    g.connect(31, "STRING", 5, "info"); g.connect(2, "VIDEO", 5, "video")
+    g.connect(21, "value", 5, "ref_image1"); g.connect(22, "value", 5, "ref_image2"); g.connect(5, "video", 6, "video")
+    g.app_in(77, "mode"); g.app_in(2, "file", "要改的视频"); g.app_in(5, "prompt", "怎么改（一句话）")
+    g.app_in(3, "image", "参考图 1"); g.app_in(4, "image", "参考图 2")
+    g.app_required(2, "file")
+    g.app_required(3, "image", modes=[2, 3]); g.app_required(4, "image", modes=[3])
+    g.app_out(6)
+    g.app_extra(5, "model", "视频编辑模型",
+                "wan2.7-videoedit（默认）：视频 2~10 秒，720P 约 0.6 元/秒，能改比例 / 时长；happyhorse-1.0-video-edit：视频 3~15 秒（超过只用前 15 秒），更贵（720P 约 0.9 元/秒），不能改比例 / 时长。用户没点名要换就别改")
+    g.app_extra(5, "resolution", "出片清晰度", "720P 便宜（默认）；1080P 贵约七成")
+    g.app_extra(5, "audio", "出片的声音", "默认保留原视频的声音；想让 AI 按指令重新做声音才改（比如指令里写了「加上海浪声」）", advanced=True)
+    g.app_extra(5, "duration", "只改前几秒（0 = 和原视频一样长）", "2~10；只有万相 2.7 能设；出片只有前几秒、也更省钱——这是改视频时省钱用的，不是剪辑功能，用户只是想把视频剪短时不要用它", advanced=True)
+    g.app_extra(5, "ratio", "出片比例", "默认跟原视频一样；只有万相 2.7 能改", advanced=True)
+    g.app_extra(5, "prompt_extend", "让 AI 润色指令", "指令很短时有帮助；想让它严格照你写的做就关掉", advanced=True)
+    g.app_extra(5, "watermark", "出片加水印", advanced=True)
+    g.app_cost("按秒计费：输入视频秒数 + 输出视频秒数（万相 2.7：720P 约 0.6 元/秒、1080P 约 1 元/秒，所以一条 5 秒的视频约 6 元）；做一次要 1~5 分钟；失败的任务阿里不收费。"
+               "视频超过 10 秒只会用前 10 秒；分辨率太大会先缩小、格式不对会先转成 mp4。")
+    g.app_desc("AI 改视频（阿里万相 2.7 视频编辑）：用户上传的（或前面步骤做出来的）一段 2~10 秒的视频 + 一句话说怎么改——换背景 / 换物体 / 删东西 / 换风格（水彩、动画…）/ 改镜头运动，"
+               "也能复刻原视频里的动作、特效；可以再带 1~2 张参考图（模式 2、3），把图里的衣服、道具、场景用到视频里，「怎么改」里用「图片中的……」指代参考图。"
+               "「怎么改」写 1~2 句话：改什么、改成什么，不想变的写「其他保持不变」。按秒计费、比图片贵不少，只在用户明确要改视频时才用。必须有视频。"
+               "只改画面里的内容：不能当剪辑用（剪短 / 截取 / 加速 / 加字幕这些做不了，别拿它凑，白花钱），不能拼接多段视频（用「视频拼接」），也不能把视频里的人换成另一个人（用「视频换人」）。")
+    return g.build()
+
+
+def wf_video_concat():        # 18 视频拼接：2~4 段视频按顺序接成一条，可加转场（本地 ffmpeg，不调接口、不花钱）
+    g = Graph()
+    for i, nid in enumerate((2, 3, 4, 5), 1):
+        g.add(nid, "LoadVideo", (60, 120 + (i - 1) * 460), (400, 400), VIDEO_PLACEHOLDER,
+              title=f"{'①②③④'[i - 1]} 上传视频 {i}" + ("（必填）" if i <= 2 else "（可不传）"))
+    g.add(10, "ProVideoConcat", (560, 120), (480, 520), CONCAT_DEFAULTS, title="视频拼接（按 1→4 的顺序接，可加转场；本地合成，不花钱）")
+    g.add(11, "ProVideoSave", (1100, 120), (340, 140), ["video/拼接"], title="保存拼好的视频")
+    for i, nid in enumerate((2, 3, 4, 5), 1):
+        g.connect(nid, "VIDEO", 10, f"video{i}")
+        g.app_in(nid, "file", f"视频 {i}")
+    g.connect(10, "video", 11, "video")
+    g.app_in(10, "transition", "转场")
+    g.app_required(2, "file"); g.app_required(3, "file")
+    g.app_out(11)
+    g.app_extra(10, "transition_s", "转场多长（秒）", "默认 0.6；比最短那一段的一半还长时自动缩短")
+    g.app_extra(10, "ratio", "成片画面比例", "默认跟第一段；想统一成竖屏短视频选 9:16 竖屏，各段不一样大时会留黑边（或按下面的设置裁掉多余的）")
+    g.app_extra(10, "keep_audio", "保留各段的声音", "关掉就全部静音；没有声音的段会补静音，转场处声音一起淡入淡出")
+    g.app_extra(10, "short_side", "成片清晰度（短边像素）", "只在选了具体比例时用；720 = 720P", advanced=True)
+    g.app_extra(10, "fit", "某一段和成片比例不一样时", "留黑边（画面完整）或裁掉多余的（铺满画面）", advanced=True)
+    g.app_cost("不调接口、不花钱：在服务器上本地合成，十几秒的视频约十几秒到一分钟（服务器配置很低，别一次拼太长）；最多 4 段，拼出来不超过 10 分钟；成片是 720P 左右的 mp4，帧率最高 30。")
+    g.app_desc("把 2~4 段视频按顺序接成一条（服务器本地合成，免费）：可加转场（淡入淡出 / 黑场过渡 / 左滑推出 / 向上推出 / 擦除 / 圆形展开），各段画面大小、比例不一样时统一成同一个大小（留黑边或裁掉多余）。"
+               "每段视频由用户上传，或用前面步骤做出来的视频（比如先用「图生视频成片」做几段，再拼起来）；至少要 2 段，视频 1、2 必填。"
+               "拼好的视频要配音 / 字幕 / 背景音乐，再接「视频成片」；要改视频里的内容用「视频改视频」。")
+    return g.build()
+
+
+def wf_video_swap():          # 19 视频换人：一张人物照片 + 一段视频 → 视频里的人换成照片里的人（阿里万相 animate-mix）
+    g = Graph()
+    g.add(31, "RelayAPISettings", (60, 120), (400, 300), ali_settings(ALI_TXT_BASE, "qwen3.8-flash"), title="Relay API Settings（阿里：视频换人）")
+    g.add(2, "LoadImage", (60, 470), (400, 420), DEMO, title="① 上传人物照片（要换成的那个人；只能用本人或已获授权的人像）")
+    g.add(3, "LoadVideo", (60, 950), (400, 400), VIDEO_PLACEHOLDER, title="② 上传视频（里面的人会被换掉；2~30 秒；点节点上的上传按钮）")
+    g.add(5, "ProAliVideoSwap", (560, 120), (520, 560), SWAP_DEFAULTS, title="视频换人（要先勾选「人像已获授权」；视频先传到阿里，一般几分钟）")   # 自带应用界面出错时卡片上只有这个节点名：把最常见的原因写进名字里
+    g.add(6, "ProVideoSave", (1140, 120), (340, 140), ["video/换人"], title="保存换好人的视频")
+    g.in_ids.add(5)                              # 确认授权、质量在这个节点里选
+    g.connect(31, "STRING", 5, "info"); g.connect(2, "IMAGE", 5, "image"); g.connect(3, "VIDEO", 5, "video"); g.connect(5, "video", 6, "video")
+    g.app_in(2, "image", "人物照片"); g.app_in(3, "file", "要换人的视频")
+    g.app_in(5, "authorized", "我确认人像是本人或已获授权"); g.app_in(5, "quality", "质量")
+    g.app_required(2, "image"); g.app_required(3, "file")
+    g.app_out(6)
+    g.app_extra(5, "check_image", "先检查人物照片", "处理前先检查照片合不合格（清晰的单人照）；不合格直接报错，不会白等；一般不用关", advanced=True)
+    g.app_extra(5, "watermark", "出片加水印", advanced=True)
+    g.app_cost("换的是整个人（衣服、发型也跟着照片走），不是只换脸。按输出视频的秒数计费：标准 0.6 元/秒、专业 0.9 元/秒（一条 5 秒的视频约 3 元）；做一次要几分钟（视频越长越久）；失败的任务阿里不收费。视频最长 30 秒，超过只用前 30 秒；"
+               "人物照片和视频里的人要清晰、画面里是单个人（照片里的人画面占比跟视频里的人差不多效果最好）。")
+    g.app_desc("视频换人（阿里万相 animate-mix）：用户说「换脸」「换人」「把视频里的人换成这个人」都用它——上传一张人物照片和一段视频，把视频里的人换成照片里的人，动作、表情、场景光线都保留；整个人（衣服、发型）跟着照片走，不是只换脸（reply 里要说清这一点）。"
+               + SWAP_CONSENT + "视频 2~30 秒，必须由用户上传（或用前面步骤做出来的视频），照片可以是用户上传的，或前面步骤做出来的图（比如用「文生图」做的虚拟人物）。"
+               "按秒计费、比图片贵不少，只在用户明确要换人时才用。要给视频里的人换衣服 / 换背景这类，用「视频改视频」。")
+    return g.build()
+
+
 write("07-文案.app.json", wf_copy())
 write("08-配音.app.json", wf_voice())
 write("09-音乐.app.json", wf_music())
@@ -1078,3 +1180,6 @@ write("13-多角色配音.app.json", wf_dialogue())
 write("14-对白成片.app.json", wf_dialogue_video())
 write("15-商品抠图.app.json", wf_matte())
 write("16-图层合成.app.json", wf_layers())
+write("17-视频改视频.app.json", wf_video_edit())
+write("18-视频拼接.app.json", wf_video_concat())
+write("19-视频换人.app.json", wf_video_swap())

@@ -29,6 +29,7 @@ FILE_EXTS = {"image": (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"),
              "audio": (".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac")}
 KIND_LABEL = {"image": "图片", "video": "视频", "audio": "音频", "text": "文字"}
 RESULT_KINDS = {"SaveImage": ("图片", "image"), "SaveVideo": ("视频", "video"), "ProVideoDub": ("视频", "video"),
+                "ProVideoSave": ("视频", "video"),
                 "SaveAudioAdvanced": ("音频", "audio"), "SaveAudio": ("音频", "audio"),
                 "ProSaveCutout": ("抠好的商品（透明底图片）", "image"), "ProLayerCompose": ("合成图片（开了「同时存分层 PNG」时，后面还跟着背景层 / 商品层 / 阴影层）", "image")}
 NUMBER_KINDS = ("int", "float")

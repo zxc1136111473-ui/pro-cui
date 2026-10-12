@@ -384,7 +384,12 @@ class Lib(unittest.TestCase):
             t("[阿里 写提示词] 连不上：ConnectionError（连接 / 握手试了 4 次都没成功，请求没有发出，不会计费）"),
             t("Veo 今天的额度用完了"), t("image blocked by safety filter"), t("节点 xyz 出错：something odd"), t(""), t(null), t(undefined), t(123),
             L.explainError("[阿里 写提示词] 等了 60 秒没有回应").tip, L.explainError("[阿里 写提示词] 连不上：ConnectionError").tip,
-            t("连不上服务器，不知道这次请求有没有送到（网络断了？）。再点一次会带着同一个编号重试"), L.explainError("连不上服务器，不知道这次请求有没有送到（网络断了？）").tip]))''')
+            t("连不上服务器，不知道这次请求有没有送到（网络断了？）。再点一次会带着同一个编号重试"), L.explainError("连不上服务器，不知道这次请求有没有送到（网络断了？）").tip,
+            t("[阿里 改视频] 等了 25 分钟还没出结果（任务 T1）：阿里那边可能还在做（可能已计费），先别连着重跑"), t("[阿里 视频换人] 连着 8 次查不到任务进度（ConnectionError）：任务 T1 在阿里那边可能还在做"),
+            t("[阿里 视频换人] 任务失败（Arrearage）：Access denied, please make sure your account is in good standing."),
+            t("[阿里 视频换人] 上传到阿里的临时存储失败（试了 3 次，ConnectionError：…）：还没提交任务，不会计费"),
+            t("[阿里 视频换人] 任务失败（DataInspectionFailed）：内容没通过阿里的审核（上传的图片 / 视频…）"),
+            t("[阿里 视频换人] 任务失败（InvalidImage.NoHuman）：人物照片里没有检测到人（要清晰的单人照，脸和上半身都在画面里）。原文：The input image has no human body.")]))''')
         self.assertEqual(r[:5], ["还没填 Key", "还没填 Key", "Key 不对或者已经失效", "Key 不对或者已经失效", "调用太频繁，被对方限流了"])
         self.assertEqual(r[5:12], ["这个模型对方没有", "这个模型对方没有", "对方这次回得太慢了", "对方这次回得太慢了", "网络没连上", "额度用完了", "内容没通过对方的审核"])
         self.assertEqual(r[12:17], [None] * 5)                                                              # 认不出的、空的、不是文字的：不乱解释
@@ -393,6 +398,8 @@ class Lib(unittest.TestCase):
         self.assertEqual(r[19], "没收到服务器的回复")                                                        # 工作台自己的「不知道有没有送到」不能被当成「请求没发出去」
         self.assertIn("可能已经收到", r[20])
         self.assertIn("不会重复计费", r[20])
+        self.assertEqual(r[21:26], ["阿里那边的视频还没做完", "阿里那边的视频还没做完", "额度用完了", "网络没连上", "内容没通过对方的审核"])      # 视频任务：等太久 / 查不到进度（不能被当成「请求没发出去」）/ 欠费 / 上传没连上 / 审核
+        self.assertEqual(r[26], "人物照片没通过检查")
 
     def test_collapse_defaults_follow_the_plan_size_and_the_users_choice(self):
         r = js('''const mk = (n) => plan(...Array.from({length: n}, (_, i) => app("0" + (i + 1))));

@@ -1,11 +1,16 @@
-"""视频节点：配音合成 / 取音轨 / 字幕生成。
+"""视频节点：配音合成 / 取音轨 / 字幕生成 / 图片轮播 / 视频拼接。
 
 为什么自己写：ComfyUI 自带的 GetVideoComponents / CreateVideo 会把整段视频解码成浮点张量
 （10 秒 720p ≈ 2.6GB），在 4GB 内存的机器上会被系统 OOM 杀掉。这里用 PyAV 复制画面包（不烧字幕时）
 或逐帧流式处理（烧字幕时），内存很小。
+视频拼接（ProVideoConcat）用 ffmpeg 命令行（镜像里的 imageio-ffmpeg 自带一份静态版，带转场滤镜）：它是流式处理，内存也很小。
 """
 import os
 import re
+import shutil
+import subprocess
+import tempfile
+import time
 from fractions import Fraction
 
 import av
@@ -453,6 +458,268 @@ class ProSlideshow:
                 "result": (InputImpl.VideoFromFile(path),)}
 
 
-NODE_CLASS_MAPPINGS = {"ProVideoDub": ProVideoDub, "ProVideoAudio": ProVideoAudio, "ProSubtitles": ProSubtitles, "ProSlideshow": ProSlideshow}
+# ── 视频拼接：几段视频接成一条（可加转场）──────────────────────────────────────────────────────────────────
+# 用 ffmpeg 的 xfade / acrossfade 滤镜做转场（画面和声音一起叠化，总长 = 各段相加 - 转场重叠）；每段先统一成同样的画面大小 / 帧率 / 声音格式再接。
+# 工作流里没上传的「视频 3 / 4」是占位视频（请上传视频.mp4），要认出来跳过。
+PLACEHOLDER_VIDEO = "请上传视频.mp4"
+NO_TRANSITION = "不加转场（直接接）"
+CONCAT_TRANSITIONS = {"淡入淡出": "fade", "黑场过渡（先变黑再亮起）": "fadeblack", "左滑推出": "slideleft", "向上推出": "slideup", "擦除（向左）": "wipeleft", "圆形展开": "circleopen"}
+CONCAT_RATIOS = {"跟第一段": None, "9:16 竖屏": (9, 16), "16:9 横屏": (16, 9), "1:1 方形": (1, 1), "3:4": (3, 4), "4:3": (4, 3)}
+CONCAT_FIT = ["留黑边（画面完整）", "裁掉多余（铺满画面）"]
+CONCAT_MAX_SECONDS = 600     # 拼出来最长 10 分钟：再长编码要很久，也会把共用的服务器占满
+CONCAT_MIN_CLIP_S = 0.5
+FFMPEG_TIMEOUT = 1200
+
+
+def _ffmpeg_exe():
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        pass
+    exe = shutil.which("ffmpeg")
+    if exe:
+        return exe
+    raise RuntimeError("[视频拼接] 服务器里没有找到 ffmpeg（镜像里应该有 imageio-ffmpeg）")
+
+
+def _check_interrupt():
+    """用户点了「停止」就别再等 ffmpeg 了：ComfyUI 只在节点和节点之间检查中断，一个节点里的长任务要自己查。"""
+    try:
+        import comfy.model_management as mm
+    except ImportError:
+        return
+    mm.throw_exception_if_processing_interrupted()
+
+
+def _run_ffmpeg(args, timeout=FFMPEG_TIMEOUT):
+    """跑一条 ffmpeg（日志写进临时文件，不占管道）；点了「停止」就杀掉它。失败抛错并带上日志最后几行。"""
+    with tempfile.TemporaryFile() as log:
+        p = subprocess.Popen([_ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-y", *args], stdout=subprocess.DEVNULL, stderr=log)
+        t0 = time.monotonic()
+        try:
+            while p.poll() is None:
+                _check_interrupt()
+                if time.monotonic() - t0 > timeout:
+                    raise RuntimeError(f"[视频拼接] 处理花了超过 {timeout // 60} 分钟，已放弃（视频太长？）")
+                time.sleep(0.3)
+        except BaseException:
+            p.kill()
+            p.wait()
+            raise
+        if p.returncode != 0:
+            log.seek(0)
+            tail = log.read().decode("utf-8", "replace").strip().splitlines()[-4:]
+            raise RuntimeError(f"[视频拼接] ffmpeg 失败：{' | '.join(tail)[:300]}")
+
+
+def _temp_video_path(tag):
+    """ComfyUI 临时目录里的一个新文件名（顺手清掉自己留下的一天前的旧文件）：最终要给用户看的由「保存视频」节点复制进 output/。"""
+    d = folder_paths.get_temp_directory()
+    os.makedirs(d, exist_ok=True)
+    cutoff = time.time() - 24 * 3600
+    for f in os.listdir(d):
+        if f.startswith("pro_") and f.endswith(".mp4"):
+            try:
+                if os.path.getmtime(os.path.join(d, f)) < cutoff:
+                    os.remove(os.path.join(d, f))
+            except OSError:
+                pass
+    return os.path.join(d, f"pro_{tag}_{int(time.time())}_{os.urandom(3).hex()}.mp4")
+
+
+def _even(x):
+    """取整到偶数（编码要偶数）：先四舍五入再向下取偶，浮点误差（1279.9999999999998）不会把 1280 变成 1278。"""
+    return max(2, int(round(x)) // 2 * 2)
+
+
+def concat_size(first, ratio_key, short_side):
+    """输出画面大小 (宽, 高)（编码要偶数）：跟第一段（长边最多 1920）或按所选比例 + 短边像素数。first = {width, height}。"""
+    r = CONCAT_RATIOS[ratio_key]
+    if r is None:
+        k = min(1.0, 1920.0 / max(first["width"], first["height"]))
+        return _even(first["width"] * k), _even(first["height"] * k)
+    k = float(short_side) / min(r)
+    return _even(r[0] * k), _even(r[1] * k)
+
+
+def concat_fps(first_fps):
+    """输出帧率：跟第一段，但限制在 15~30（手机拍的 60 帧没必要）；认不出来用 24。"""
+    return int(min(30, max(15, round(float(first_fps or 24)))))
+
+
+def clamp_transition(clips, tr):
+    """转场不能比最短那一段的一半还长（中间的段两头都要转场）。"""
+    return max(0.1, min(float(tr), min(c["seconds"] for c in clips) / 2.0 - 0.05))
+
+
+def concat_filter(clips, w, h, fps, xfade, tr, cover, keep_audio):
+    """拼接用的 ffmpeg filter_complex → (滤镜字符串, 视频输出标签, 声音输出标签 / None, 总秒数)。
+    clips = [{seconds, has_audio}]；xfade = ffmpeg 转场名（None = 不加转场，直接接）；tr = 转场秒数；cover = 铺满画面（裁掉多余）还是留黑边。
+    每段画面 / 声音都先修成正好 seconds 秒（画面末尾多补一秒复制帧再裁，声音补静音再裁），这样转场的起点算得准，各段声音画面对得上。"""
+    fit = (f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}" if cover
+           else f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black")
+    parts = []
+    for i, c in enumerate(clips):
+        d = c["seconds"]
+        # 链尾再来一个 fps：ffmpeg 7.0 / 7.1 的 setpts 会把帧率信息清掉，xfade 要求「输入是固定帧率」，没有这一步报 The inputs needs to be a constant frame rate（服务器上的 ffmpeg 就是 7.0.2，真机踩到的）
+        parts.append(f"[{i}:v]fps={fps},{fit},setsar=1,format=yuv420p,tpad=stop_mode=clone:stop_duration=1,trim=end={d:.3f},setpts=PTS-STARTPTS,fps={fps}[v{i}]")
+        if keep_audio:
+            src = f"[{i}:a]aresample=44100," if c["has_audio"] else "anullsrc=r=44100:cl=stereo,"
+            parts.append(f"{src}aformat=sample_fmts=fltp:channel_layouts=stereo,apad,atrim=end={d:.3f},asetpts=PTS-STARTPTS[a{i}]")
+    n = len(clips)
+    if xfade is None:
+        ins = "".join(f"[v{i}]" + (f"[a{i}]" if keep_audio else "") for i in range(n))
+        parts.append(f"{ins}concat=n={n}:v=1:a={1 if keep_audio else 0}[vout]" + ("[aout]" if keep_audio else ""))
+        return ";".join(parts), "[vout]", ("[aout]" if keep_audio else None), sum(c["seconds"] for c in clips)
+    acc, pv, pa = clips[0]["seconds"], "v0", "a0"
+    for i in range(1, n):
+        parts.append(f"[{pv}][v{i}]xfade=transition={xfade}:duration={tr:.3f}:offset={acc - tr:.3f}[xv{i}]")
+        pv = f"xv{i}"
+        if keep_audio:
+            parts.append(f"[{pa}][a{i}]acrossfade=d={tr:.3f}:c1=tri:c2=tri[xa{i}]")
+            pa = f"xa{i}"
+        acc += clips[i]["seconds"] - tr
+    return ";".join(parts), f"[{pv}]", (f"[{pa}]" if keep_audio else None), acc
+
+
+def _rotated(path):
+    """手机竖拍的视频：编码里是横的，带「旋转 90 / 270 度」的标记，ffmpeg 处理时会自动转正。问 ffmpeg 本人（它打印的流信息里有 displaymatrix: rotation of -90.00 degrees）。"""
+    try:
+        r = subprocess.run([_ffmpeg_exe(), "-hide_banner", "-i", path], capture_output=True, text=True, timeout=30)
+    except (OSError, RuntimeError, subprocess.SubprocessError):          # 没有 ffmpeg 等：查不出旋转就当没有（后面真要用 ffmpeg 时会报清楚的错）
+        return False
+    m = re.search(r"rotation of (-?\d+(?:\.\d+)?) degrees", r.stderr)
+    return bool(m) and round(abs(float(m.group(1)))) % 180 == 90
+
+
+def _upright(path, temps):
+    """带旋转标记的素材（手机竖拍）先单独转码一遍：ffmpeg 的简单转码会自己把画面转正、清掉标记（ffmpeg 7.0 / 7.1 / 8.1 都试过）。
+    放进 filter_complex 里它不转正、还把标记原样带到成片上，成片在播放器里会再转一次（真机试出来的）。返回转正后的临时文件。"""
+    out = _temp_video_path("upright")
+    temps.append(out)
+    _run_ffmpeg(["-i", path, "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
+    return out
+
+
+def _probe_clip(path, label, detect=True):
+    """用 PyAV 只读文件头（不解码画面）→ {seconds, width, height, fps, has_audio}。"""
+    try:
+        with av.open(path) as c:
+            vs = c.streams.video[0] if c.streams.video else None
+            if vs is None:
+                raise ValueError("里面没有画面")
+            if vs.duration and vs.time_base:
+                sec = float(vs.duration * vs.time_base)
+            elif c.duration:
+                sec = float(c.duration / av.time_base)
+            else:
+                raise ValueError("读不出时长")
+            w, h = int(vs.width), int(vs.height)
+            if str((vs.metadata or {}).get("rotate", "0")).strip() in ("90", "270", "-90") or (detect and _rotated(path)):    # 手机竖拍的视频：存的是横的、带旋转标记，ffmpeg 会自动转正
+                w, h = h, w
+            return {"seconds": sec, "width": w, "height": h, "fps": float(vs.average_rate) if vs.average_rate else 0.0, "has_audio": bool(c.streams.audio)}
+    except Exception as e:
+        raise RuntimeError(f"[视频拼接] {label}打不开（{type(e).__name__}：{str(e)[:80]}）：换一个 mp4 / mov 再试")
+
+
+class ProVideoConcat:
+    """视频拼接：几段视频（最多 4 段）按顺序接成一条，可加转场（淡入淡出 / 黑场 / 滑动 / 擦除 / 圆形）；各段画面大小不一样时统一成同一个大小。"""
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "video1": ("VIDEO",), "video2": ("VIDEO",),
+            "transition": ([NO_TRANSITION] + list(CONCAT_TRANSITIONS), {"default": "淡入淡出", "tooltip": "段与段之间的转场；选「不加转场」就是直接接"}),
+            "transition_s": ("FLOAT", {"default": 0.6, "min": 0.2, "max": 2.0, "step": 0.1, "tooltip": "转场多长（秒）；比最短那一段的一半还长时自动缩短"}),
+            "ratio": (list(CONCAT_RATIOS), {"default": "跟第一段", "tooltip": "成片的画面比例；默认跟第一段一样，别的段不一样大时会留黑边（或按下面的设置裁掉多余的）"}),
+            "short_side": ([480, 720, 1080], {"default": 720, "tooltip": "选了具体比例时，成片短边多少像素（720 = 720P）；「跟第一段」时不用"}),
+            "fit": (CONCAT_FIT, {"default": CONCAT_FIT[0], "tooltip": "某一段的画面比例和成片不一样时：留黑边（画面完整）还是裁掉多余的（铺满）"}),
+            "keep_audio": ("BOOLEAN", {"default": True, "label_on": "保留各段的声音", "label_off": "全部静音", "tooltip": "没有声音的段补静音；转场处声音一起淡入淡出"})},
+            "optional": {"video3": ("VIDEO",), "video4": ("VIDEO",)}}
+
+    RETURN_TYPES = ("VIDEO",)
+    RETURN_NAMES = ("video",)
+    FUNCTION = "run"
+    CATEGORY = "pro/video"   # 不是输出节点：成片先写进临时目录，由「保存视频」存进 output/；输出节点会无视「选择分支」被强制执行
+
+    def run(self, video1, video2, transition, transition_s, ratio, short_side, fit, keep_audio, video3=None, video4=None):
+        sources = []                                        # (第几段, 路径, 是不是临时文件)
+        temps = []
+        try:
+            for k, v in enumerate((video1, video2, video3, video4), 1):
+                if v is None:
+                    continue
+                src = v.get_stream_source()
+                if isinstance(src, str) and os.path.basename(src) == PLACEHOLDER_VIDEO:          # 占位视频 = 没上传
+                    if k <= 2:
+                        raise RuntimeError(f"[视频拼接] 视频 {k} 还没上传：至少要上传两段")
+                    continue
+                if not isinstance(src, str):                # 内存里的视频：落到临时文件，ffmpeg 要读文件
+                    fd, tmp = tempfile.mkstemp(suffix=".mp4")
+                    with os.fdopen(fd, "wb") as f:
+                        src.seek(0)
+                        f.write(src.read())
+                    temps.append(tmp)
+                    src = tmp
+                sources.append((k, _upright(src, temps) if _rotated(src) else src))
+            if len(sources) < 2:
+                raise RuntimeError("[视频拼接] 至少要有两段视频")
+            clips = [dict(_probe_clip(path, f"视频 {k}", detect=False), path=path, k=k) for k, path in sources]       # 旋转前面已经查过 / 转正过，别再起一个 ffmpeg 查一遍
+            for c in clips:
+                if c["seconds"] < CONCAT_MIN_CLIP_S:
+                    raise RuntimeError(f"[视频拼接] 视频 {c['k']} 太短（{c['seconds']:.1f} 秒）：每段至少 {CONCAT_MIN_CLIP_S} 秒")
+            w, h = concat_size(clips[0], ratio, short_side)
+            fps = concat_fps(clips[0]["fps"])
+            xfade = CONCAT_TRANSITIONS.get(transition)
+            tr = clamp_transition(clips, transition_s) if xfade else 0.0
+            flt, vlab, alab, total = concat_filter(clips, w, h, fps, xfade, tr, fit == CONCAT_FIT[1], keep_audio)
+            if total > CONCAT_MAX_SECONDS:
+                raise RuntimeError(f"[视频拼接] 拼出来有 {total:.0f} 秒，超过上限 {CONCAT_MAX_SECONDS} 秒：少拼几段或剪短一点")
+            path = _temp_video_path("concat")
+            args = [a for c in clips for a in ("-i", c["path"])] + ["-filter_complex", flt, "-map", vlab] + (["-map", alab] if alab else ["-an"]) \
+                + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p"] + (["-c:a", "aac", "-b:a", "160k"] if alab else []) \
+                + ["-movflags", "+faststart", path]
+            try:
+                _run_ffmpeg(args)
+            except BaseException:
+                if os.path.exists(path):
+                    os.remove(path)
+                raise
+        finally:
+            for t in temps:
+                if os.path.exists(t):
+                    os.remove(t)
+        return (InputImpl.VideoFromFile(path),)
+
+
+class ProVideoSave:
+    """保存视频：把前面节点做好的视频存进 output/（应用界面里的视频播放器就是它）。视频本来就在 output/ 里的（比如「视频配音合成」存的）不用它。"""
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"video": ("VIDEO",), "filename_prefix": ("STRING", {"default": "video/成片", "tooltip": "存到 output/ 里的位置和文件名前缀"})}}
+
+    RETURN_TYPES = ()
+    FUNCTION = "run"
+    OUTPUT_NODE = True
+    CATEGORY = "pro/video"
+
+    def run(self, video, filename_prefix):
+        src = video.get_stream_source()
+        ext = (os.path.splitext(src)[1] if isinstance(src, str) else "") or ".mp4"
+        folder, name, counter, subfolder, _ = folder_paths.get_save_image_path(filename_prefix, folder_paths.get_output_directory())
+        os.makedirs(folder, exist_ok=True)
+        fname = f"{name}_{counter:05}_{ext}"
+        path = os.path.join(folder, fname)
+        if isinstance(src, str):
+            shutil.copyfile(src, path)                  # 复制不是移动：这个视频可能还会被缓存 / 别的节点用
+        else:
+            src.seek(0)
+            with open(path, "wb") as f:
+                f.write(src.read())
+        return {"ui": {"images": [{"filename": fname, "subfolder": subfolder, "type": "output"}], "animated": (True,)}}
+
+
+NODE_CLASS_MAPPINGS = {"ProVideoDub": ProVideoDub, "ProVideoAudio": ProVideoAudio, "ProSubtitles": ProSubtitles, "ProSlideshow": ProSlideshow, "ProVideoConcat": ProVideoConcat, "ProVideoSave": ProVideoSave}
 NODE_DISPLAY_NAME_MAPPINGS = {"ProVideoDub": "视频配音合成（配音 + 背景音乐 + 可烧字幕）", "ProVideoAudio": "视频取音轨（不解码画面）",
-                              "ProSubtitles": "字幕生成（文字 + 配音 → SRT）", "ProSlideshow": "图片轮播成视频（推拉镜头 + 转场）"}
+                              "ProSubtitles": "字幕生成（文字 + 配音 → SRT）", "ProSlideshow": "图片轮播成视频（推拉镜头 + 转场）",
+                              "ProVideoConcat": "视频拼接（几段接成一条，可加转场）", "ProVideoSave": "保存视频（存进 output/，应用界面里看得到）"}

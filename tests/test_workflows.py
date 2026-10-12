@@ -20,7 +20,7 @@ _spec.loader.exec_module(FLOW)
 
 # 有「★ 只填这里：一句话需求」（阿里 写提示词节点，编号 70）/ 有「★ 先选模式」（模式节点，编号 77）的工作流
 WRITER_NUMS = {"01", "02", "03", "04", "06", "07", "08", "09", "10", "12"}
-MODE_NUMS = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "14", "16"}
+MODE_NUMS = {"01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "14", "16", "17"}
 
 # ComfyUI 核心 / 插件里工作流用到的节点；自带节点从源码里的 NODE_CLASS_MAPPINGS 读（pro-flow 是函数生成的，直接 import）
 KNOWN_EXTERNAL = {
@@ -29,7 +29,7 @@ KNOWN_EXTERNAL = {
     "ImageScale", "ImageScaleBy", "ImageScaleToMaxDimension", "ImageSharpen", "ImageBatch", "Note", "MarkdownNote",
     "PrimitiveNode", "PrimitiveStringMultiline", "StringConcatenate",
 }
-OUTPUT_TYPES = {"SaveImage", "PreviewImage", "PreviewAny", "SaveVideo", "SaveAudioAdvanced", "SaveAudio", "ProVideoDub", "ProAppText", "ProSaveCutout", "ProLayerCompose"}
+OUTPUT_TYPES = {"SaveImage", "PreviewImage", "PreviewAny", "SaveVideo", "SaveAudioAdvanced", "SaveAudio", "ProVideoDub", "ProAppText", "ProSaveCutout", "ProLayerCompose", "ProVideoSave"}
 
 
 def load_node_pkg(pkg):
@@ -88,7 +88,7 @@ class Workflows(unittest.TestCase):
     def test_numbers_unique_and_folders(self):
         nums = [os.path.basename(p).split("-")[0] for p in all_workflows()]
         self.assertEqual(len(nums), len(set(nums)), "工作流编号重复")
-        self.assertEqual(sorted(nums), [f"{i:02d}" for i in range(1, 17)], "应该是 01~16 连续编号")
+        self.assertEqual(sorted(nums), [f"{i:02d}" for i in range(1, 20)], "应该是 01~19 连续编号")
 
     def test_links_consistent(self):
         known = own_node_names() | KNOWN_EXTERNAL
@@ -263,10 +263,10 @@ class Workflows(unittest.TestCase):
         # 网关 Settings：故意不含 apikey —— Key 绝不能当「可调设置」登记出来（工作台 / 聊天里会明文显示、存进浏览器）
         "RelayAPISettings": {"api_base", "api_format", "model", "platform", "task_type", "custom_api_base", "custom_model"},
     }
-    APP_OUTPUT_TYPES = {"SaveImage", "SaveVideo", "SaveAudioAdvanced", "ProVideoDub", "ProAppText", "ProSaveCutout", "ProLayerCompose"}
+    APP_OUTPUT_TYPES = {"SaveImage", "SaveVideo", "SaveAudioAdvanced", "ProVideoDub", "ProAppText", "ProSaveCutout", "ProLayerCompose", "ProVideoSave"}
     # 应用界面默认显示「最后执行完的那一条」。这些预览节点的文字不放进应用：它们和成片几乎同时执行完，会把成片挤到第二位（11：字幕已烧进成片、也存了 .srt）
     APP_TEXT_EXEMPT = {"11": {20}}
-    MEDIA_SAVERS = {"SaveImage", "SaveVideo", "SaveAudioAdvanced", "ProVideoDub", "ProSaveCutout", "ProLayerCompose"}
+    MEDIA_SAVERS = {"SaveImage", "SaveVideo", "SaveAudioAdvanced", "ProVideoDub", "ProSaveCutout", "ProLayerCompose", "ProVideoSave"}
 
     def test_the_engine_mode_offers_exactly_the_ali_models_the_ali_node_accepts(self):
         """04 / 06 的「出图引擎和模型」下拉：第 1 项是网关（不指定阿里模型），后面每一项对应阿里改图节点真能用的一个模型（顺序也一样）；
@@ -647,6 +647,9 @@ EXPECT = {
            1: ({8: "轮播", 12: "图片", 13: "图片", 14: "图片", 3: "对白", 4: "背景音乐", 5: "合成"}, {2: "上传视频"})},
     # 图层合成：背景图只在「放到背景图上」模式读（不然白白读一张默认图，用户也看不出来为什么）
     "16": {0: ({2: "商品", 3: "背景图", 5: "合成"}, {}), 1: ({2: "商品", 5: "合成"}, {3: "背景图"})},
+    # 视频改视频：参考图只在带参考图的模式读（没选的槽位读一张默认图再传给模型就是错的）
+    "17": {0: ({2: "视频", 5: "改视频", 6: "保存"}, {3: "参考图 1", 4: "参考图 2"}), 1: ({2: "视频", 3: "参考图 1", 5: "改视频", 6: "保存"}, {4: "参考图 2"}),
+           2: ({2: "视频", 3: "参考图 1", 4: "参考图 2", 5: "改视频", 6: "保存"}, {})},
     "11": {0: ({2: "上传视频", 3: "配音", 7: "文案字幕", 4: "背景音乐"}, {8: "轮播", 10: "听写", 15: "听写字幕", 12: "图片"}),
            1: ({2: "上传视频", 9: "取音轨", 10: "听写", 15: "听写字幕"}, {3: "配音", 7: "文案字幕", 8: "轮播", 4: "背景音乐", 12: "图片"}),
            2: ({8: "轮播", 12: "图片", 3: "配音", 7: "文案字幕", 4: "背景音乐"}, {2: "上传视频", 10: "听写", 15: "听写字幕"})},
@@ -667,8 +670,8 @@ class LazyExecution(unittest.TestCase):
                     self.assertNotIn(nid, got, f"{num} 模式 {mi}「{opts[mi]}」：{what}（节点 {nid}）不该执行")
 
     def test_every_workflow_without_mode_runs_all_non_output_nodes(self):
-        """没有模式的工作流（13 15）所有节点都该参与；否则说明有节点没接到输出。"""
-        for num in ("13", "15"):
+        """没有模式的工作流（13 15 18 19）所有节点都该参与；否则说明有节点没接到输出。"""
+        for num in ("13", "15", "18", "19"):
             wf = load(num)
             got, nodes = ran(wf, None)
             self.assertEqual(got, set(nodes), f"{num}: 有节点没被任何输出用到：{sorted(set(nodes) - got)}")

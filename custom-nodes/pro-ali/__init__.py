@@ -1,9 +1,10 @@
-"""阿里云百炼（DashScope）节点：生图 / 改图 / 配音（含多角色对白）/ 听写 / 写提示词。
+"""阿里云百炼（DashScope）节点：生图 / 改图 / 配音（含多角色对白）/ 听写 / 写提示词 / 改视频 / 视频换人。
 
 Key 与地址取自 Relay API Settings 节点的 info 输出（存在服务器 relay_config.json 的 node_settings[节点 id]，不进 git）。
 只允许把 Key 发往 *.aliyuncs.com，Settings 里地址配错时宁可报错也不外发。
 「写提示词」选谷歌（gemini）模型时走网关：Key 和地址取自「Key：网关」节点（gateway_info 输入），只发往那个节点配置的网关地址，阿里的 Key 不会发给网关。
 错误直接抛出（红色节点 + 阿里返回的原因）。计费请求（生图 / 改图 / 配音 / 听写 / 音色）只发一次、不重试：重试会重复计费。
+视频类（改视频 / 视频换人）是异步任务：先把视频 / 人像传到阿里的免费临时存储（oss:// 地址），再提交任务（只发一次）、隔几秒查一次、下载结果；失败的任务阿里不收费。
 连接阶段单独处理：发请求前先用一个免费的 HEAD 把 TCP + TLS 连接建好（建不好就重试，这时什么都没发出去，不会计费），请求走这条已经连好的连接；
 结果下载是 GET，失败重试。写提示词的文字请求几乎不花钱，连不上（含超时）整个请求重试一次。
 """
@@ -14,14 +15,20 @@ import json
 import math
 import os
 import re
+import shutil
+import subprocess
+import tempfile
+import time
 import wave
 from urllib.parse import urlparse
 
+import av
 import numpy as np
 import requests
 import torch
 import torchaudio.functional as taf
 from PIL import Image
+from comfy_api.latest import InputImpl  # type: ignore[reportMissingImports]
 from comfy_api_nodes.util import audio_bytes_to_audio_input  # type: ignore[reportMissingImports]
 
 DEFAULT_BASE = "https://dashscope.aliyuncs.com"
@@ -162,11 +169,11 @@ def _open(base, what, who="阿里"):
     raise RuntimeError(f"[{who} {what}] 连不上：{type(last).__name__}（连接 / 握手试了 {WARMUP_TRIES} 次都没成功，请求没有发出，不会计费）")
 
 
-def _send(base, key, path, body, timeout, what, who="阿里"):
-    """（预热连接后）把 JSON 发给阿里（who="网关" 时发给网关），只发一次，返回 Response；连不上 / 等回复超时抛 RuntimeError。"""
+def _send(base, key, path, body, timeout, what, who="阿里", headers=None):
+    """（预热连接后）把 JSON 发给阿里（who="网关" 时发给网关），只发一次，返回 Response；连不上 / 等回复超时抛 RuntimeError。headers = 要多带的请求头。"""
     s = _open(base, what, who)
     try:
-        return s.post(base + path, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+        return s.post(base + path, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json", **(headers or {})},
                       json=body, timeout=(POST_CONNECT_TIMEOUT, timeout))
     except requests.ReadTimeout:
         raise RuntimeError(f"[{who} {what}] 等了 {timeout} 秒没有回应：请求已经发出，{who}那边可能还在处理（可能已计费），先别连着重跑")
@@ -868,11 +875,524 @@ class ProAliDialogue:
                 "result": ({"waveform": torch.from_numpy(audio)[None, None, :], "sample_rate": sr}, srt, report)}
 
 
+# ════════════════════════════════════════════════════════════════════════════
+# 视频类：改视频（万相 2.7 视频编辑 / HappyHorse 视频编辑）和视频换人（万相 2.2 animate-mix）——阿里的异步任务
+# 流程：视频 / 人像先传到阿里的免费临时存储（oss:// 地址，48 小时有效，只能给同一个模型用，上传不计费）→ 提交任务（只发一次、不重试：重试会重复计费）
+#      → 隔几秒查一次 → 下载结果。失败的任务阿里不收费；提交之后点了「停止」，只能取消还在排队的，已经在做的会照常计费（报错里写任务编号）。
+# 输入限制（2026-10-12 查官方文档）都写在 VIDEO_LIMITS 里：不合格的先在本地处理（太长截前几秒、尺寸太大缩小、格式不认转成 mp4），没法自动处理的在上传之前就报错。
+# ════════════════════════════════════════════════════════════════════════════
+VIDEO_API = {"swap": "/api/v1/services/aigc/image2video/video-synthesis", "edit": "/api/v1/services/aigc/video-generation/video-synthesis"}
+TASK_API = "/api/v1/tasks/"
+UPLOAD_API = "/api/v1/uploads"
+SUBMIT_TIMEOUT = 60
+UPLOAD_TIMEOUT = (10, 300)        # 视频最大 200MB，德国 → 北京传一次可能要一两分钟
+VIDEO_POLL_S = 10                 # 官方建议约 15 秒查一次（查询限流默认 20 次 / 秒），10 秒够用
+VIDEO_TASK_TIMEOUT = 25 * 60      # 一般 1~5 分钟，排队时会更久
+POLL_FAILS = 8                    # 连着几次都查不到才放弃（任务还在阿里那边做）
+FFMPEG_TIMEOUT = 600
+# 德国 → 阿里临时存储的上传速度很不稳（2026-10-12 实测 0.02~0.3 MB/s，同一个文件有时 8 秒、有时 130 秒），所以超过 HEAVY_MB 的视频先压一压再传：
+# 画质对这几个模型够用（出片本来就是 720P / 1080P），文件小了上传快好几倍
+HEAVY_MB = 2
+HEAVY_SIDE = 1280                 # 压的时候长边最多这么多像素
+HEAVY_CRF = "24"                  # 压的力度（越大越小越糊；24 肉眼基本看不出）
+PLACEHOLDER_VIDEO = "请上传视频.mp4"   # 随套件带的占位视频：工作流里「上传视频」节点没给文件时用它，不能当真的视频传出去
+SWAP_MODEL = "wan2.2-animate-mix"
+EDIT_VIDEO_MODELS = ["wan2.7-videoedit", "happyhorse-1.0-video-edit"]
+# seconds：输入视频要几秒（上限同时是「最多只用前几秒」：计费按秒，多传的白花钱）；side：(短边至少, 长边最多) 像素；ratio：长边 / 短边最大；mb：文件大小上限；
+# formats：认的容器；refs：最多几张参考图；ref_side / ref_ratio：参考图短边至少 / 长边 / 短边最大
+VIDEO_LIMITS = {
+    SWAP_MODEL: {"api": "swap", "seconds": (2, 30), "side": (200, 2048), "ratio": 3.0, "mb": 200, "formats": ("mp4", "mov", "avi")},
+    "wan2.7-videoedit": {"api": "edit", "seconds": (2, 10), "side": (240, 4096), "ratio": 8.0, "mb": 100, "formats": ("mp4", "mov"),
+                         "refs": 4, "ref_side": 240, "ref_ratio": 8.0},
+    "happyhorse-1.0-video-edit": {"api": "edit", "seconds": (3, 15), "side": (360, 4096), "ratio": 2.5, "mb": 100, "formats": ("mp4", "mov"),
+                                  "refs": 5, "ref_side": 300, "ref_ratio": 2.5},
+}
+SWAP_QUALITY = {"标准（wan-std，快一点、便宜）": "wan-std", "专业（wan-pro，更流畅、更贵）": "wan-pro"}
+EDIT_RATIOS = ["跟原视频一样", "16:9", "9:16", "1:1", "4:3", "3:4"]
+EDIT_AUDIO = {"保留原视频的声音": "origin", "让 AI 决定（指令里写了声音才会重新生成）": "auto"}
+# 阿里返回的错误码 → 人话（带点的错误码先按整个码找，再按前缀找；2026-10-12 真跑见过 InvalidImage.NoHuman、InvalidVideo.Duration）
+VIDEO_ERROR_HINTS = {
+    "DataInspectionFailed": "内容没通过阿里的审核（上传的图片 / 视频，或者生成出来的画面被判为不合规），换一个素材再试",
+    "IPInfringementSuspect": "被判疑似侵权，没通过阿里的审核，换一个素材再试",
+    "InvalidImage.NoHuman": "人物照片里没有检测到人（要清晰的单人照，脸和上半身都在画面里）",
+    "InvalidImage": "人物照片没通过检查（要清晰的单人照，脸和上半身都在画面里、别太小）",
+    "InvalidVideo": "视频没通过检查（时长、尺寸、格式或里面的人不合要求）",
+}
+
+
+def _ffmpeg_exe():
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        pass
+    exe = shutil.which("ffmpeg")
+    if exe:
+        return exe
+    raise RuntimeError("[视频] 服务器里没有找到 ffmpeg（镜像里应该有 imageio-ffmpeg）")
+
+
+def _run_ffmpeg(args, what, timeout=FFMPEG_TIMEOUT):
+    """跑一条 ffmpeg（日志写进临时文件，不占管道）；点了「停止」就杀掉它。失败抛错并带上日志最后几行。"""
+    exe = _ffmpeg_exe()
+    with tempfile.TemporaryFile() as log:
+        p = subprocess.Popen([exe, "-hide_banner", "-loglevel", "error", "-y", *args], stdout=subprocess.DEVNULL, stderr=log)
+        t0 = time.monotonic()
+        try:
+            while p.poll() is None:
+                _check_interrupt()
+                if time.monotonic() - t0 > timeout:
+                    raise RuntimeError(f"[阿里 {what}] 处理视频花了超过 {timeout // 60} 分钟，已放弃（视频太大？）")
+                time.sleep(0.3)
+        except BaseException:
+            p.kill()
+            p.wait()
+            raise
+        if p.returncode != 0:
+            log.seek(0)
+            tail = log.read().decode("utf-8", "replace").strip().splitlines()[-4:]
+            raise RuntimeError(f"[阿里 {what}] 处理视频失败（ffmpeg）：{' | '.join(tail)[:300]}")
+
+
+def _rotated(path):
+    """手机竖拍的视频：编码里是横的，带「旋转 90 / 270 度」的标记。问 ffmpeg 本人（它打印的流信息里有 displaymatrix: rotation of -90.00 degrees）。"""
+    try:
+        r = subprocess.run([_ffmpeg_exe(), "-hide_banner", "-i", path], capture_output=True, text=True, timeout=30)
+    except (OSError, RuntimeError, subprocess.SubprocessError):          # 没有 ffmpeg 等：查不出旋转就当没有（后面真要用 ffmpeg 时会报清楚的错）
+        return False
+    m = re.search(r"rotation of (-?\d+(?:\.\d+)?) degrees", r.stderr)
+    return bool(m) and round(abs(float(m.group(1)))) % 180 == 90
+
+
+def _probe_video(src, what):
+    """用 PyAV 只读文件头（不解码画面）→ {seconds, width, height, vcodec, container, has_audio}；打不开 / 里面没有画面就报错。"""
+    try:
+        if hasattr(src, "seek"):
+            src.seek(0)
+        with av.open(src) as c:
+            vs = c.streams.video[0] if c.streams.video else None
+            if vs is None:
+                raise ValueError("里面没有画面")
+            if vs.duration and vs.time_base:
+                sec = float(vs.duration * vs.time_base)
+            elif c.duration:
+                sec = float(c.duration / av.time_base)
+            else:
+                sec = 0.0
+            return {"seconds": sec, "width": int(vs.width), "height": int(vs.height), "vcodec": vs.codec_context.name,
+                    "container": c.format.name, "has_audio": bool(c.streams.audio)}
+    except Exception as e:
+        raise RuntimeError(f"[阿里 {what}] 这个视频打不开（{type(e).__name__}：{str(e)[:80]}）：换一个 mp4 / mov 再试")
+
+
+def _prepare_video(src, model, what):
+    """按 model 的输入限制整理视频 → (字节, 文件名, 实际用的秒数, 说明列表)。
+    太短 / 太小 / 比例不对：没法自动处理，报错；太长 / 边长太大 / 不是 H.264 / 容器不认 / 带旋转标记 / 文件太大：重新编码成 mp4（只取前几秒、缩小、压一压；几秒钟）；都合格就原样用。"""
+    lim = VIDEO_LIMITS[model]
+    info = _probe_video(src, what)
+    sec, w, h = info["seconds"], info["width"], info["height"]
+    lo, hi = lim["seconds"]
+    if sec and sec < lo - 0.05:
+        raise RuntimeError(f"[阿里 {what}] 视频太短：只有 {sec:.1f} 秒，这个模型要 {lo}~{hi} 秒的视频")
+    if min(w, h) < lim["side"][0]:
+        raise RuntimeError(f"[阿里 {what}] 视频画面太小：{w}×{h}，短边至少要 {lim['side'][0]} 像素")
+    if max(w, h) / max(min(w, h), 1) > lim["ratio"]:
+        raise RuntimeError(f"[阿里 {what}] 视频画面太窄长：{w}×{h}，长边不能超过短边的 {lim['ratio']:g} 倍")
+    path = src if isinstance(src, str) else None
+    size = os.path.getsize(path) if path else len(src.getvalue())
+    notes, work = [], None
+    if path is None:                                   # 内存里的视频：落到临时文件再处理（ffmpeg 要读文件）
+        fd, work = tempfile.mkstemp(suffix=".mp4")
+        with os.fdopen(fd, "wb") as f:
+            f.write(src.getvalue())
+        path = work
+    try:
+        too_long = sec > hi - 0.02                     # 上限是「不超过」：10.0 秒的视频容器时长可能是 10.008，贴着线不保险，截到比上限短 0.1 秒（复制截取只能停在帧的边界，会多出几十毫秒）
+        too_big = max(w, h) > lim["side"][1]
+        rotated = _rotated(path)                       # 带旋转标记的竖拍视频：阿里认不认标记没把握，一律转码（ffmpeg 自己转正、清掉标记）
+        plain = (info["vcodec"] == "h264" and any(f in info["container"] for f in lim["formats"]) and not rotated)
+        over_size = size > lim["mb"] * 1024 * 1024
+        heavy = size > HEAVY_MB * 1024 * 1024          # 没超限但不小（Veo 出的 10 秒约 5MB、手机拍的原片更大）：上传太慢，压一压再传
+        use_s = (hi - 0.1) if too_long else (sec or hi)
+        if too_long or too_big or over_size or heavy or not plain:
+            fd, out = tempfile.mkstemp(suffix=".mp4")
+            os.close(fd)
+            try:
+                args = ["-i", path]
+                if too_long:
+                    args += ["-t", f"{hi - 0.1:g}"]
+                    notes.append(f"视频有 {sec:.0f} 秒，超过这个模型的上限，只用了前 {hi} 秒")
+                # 太长也重新编码，不用复制截取：复制只能停在帧的边界，实测 10 秒上限的截出来 10.08 秒，贴着线阿里可能判超；重新编码按时间精确停
+                # 长边缩到 side 以内、保持比例、宽高取偶数。用 scale 表达式（iw / ih 是转正之后的宽高）而不是写死「宽:高」：手机竖拍的视频存成横的 + 旋转标记，
+                # ffmpeg 先转正再套滤镜，按编码里的宽高写死会把画面压扁
+                side = min(lim["side"][1], HEAVY_SIDE) if heavy else lim["side"][1]
+                args += ["-vf", f"scale=w='min({side},iw)':h='min({side},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+                         "-c:v", "libx264", "-preset", "veryfast", "-crf", HEAVY_CRF if heavy else "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k"]
+                shrunk = max(w, h) > side
+                notes.append("视频重新编码成了 mp4" + (f"（长边缩小到 {side} 像素以内）" if shrunk else "（压小了文件，上传更快）" if heavy else ""))
+                _run_ffmpeg(args + ["-movflags", "+faststart", out], what)
+                with open(out, "rb") as f:
+                    data = f.read()
+            finally:
+                if os.path.exists(out):
+                    os.remove(out)
+        else:
+            with open(path, "rb") as f:
+                data = f.read()
+    finally:
+        if work and os.path.exists(work):
+            os.remove(work)
+    if len(data) > lim["mb"] * 1024 * 1024:
+        raise RuntimeError(f"[阿里 {what}] 视频文件太大：{len(data) / 1048576:.0f} MB，这个模型最多 {lim['mb']} MB：剪短一点或降低清晰度再试")
+    return data, hashlib.sha1(data).hexdigest()[:16] + ".mp4", use_s, notes
+
+
+def _image_bytes(tensor, max_side=2048, max_mb=5):
+    """IMAGE（取第一张）→ JPEG 字节（最长边缩到 max_side 以内，超过 max_mb 就压一压）。"""
+    arr = (tensor[0].cpu().numpy().clip(0, 1) * 255).astype(np.uint8)
+    im = Image.fromarray(arr).convert("RGB")
+    im.thumbnail((max_side, max_side))
+    for q in (95, 88, 80, 70):
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=q)
+        if buf.tell() <= max_mb * 1048576:
+            return buf.getvalue()
+    raise RuntimeError(f"图片压到最低质量还有 {buf.tell() / 1048576:.1f} MB，超过 {max_mb} MB")
+
+
+def _check_image_size(tensor, lo, max_ratio, label, what):
+    h, w = int(tensor.shape[1]), int(tensor.shape[2])
+    if min(w, h) < lo:
+        raise RuntimeError(f"[阿里 {what}] {label}太小：{w}×{h}，短边至少要 {lo} 像素")
+    if max(w, h) / max(min(w, h), 1) > max_ratio:
+        raise RuntimeError(f"[阿里 {what}] {label}太窄长：{w}×{h}，长边不能超过短边的 {max_ratio:g} 倍")
+
+
+class _FormBody:
+    """multipart/form-data 的请求体，当成「带长度的文件」交给 requests：它会一小块一小块地发，每块有自己的超时。
+    不能把整个 bytes 一次交出去：德国 → 阿里这条线上传得慢（实测 0.03~0.3 MB/s），整块写操作共用一个很短的限期，传几 MB 就超时（实测 4 MB 的视频三次都超时）。
+    fields = [(名字, 值)]；file 放在最后（阿里的要求）。"""
+    def __init__(self, fields, filename, data, check=None):
+        self.check = check                                  # 每读一块先调一次（点了「停止」就在这里抛出中断，上传立刻停）
+        self.boundary = os.urandom(12).hex()
+        head = "".join(f'--{self.boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n' for k, v in fields)
+        head += f'--{self.boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"\r\nContent-Type: application/octet-stream\r\n\r\n'
+        self.parts = [head.encode("utf-8"), memoryview(data), f"\r\n--{self.boundary}--\r\n".encode()]
+        self.total = sum(len(x) for x in self.parts)
+        self.i = self.off = 0
+
+    @property
+    def content_type(self):
+        return f"multipart/form-data; boundary={self.boundary}"
+
+    def __len__(self):
+        return self.total
+
+    def read(self, n=-1):
+        if self.check:
+            self.check()
+        out = []
+        while self.i < len(self.parts) and n != 0:
+            part = self.parts[self.i]
+            take = len(part) - self.off if n is None or n < 0 else min(n, len(part) - self.off)
+            out.append(bytes(part[self.off:self.off + take]))
+            self.off += take
+            n = n - take if n is not None and n > 0 else n
+            if self.off >= len(part):
+                self.i, self.off = self.i + 1, 0
+        return b"".join(out)
+
+
+class _NoRetry(RuntimeError):
+    """上传里重试也没用的错（文件太大、地址不对）：别再试了。"""
+
+
+def _oss_upload(base, key, model, data, name, what):
+    """把一份文件（字节）传到阿里的免费临时存储 → oss:// 地址（48 小时有效，只能给同一个模型用）。上传不计费，连接问题重试几次。
+    上传地址由阿里的接口返回，只认 https 的 *.aliyuncs.com（文件不会发到别处）。"""
+    last = None
+    for attempt in range(3):
+        try:
+            s = _open(base, what)
+            try:
+                r = s.get(base + UPLOAD_API, params={"action": "getPolicy", "model": model}, headers={"Authorization": "Bearer " + key}, timeout=(POST_CONNECT_TIMEOUT, 30))
+            finally:
+                s.close()
+            try:
+                d = r.json()
+            except Exception:
+                d = {}
+            if r.status_code != 200 or not isinstance(d.get("data"), dict):
+                if r.status_code in (400, 401, 403):                       # Key 不对 / 没权限 / 模型名不对：重试也没用
+                    raise _NoRetry(f"[阿里 {what}] 拿上传凭证失败：HTTP {r.status_code} {d.get('code', '')} {str(d.get('message', ''))[:200]}")
+                raise RuntimeError(f"拿上传凭证 HTTP {r.status_code}")
+            p = d["data"]
+            host = urlparse(str(p.get("upload_host") or ""))
+            if host.scheme != "https" or not (host.hostname or "").endswith(".aliyuncs.com"):
+                raise _NoRetry(f"[阿里 {what}] 阿里给的上传地址不对（{p.get('upload_host')}）：为安全起见没有上传")
+            max_mb = p.get("max_file_size_mb")
+            if isinstance(max_mb, (int, float)) and len(data) > max_mb * 1048576:
+                raise _NoRetry(f"[阿里 {what}] 文件太大：{len(data) / 1048576:.0f} MB，阿里这个模型的临时存储最多收 {max_mb} MB")
+            okey = f"{p['upload_dir']}/{name}"
+            body = _FormBody([("OSSAccessKeyId", p["oss_access_key_id"]), ("Signature", p["signature"]), ("policy", p["policy"]),
+                              ("x-oss-object-acl", p["x_oss_object_acl"]), ("x-oss-forbid-overwrite", p["x_oss_forbid_overwrite"]),
+                              ("key", okey), ("success_action_status", "200")], name, data, check=_check_interrupt)   # file 在最后一个表单域（_FormBody 保证）
+            u = requests.post(p["upload_host"], data=body, headers={"Content-Type": body.content_type}, timeout=UPLOAD_TIMEOUT)
+            if u.status_code != 200:
+                raise RuntimeError(f"HTTP {u.status_code} {u.text[:120]}")
+            return "oss://" + okey
+        except _NoRetry:
+            raise
+        except (requests.RequestException, RuntimeError, KeyError) as e:
+            last = e
+    raise RuntimeError(f"[阿里 {what}] 上传到阿里的临时存储失败（试了 3 次，{type(last).__name__}：{str(last)[:120]}）：还没提交任务，不会计费，稍后再试")
+
+
+def _submit_video_task(base, key, api, body, what):
+    """提交视频任务（只发一次）→ task_id。用了 oss:// 地址要带 X-DashScope-OssResourceResolve。"""
+    r = _send(base, key, VIDEO_API[api], body, SUBMIT_TIMEOUT, what, headers={"X-DashScope-Async": "enable", "X-DashScope-OssResourceResolve": "enable"})
+    try:
+        d = r.json()
+    except Exception:
+        raise RuntimeError(f"[阿里 {what}] HTTP {r.status_code}，返回不是 JSON：{r.text[:200]}")
+    if r.status_code != 200:
+        raise RuntimeError(f"[阿里 {what}] HTTP {r.status_code} {d.get('code', '')}：{str(d.get('message', ''))[:300]}")
+    tid = (d.get("output") or {}).get("task_id")
+    if not tid:
+        raise RuntimeError(f"[阿里 {what}] 提交成功但没有拿到任务编号：{json.dumps(d, ensure_ascii=False)[:300]}")
+    return tid
+
+
+def _cancel_task(base, key, task_id):
+    """点了「停止」：取消还在排队的任务（已经在做的取消不了，会照常计费）。尽力而为，出什么错都不管。"""
+    try:
+        requests.post(f"{base}{TASK_API}{task_id}/cancel", headers={"Authorization": "Bearer " + key}, timeout=(CONNECT_TIMEOUT * 2, 10))
+    except Exception:
+        pass
+
+
+def _task_failed(d, status, what):
+    out = d.get("output") or {}
+    code, msg = out.get("code") or d.get("code") or "", str(out.get("message") or d.get("message") or "")
+    if status == "UNKNOWN":
+        return RuntimeError(f"[阿里 {what}] 任务不见了（过期或者编号不对）")
+    if status == "CANCELED":
+        return RuntimeError(f"[阿里 {what}] 任务被取消了")
+    hint = VIDEO_ERROR_HINTS.get(code) or VIDEO_ERROR_HINTS.get(str(code).split(".")[0])
+    return RuntimeError(f"[阿里 {what}] 任务失败（{code or '没有错误码'}）：{hint + '。原文：' if hint else ''}{msg[:300]}（失败的任务阿里不收费）")
+
+
+def _wait_task(base, key, task_id, what, poll_s=VIDEO_POLL_S, timeout_s=VIDEO_TASK_TIMEOUT):
+    """隔几秒查一次任务，成功返回整份 JSON，失败抛错。查询是 GET：连不上 / 对方暂时出错就等下一轮，连着 POLL_FAILS 次都不行才放弃；点了「停止」就取消排队中的任务。"""
+    headers = {"Authorization": "Bearer " + key}
+    t0, fails = time.monotonic(), 0
+    s = requests.Session()
+    try:
+        while True:
+            try:
+                r = s.get(base + TASK_API + task_id, headers=headers, timeout=(POST_CONNECT_TIMEOUT, 30))
+                d = r.json()
+                bad = r.status_code in (429, 500, 502, 503, 504)
+            except (requests.RequestException, ValueError) as e:
+                d, bad, r = None, True, None
+                err = type(e).__name__
+            if bad:
+                fails += 1
+                if fails >= POLL_FAILS:
+                    raise RuntimeError(f"[阿里 {what}] 连着 {fails} 次查不到任务进度（{err if r is None else 'HTTP ' + str(r.status_code)}）：任务 {task_id} 在阿里那边可能还在做（可能已计费），"
+                                       "稍后到阿里云百炼控制台看一下，先别重跑")
+            else:
+                if r.status_code != 200:
+                    raise RuntimeError(f"[阿里 {what}] 查任务出错：HTTP {r.status_code} {d.get('code', '')} {str(d.get('message', ''))[:200]}（任务编号 {task_id}）")
+                st = (d.get("output") or {}).get("task_status")
+                if st == "SUCCEEDED":
+                    return d
+                if st in ("FAILED", "CANCELED", "UNKNOWN"):
+                    raise _task_failed(d, st, what)
+                if st is None:                                  # 200 但里面没有状态（格式不对）：当成这次没查到，连着 POLL_FAILS 次就放弃，别空转到超时
+                    fails += 1
+                    if fails >= POLL_FAILS:
+                        raise RuntimeError(f"[阿里 {what}] 连着 {fails} 次查不到任务进度（返回里没有任务状态）：任务 {task_id} 在阿里那边可能还在做（可能已计费），稍后到阿里云百炼控制台看一下，先别重跑")
+                else:
+                    fails = 0
+            if time.monotonic() - t0 > timeout_s:
+                _cancel_task(base, key, task_id)
+                raise RuntimeError(f"[阿里 {what}] 等了 {timeout_s // 60} 分钟还没出结果（任务 {task_id}）：阿里那边可能还在做（可能已计费），先别连着重跑")
+            for _ in range(int(poll_s / 0.5)):
+                _check_interrupt()
+                time.sleep(0.5)
+    except BaseException as e:
+        if type(e).__name__ == "InterruptProcessingException":
+            _cancel_task(base, key, task_id)
+        raise
+    finally:
+        s.close()
+
+
+def _download_file(url, path, what):
+    """把结果视频下载到 path（流式写盘）。GET，失败重试：结果已经生成并计费了，下载失败不重试就白花钱。"""
+    last = None
+    for _ in range(3):
+        try:
+            with requests.get(url, stream=True, timeout=(CONNECT_TIMEOUT * 2, DOWNLOAD_TIMEOUT)) as r:
+                r.raise_for_status()
+                with open(path + ".part", "wb") as f:
+                    for chunk in r.iter_content(1 << 20):
+                        _check_interrupt()                      # 点了「停止」就别再下了
+                        f.write(chunk)
+            os.replace(path + ".part", path)
+            return
+        except requests.HTTPError as e:
+            last = e
+            if e.response is not None and e.response.status_code < 500:
+                break
+        except requests.RequestException as e:
+            last = e
+        except BaseException:                                   # 被中断：没下完的半个文件不留
+            if os.path.exists(path + ".part"):
+                os.remove(path + ".part")
+            raise
+    if os.path.exists(path + ".part"):
+        os.remove(path + ".part")
+    raise RuntimeError(f"[阿里 {what}] 视频已经做好并计费了，但下载失败（{type(last).__name__}）：链接 24 小时内有效，可以手动下载：{url}")
+
+
+def _temp_video_path(tag):
+    """ComfyUI 临时目录里的一个新文件名（顺手清掉自己留下的一天前的旧文件）：最终要给用户看的由「保存视频」节点复制进 output/。"""
+    import folder_paths
+    d = folder_paths.get_temp_directory()
+    os.makedirs(d, exist_ok=True)
+    cutoff = time.time() - 24 * 3600
+    for f in os.listdir(d):
+        if f.startswith("pro_") and f.endswith(".mp4"):
+            try:
+                if os.path.getmtime(os.path.join(d, f)) < cutoff:
+                    os.remove(os.path.join(d, f))
+            except OSError:
+                pass
+    return os.path.join(d, f"pro_{tag}_{int(time.time())}_{hashlib.sha1(os.urandom(8)).hexdigest()[:6]}.mp4")
+
+
+def _finish_video(d, what, task_id):
+    """任务成功的 JSON → 把结果视频下载到临时目录 → VideoFromFile。"""
+    out = d.get("output") or {}
+    url = out.get("video_url") or (out.get("results") or {}).get("video_url")
+    if not url:
+        raise RuntimeError(f"[阿里 {what}] 任务成功了但返回里没有视频地址（任务 {task_id}）：{json.dumps(d, ensure_ascii=False)[:300]}")
+    path = _temp_video_path("ali")
+    _download_file(url, path, what)
+    return InputImpl.VideoFromFile(path)
+
+
+class ProAliVideoEdit:
+    """AI 改视频：一段视频 + 一句话（+ 最多几张参考图）→ 改过的新视频：换物体 / 换背景 / 换风格 / 删东西，或把参考图里的衣服、道具用到视频里，也能复刻原视频的动作和运镜。
+    万相 2.7 视频编辑（默认）或 HappyHorse 视频编辑（输入视频可以更长、更贵）。计费 = 输入视频秒数 + 输出视频秒数。"""
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "video": ("VIDEO",),
+            "prompt": ("STRING", {"multiline": True, "default": "", "placeholder": "例：把背景换成海边日落，其他保持不变",
+                                  "tooltip": "怎么改：一两句话说清改什么、改成什么，不想变的写「其他保持不变」。带参考图时用「图片中的……」指代参考图（例如：把视频里女孩的衣服换成图片中的衣服）"}),
+            "model": (EDIT_VIDEO_MODELS, {"default": EDIT_VIDEO_MODELS[0],
+                                          "tooltip": "wan2.7-videoedit（默认）：输入视频 2~10 秒，720P 约 0.6 元/秒；happyhorse-1.0-video-edit：输入视频 3~15 秒（超过只用前 15 秒），720P 约 0.9 元/秒，不能改比例 / 时长。"
+                                                     "两个都是按「输入视频秒数 + 输出视频秒数」计费"}),
+            "resolution": (["720P", "1080P"], {"default": "720P", "tooltip": "出片清晰度；1080P 更贵（万相 2.7：720P 约 0.6 元/秒，1080P 约 1 元/秒）"}),
+            "audio": (list(EDIT_AUDIO), {"default": next(iter(EDIT_AUDIO)), "tooltip": "出片的声音：保留原视频的，或让 AI 自己决定"}),
+            "duration": ("INT", {"default": 0, "min": 0, "max": 10, "tooltip": "0 = 和原视频一样长；2~10 = 只取前几秒（也更省钱）。只有万相 2.7 能设"}),
+            "ratio": (EDIT_RATIOS, {"default": EDIT_RATIOS[0], "tooltip": "出片比例；默认跟原视频一样。只有万相 2.7 能设"}),
+            "prompt_extend": ("BOOLEAN", {"default": True, "label_on": "让 AI 润色指令", "label_off": "指令照原样用", "tooltip": "让阿里先把你的指令改写得更详细（指令很短时有帮助，会多等一会儿）。只有万相 2.7 能设"}),
+            "watermark": ("BOOLEAN", {"default": False, "label_on": "加水印", "label_off": "不加水印"}),
+            # seed 也送给阿里（0~2147483647）；同时让每次运行都重新做（ComfyUI 输入没变就直接用上次的结果）
+            "seed": ("INT", {"default": 0, "min": 0, "max": 2147483646, "control_after_generate": True})},
+            "optional": dict({f"ref_image{i}": ("IMAGE",) for i in range(1, 5)}, info=("STRING", {"default": "", "forceInput": True}))}
+
+    RETURN_TYPES = ("VIDEO", "STRING")
+    RETURN_NAMES = ("video", "response")
+    FUNCTION = "run"
+    CATEGORY = "pro/aliyun"
+
+    def run(self, video, prompt, model, resolution, audio, duration, ratio, prompt_extend, watermark, seed,
+            ref_image1=None, ref_image2=None, ref_image3=None, ref_image4=None, info=""):
+        what = "改视频"
+        key, base = _creds(info)
+        if model not in EDIT_VIDEO_MODELS:
+            raise RuntimeError(f"[阿里 {what}] 不认识的模型「{model}」：可选 {'、'.join(EDIT_VIDEO_MODELS)}")
+        lim = VIDEO_LIMITS[model]
+        if not prompt.strip():
+            raise RuntimeError(f"[阿里 {what}] 「怎么改」是空的：写一两句话，说清改什么、改成什么")
+        refs = [t for t in (ref_image1, ref_image2, ref_image3, ref_image4) if t is not None]
+        if len(refs) > lim["refs"]:
+            raise RuntimeError(f"[阿里 {what}] 这个模型最多 {lim['refs']} 张参考图，现在有 {len(refs)} 张")
+        for i, t in enumerate(refs, 1):                                  # 先把便宜的检查做完，再去传视频
+            _check_image_size(t, lim["ref_side"], lim["ref_ratio"], f"参考图 {i}", what)
+        data, vname, use_s, notes = _prepare_video(video.get_stream_source(), model, what)
+        vid_url = _oss_upload(base, key, model, data, vname, what)
+        ref_urls = [_to_data_url(t) for t in refs]
+        params = {"resolution": resolution, "watermark": bool(watermark), "audio_setting": EDIT_AUDIO[audio], "seed": int(seed)}
+        if model == "wan2.7-videoedit":
+            params["prompt_extend"] = bool(prompt_extend)
+            if ratio != EDIT_RATIOS[0]:
+                params["ratio"] = ratio
+            if duration >= 1:
+                params["duration"] = max(2, min(int(duration), int(use_s)))
+        elif ratio != EDIT_RATIOS[0] or duration:
+            notes.append("这个模型不能改比例 / 时长，这两项没用上")
+        body = {"model": model, "input": {"prompt": prompt.strip(), "media": [{"type": "video", "url": vid_url}] + [{"type": "reference_image", "url": u} for u in ref_urls]},
+                "parameters": params}
+        tid = _submit_video_task(base, key, lim["api"], body, what)
+        d = _wait_task(base, key, tid, what)
+        return (_finish_video(d, what, tid), json.dumps({"code": "success", "model": model, "task_id": tid, "usage": d.get("usage"), "notes": notes}, ensure_ascii=False))
+
+
+class ProAliVideoSwap:
+    """视频换人（万相 2.2 animate-mix）：一张人物照片 + 一段视频 → 视频里的人换成照片里的人，动作、表情、场景光线保留。整个人（含衣服发型）跟着照片走，不是只换脸。
+    只能用本人或已获授权的人像（节点里要勾选确认）。按输出视频的秒数计费（标准 0.6 元/秒，专业 0.9 元/秒）。"""
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "image": ("IMAGE",),
+            "video": ("VIDEO",),
+            "authorized": ("BOOLEAN", {"default": False, "label_on": "我确认人像是本人或已获授权", "label_off": "还没确认（不勾选不能运行）",
+                                       "tooltip": "只能换成你本人或已经获得授权的人像：用别人的照片换人可能侵犯肖像权。勾上表示你确认这张人物照片可以用"}),
+            "quality": (list(SWAP_QUALITY), {"default": next(iter(SWAP_QUALITY)), "tooltip": "标准：快一点、便宜（0.6 元/秒）；专业：动作更流畅、画质更好、更慢更贵（0.9 元/秒）"}),
+            # seed 不参与请求：只是让每次运行都重新做（ComfyUI 输入没变就直接用上次的结果）
+            "seed": ("INT", {"default": 0, "min": 0, "max": 2147483646, "control_after_generate": True})},
+            "optional": {"check_image": ("BOOLEAN", {"default": True, "label_on": "先检查人物照片", "label_off": "不检查", "tooltip": "处理前先检查照片合不合格（是不是清晰的单人照）；不合格会直接报错，不会白等"}),
+                         "watermark": ("BOOLEAN", {"default": False, "label_on": "加水印", "label_off": "不加水印"}),
+                         "info": ("STRING", {"default": "", "forceInput": True})}}
+
+    RETURN_TYPES = ("VIDEO", "STRING")
+    RETURN_NAMES = ("video", "response")
+    FUNCTION = "run"
+    CATEGORY = "pro/aliyun"
+
+    def run(self, image, video, authorized, quality, seed, check_image=True, watermark=False, info=""):
+        what = "视频换人"
+        if not authorized:
+            raise RuntimeError(f"[阿里 {what}] 请先勾选「我确认人像是本人或已获授权」：只能换成你本人或已经获得授权的人像（用别人的照片换人可能侵犯肖像权）")
+        key, base = _creds(info)
+        lim = VIDEO_LIMITS[SWAP_MODEL]
+        _check_image_size(image, 200, 3.0, "人物照片", what)
+        try:
+            img = _image_bytes(image)
+        except RuntimeError as e:
+            raise RuntimeError(f"[阿里 {what}] 人物照片：{e}")
+        data, vname, use_s, notes = _prepare_video(video.get_stream_source(), SWAP_MODEL, what)
+        img_url = _oss_upload(base, key, SWAP_MODEL, img, hashlib.sha1(img).hexdigest()[:16] + ".jpg", what)
+        vid_url = _oss_upload(base, key, SWAP_MODEL, data, vname, what)
+        body = {"model": SWAP_MODEL, "input": {"image_url": img_url, "video_url": vid_url, "watermark": bool(watermark)},
+                "parameters": {"mode": SWAP_QUALITY[quality], "check_image": bool(check_image)}}
+        tid = _submit_video_task(base, key, lim["api"], body, what)
+        d = _wait_task(base, key, tid, what)
+        return (_finish_video(d, what, tid), json.dumps({"code": "success", "model": SWAP_MODEL, "task_id": tid, "usage": d.get("usage"), "notes": notes}, ensure_ascii=False))
+
+
 NODE_CLASS_MAPPINGS = {"ProAliImage": ProAliImage, "ProAliImageEdit": ProAliImageEdit, "ProAliTTS": ProAliTTS, "ProAliDialogue": ProAliDialogue, "ProAliASR": ProAliASR,
                       "ProAliVoiceDesign": ProAliVoiceDesign, "ProAliVoiceClone": ProAliVoiceClone, "ProAliVoiceAdmin": ProAliVoiceAdmin,
-                      "ProAliPromptWriter": ProAliPromptWriter}
+                      "ProAliPromptWriter": ProAliPromptWriter, "ProAliVideoEdit": ProAliVideoEdit, "ProAliVideoSwap": ProAliVideoSwap}
 NODE_DISPLAY_NAME_MAPPINGS = {"ProAliImage": "阿里 文生图（qwen-image，支持 2K）", "ProAliImageEdit": "阿里 改图（qwen-image-edit）",
                               "ProAliTTS": "阿里 配音（qwen3-tts）", "ProAliDialogue": "阿里 多角色对白配音（每行「角色：台词」）", "ProAliASR": "阿里 语音识别（听写，qwen3-asr）",
                               "ProAliPromptWriter": "写提示词（阿里 / 谷歌：一句话需求→完整提示词）",
                               "ProAliVoiceDesign": "阿里 音色设计（文字描述→新音色）", "ProAliVoiceClone": "阿里 声音克隆（样音→新音色）",
-                              "ProAliVoiceAdmin": "阿里 音色管理（列出/删除）"}
+                              "ProAliVoiceAdmin": "阿里 音色管理（列出/删除）",
+                              "ProAliVideoEdit": "阿里 AI 改视频（一句话 + 参考图改视频，万相 2.7 / HappyHorse）", "ProAliVideoSwap": "阿里 视频换人（人像 + 视频，万相 animate-mix）"}

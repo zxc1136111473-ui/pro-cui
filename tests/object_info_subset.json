@@ -1420,6 +1420,257 @@
   ],
   "output_node": false
  },
+ "ProAliVideoEdit": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ],
+    "ref_image1": [
+     "IMAGE"
+    ],
+    "ref_image2": [
+     "IMAGE"
+    ],
+    "ref_image3": [
+     "IMAGE"
+    ],
+    "ref_image4": [
+     "IMAGE"
+    ]
+   },
+   "required": {
+    "audio": [
+     [
+      "保留原视频的声音",
+      "让 AI 决定（指令里写了声音才会重新生成）"
+     ],
+     {
+      "default": "保留原视频的声音",
+      "tooltip": "出片的声音：保留原视频的，或让 AI 自己决定"
+     }
+    ],
+    "duration": [
+     "INT",
+     {
+      "default": 0,
+      "max": 10,
+      "min": 0,
+      "tooltip": "0 = 和原视频一样长；2~10 = 只取前几秒（也更省钱）。只有万相 2.7 能设"
+     }
+    ],
+    "model": [
+     [
+      "wan2.7-videoedit",
+      "happyhorse-1.0-video-edit"
+     ],
+     {
+      "default": "wan2.7-videoedit",
+      "tooltip": "wan2.7-videoedit（默认）：输入视频 2~10 秒，720P 约 0.6 元/秒；happyhorse-1.0-video-edit：输入视频 3~15 秒（超过只用前 15 秒），720P 约 0.9 元/秒，不能改比例 / 时长。两个都是按「输入视频秒数 + 输出视频秒数」计费"
+     }
+    ],
+    "prompt": [
+     "STRING",
+     {
+      "default": "",
+      "multiline": true,
+      "placeholder": "例：把背景换成海边日落，其他保持不变",
+      "tooltip": "怎么改：一两句话说清改什么、改成什么，不想变的写「其他保持不变」。带参考图时用「图片中的……」指代参考图（例如：把视频里女孩的衣服换成图片中的衣服）"
+     }
+    ],
+    "prompt_extend": [
+     "BOOLEAN",
+     {
+      "default": true,
+      "label_off": "指令照原样用",
+      "label_on": "让 AI 润色指令",
+      "tooltip": "让阿里先把你的指令改写得更详细（指令很短时有帮助，会多等一会儿）。只有万相 2.7 能设"
+     }
+    ],
+    "ratio": [
+     [
+      "跟原视频一样",
+      "16:9",
+      "9:16",
+      "1:1",
+      "4:3",
+      "3:4"
+     ],
+     {
+      "default": "跟原视频一样",
+      "tooltip": "出片比例；默认跟原视频一样。只有万相 2.7 能设"
+     }
+    ],
+    "resolution": [
+     [
+      "720P",
+      "1080P"
+     ],
+     {
+      "default": "720P",
+      "tooltip": "出片清晰度；1080P 更贵（万相 2.7：720P 约 0.6 元/秒，1080P 约 1 元/秒）"
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "max": 2147483646,
+      "min": 0
+     }
+    ],
+    "video": [
+     "VIDEO"
+    ],
+    "watermark": [
+     "BOOLEAN",
+     {
+      "default": false,
+      "label_off": "不加水印",
+      "label_on": "加水印"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "ref_image1",
+    "ref_image2",
+    "ref_image3",
+    "ref_image4",
+    "info"
+   ],
+   "required": [
+    "video",
+    "prompt",
+    "model",
+    "resolution",
+    "audio",
+    "duration",
+    "ratio",
+    "prompt_extend",
+    "watermark",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAliVideoEdit",
+  "output": [
+   "VIDEO",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "video",
+   "response"
+  ],
+  "output_node": false
+ },
+ "ProAliVideoSwap": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "check_image": [
+     "BOOLEAN",
+     {
+      "default": true,
+      "label_off": "不检查",
+      "label_on": "先检查人物照片",
+      "tooltip": "处理前先检查照片合不合格（是不是清晰的单人照）；不合格会直接报错，不会白等"
+     }
+    ],
+    "info": [
+     "STRING",
+     {
+      "default": "",
+      "forceInput": true
+     }
+    ],
+    "watermark": [
+     "BOOLEAN",
+     {
+      "default": false,
+      "label_off": "不加水印",
+      "label_on": "加水印"
+     }
+    ]
+   },
+   "required": {
+    "authorized": [
+     "BOOLEAN",
+     {
+      "default": false,
+      "label_off": "还没确认（不勾选不能运行）",
+      "label_on": "我确认人像是本人或已获授权",
+      "tooltip": "只能换成你本人或已经获得授权的人像：用别人的照片换人可能侵犯肖像权。勾上表示你确认这张人物照片可以用"
+     }
+    ],
+    "image": [
+     "IMAGE"
+    ],
+    "quality": [
+     [
+      "标准（wan-std，快一点、便宜）",
+      "专业（wan-pro，更流畅、更贵）"
+     ],
+     {
+      "default": "标准（wan-std，快一点、便宜）",
+      "tooltip": "标准：快一点、便宜（0.6 元/秒）；专业：动作更流畅、画质更好、更慢更贵（0.9 元/秒）"
+     }
+    ],
+    "seed": [
+     "INT",
+     {
+      "control_after_generate": true,
+      "default": 0,
+      "max": 2147483646,
+      "min": 0
+     }
+    ],
+    "video": [
+     "VIDEO"
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "check_image",
+    "watermark",
+    "info"
+   ],
+   "required": [
+    "image",
+    "video",
+    "authorized",
+    "quality",
+    "seed"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProAliVideoSwap",
+  "output": [
+   "VIDEO",
+   "STRING"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "video",
+   "response"
+  ],
+  "output_node": false
+ },
  "ProAliVoiceClone": {
   "has_intermediate_output": false,
   "input": {
@@ -2546,6 +2797,44 @@
   ],
   "output_node": false
  },
+ "ProModeVideoEdit": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "只用一句话改（不带参考图）",
+      "一句话 + 1 张参考图（图里的衣服 / 道具 / 场景用到视频里）",
+      "一句话 + 2 张参考图"
+     ],
+     {
+      "default": "只用一句话改（不带参考图）",
+      "display_name": "模式"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProModeVideoEdit",
+  "output": [
+   "BOOLEAN",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false
+  ],
+  "output_name": [
+   "use_ref1",
+   "use_ref2"
+  ],
+  "output_node": false
+ },
  "ProModeVoice": {
   "has_intermediate_output": false,
   "input": {
@@ -3173,6 +3462,124 @@
   ],
   "output_node": false
  },
+ "ProVideoConcat": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "video3": [
+     "VIDEO"
+    ],
+    "video4": [
+     "VIDEO"
+    ]
+   },
+   "required": {
+    "fit": [
+     [
+      "留黑边（画面完整）",
+      "裁掉多余（铺满画面）"
+     ],
+     {
+      "default": "留黑边（画面完整）",
+      "tooltip": "某一段的画面比例和成片不一样时：留黑边（画面完整）还是裁掉多余的（铺满）"
+     }
+    ],
+    "keep_audio": [
+     "BOOLEAN",
+     {
+      "default": true,
+      "label_off": "全部静音",
+      "label_on": "保留各段的声音",
+      "tooltip": "没有声音的段补静音；转场处声音一起淡入淡出"
+     }
+    ],
+    "ratio": [
+     [
+      "跟第一段",
+      "9:16 竖屏",
+      "16:9 横屏",
+      "1:1 方形",
+      "3:4",
+      "4:3"
+     ],
+     {
+      "default": "跟第一段",
+      "tooltip": "成片的画面比例；默认跟第一段一样，别的段不一样大时会留黑边（或按下面的设置裁掉多余的）"
+     }
+    ],
+    "short_side": [
+     [
+      480,
+      720,
+      1080
+     ],
+     {
+      "default": 720,
+      "tooltip": "选了具体比例时，成片短边多少像素（720 = 720P）；「跟第一段」时不用"
+     }
+    ],
+    "transition": [
+     [
+      "不加转场（直接接）",
+      "淡入淡出",
+      "黑场过渡（先变黑再亮起）",
+      "左滑推出",
+      "向上推出",
+      "擦除（向左）",
+      "圆形展开"
+     ],
+     {
+      "default": "淡入淡出",
+      "tooltip": "段与段之间的转场；选「不加转场」就是直接接"
+     }
+    ],
+    "transition_s": [
+     "FLOAT",
+     {
+      "default": 0.6,
+      "max": 2.0,
+      "min": 0.2,
+      "step": 0.1,
+      "tooltip": "转场多长（秒）；比最短那一段的一半还长时自动缩短"
+     }
+    ],
+    "video1": [
+     "VIDEO"
+    ],
+    "video2": [
+     "VIDEO"
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "video3",
+    "video4"
+   ],
+   "required": [
+    "video1",
+    "video2",
+    "transition",
+    "transition_s",
+    "ratio",
+    "short_side",
+    "fit",
+    "keep_audio"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProVideoConcat",
+  "output": [
+   "VIDEO"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "video"
+  ],
+  "output_node": false
+ },
  "ProVideoDub": {
   "has_intermediate_output": false,
   "input": {
@@ -3292,6 +3699,35 @@
   "output_name": [
    "video"
   ],
+  "output_node": true
+ },
+ "ProVideoSave": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "filename_prefix": [
+     "STRING",
+     {
+      "default": "video/成片",
+      "tooltip": "存到 output/ 里的位置和文件名前缀"
+     }
+    ],
+    "video": [
+     "VIDEO"
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "video",
+    "filename_prefix"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProVideoSave",
+  "output": [],
+  "output_is_list": [],
+  "output_name": [],
   "output_node": true
  },
  "RelayAPISettings": {

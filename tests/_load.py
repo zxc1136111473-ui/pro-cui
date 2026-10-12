@@ -39,7 +39,9 @@ def object_info_entry(klass):
 NEW_NODES = {"ProAliDialogue": ("pro-ali", "ProAliDialogue"), "ProMatte": ("pro-image", "ProMatte"), "ProSaveCutout": ("pro-image", "ProSaveCutout"),
              "ProLayerCompose": ("pro-image", "ProLayerCompose"), "ProModeDialogueVideo": ("pro-flow", "ProModeDialogueVideo"), "ProModeLayer": ("pro-flow", "ProModeLayer"),
              "ProAliPromptWriter": ("pro-ali", "ProAliPromptWriter"), "ProAliImage": ("pro-ali", "ProAliImage"), "ProAliImageEdit": ("pro-ali", "ProAliImageEdit"),
-             "ProModeEngine": ("pro-flow", "ProModeEngine")}      # 这个服务器上有，但「模型」从文字框改成了下拉：定义以仓库里的为准，部署之后可以改回从 /object_info 抓
+             "ProModeEngine": ("pro-flow", "ProModeEngine"),
+             "ProAliVideoEdit": ("pro-ali", "ProAliVideoEdit"), "ProAliVideoSwap": ("pro-ali", "ProAliVideoSwap"), "ProVideoConcat": ("pro-video", "ProVideoConcat"),
+             "ProVideoSave": ("pro-video", "ProVideoSave"), "ProModeVideoEdit": ("pro-flow", "ProModeVideoEdit")}      # 这个服务器上有，但「模型」从文字框改成了下拉：定义以仓库里的为准，部署之后可以改回从 /object_info 抓
 
 
 def new_node_classes():

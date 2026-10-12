@@ -104,6 +104,10 @@ MODES = {
     "ProModeLayer": ("模式：图层合成",
                      ["放到背景图上", "放到纯色背景上"],
                      [("use_bg", "BOOLEAN", [True, False])]),
+    # 改视频（17）：参考图要不要带、带几张。没带的参考图槽位不会传给模型（工作流里没上传文件时用的是占位图，不能当参考图）
+    "ProModeVideoEdit": ("模式：视频改视频",
+                         ["只用一句话改（不带参考图）", "一句话 + 1 张参考图（图里的衣服 / 道具 / 场景用到视频里）", "一句话 + 2 张参考图"],
+                         [("use_ref1", "BOOLEAN", [False, True, True]), ("use_ref2", "BOOLEAN", [False, False, True])]),
     "ProModeDialogueVideo": ("模式：对白成片",
                              ["对白配到上传的视频上（替换原声，烧字幕）", "图片轮播 + 对白（烧字幕）"],
                              [("source", "INT", [0, 1])]),

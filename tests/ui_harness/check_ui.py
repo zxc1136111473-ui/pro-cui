@@ -83,7 +83,7 @@ def main():
         check("打开时蓝色小按钮不显示", not page.locator(".pcw-handle").is_visible())
         check("默认打开时焦点已经在聊天输入框里（直接打字，按键不会落到 ComfyUI 的快捷键上）", page.evaluate("document.activeElement === document.querySelector('.pcw-row textarea')"), page.evaluate("document.activeElement.tagName"))
         check("没有方案时右边有提示", "还没有方案" in page.locator(".pcw-steps").inner_text())
-        check("应用目录加载了（可以手动加步骤）", page.locator(".pcw-bar select.pcw-addsel option").count() == 17, str(page.locator(".pcw-bar select.pcw-addsel option").count()))
+        check("应用目录加载了（可以手动加步骤）", page.locator(".pcw-bar select.pcw-addsel option").count() == 20, str(page.locator(".pcw-bar select.pcw-addsel option").count()))
         shot("01-打开")
 
         # T2 附图
@@ -727,7 +727,7 @@ def main():
         pg.click("text=清空全部")                                                                           # 前面的场景留下了一堆素材：清空，下面从空白开始（一键方案会自动用素材库里最近的商品图）
         pg.wait_for_function("window.__proChat.state.assets.length === 0 && !window.__proChat.state.plan", timeout=10000)
         groups = pg.locator(".pcw-bar select.pcw-addsel optgroup").evaluate_all("els => els.map((e) => [e.label, e.querySelectorAll('option').length])")
-        check("「添加一步」的下拉按分类分组：图片 8 个 / 文案与配音 4 个 / 视频 4 个", groups == [["图片", 8], ["文案与配音", 4], ["视频", 4]], str(groups))
+        check("「添加一步」的下拉按分类分组：图片 8 个 / 文案与配音 4 个 / 视频 7 个", groups == [["图片", 8], ["文案与配音", 4], ["视频", 7]], str(groups))
         pre = pg.locator(".pcw-presetsel option").all_inner_texts()
         check("顶上有「一键方案」下拉：占位 + 4 个方案", len(pre) == 5 and pre[0].startswith("⚡") and "商品全套" in pre[1] and "抠图换背景" in pre[2], str(pre))
         chips = pg.locator(".pcw-right .pcw-empty .pcw-chip").all_inner_texts()
@@ -1090,6 +1090,95 @@ def main():
               len(h.comfy.runs) == n0 and "另一个标签页正在运行" in a.locator(".pcw-list").inner_text() and bd3(a)[0].startswith("还没运行"), f"{len(h.comfy.runs) - n0} {bd3(a)}")
         cx.close()
 
+        # ══ 视频改视频 / 视频拼接 / 视频换人：必填文件跟着模式变、结果是视频能传给下一步、数字下拉提交的是数字、AI 不能替用户勾「已获授权」══
+        import subprocess as _sp
+        vclip = os.path.join(h.tmp, "素材.mp4")
+        _sp.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=s=320x240:d=1:r=10", "-pix_fmt", "yuv420p", vclip], check=True)
+        cv = browser.new_context(viewport={"width": 1440, "height": 900})
+        vp = cv.new_page()
+        vp.on("console", lambda m: errors.append(m.text) if m.type == "error" and "Failed to load resource" not in m.text else None)
+        vp.on("pageerror", lambda e: errors.append("pageerror: " + str(e)))
+        vp.goto(base)
+        vp.wait_for_selector(".pcw.pcw-open")
+        vp.wait_for_function("window.__proChat.catalog().status === 'ready'", timeout=15000)
+        h.comfy.runs.clear()
+        h.comfy.delay = 1.0
+        vfield = lambda key: vp.locator(f".pcw-field:has(select[data-pc='0:{key}'])").first
+        vp.locator(".pcw-bar select.pcw-addsel").select_option("17")
+        vp.wait_for_selector(".pcw-step")
+        vp.locator(".pcw-step details.pcw-settings").first.evaluate("e => { e.open = true }")
+        check("17 视频改视频：默认模式「只用一句话改」，要改的视频必填，两张参考图这个模式不用",
+              vp.locator("select[data-pc='0:mode']").input_value().startswith("只用一句话改") and "（必填）" in vfield("2:file").inner_text()
+              and "（必填）" not in vfield("3:image").inner_text() and "（必填）" not in vfield("4:image").inner_text())
+        check("没有视频：「运行这一步」不能点，顶部写着还缺视频", vp.locator(".pcw-step .pcw-btn-sm").first.is_disabled() and "视频" in vp.locator(".pcw-notice").inner_text())
+        vp.locator("select[data-pc='0:mode']").select_option(index=1)
+        check("换成「一句话 + 1 张参考图」：参考图 1 变必填，参考图 2 不用", "（必填）" in vfield("3:image").inner_text() and "（必填）" not in vfield("4:image").inner_text())
+        vp.locator("select[data-pc='0:mode']").select_option(index=2)
+        check("换成「一句话 + 2 张参考图」：两张参考图都必填", "（必填）" in vfield("3:image").inner_text() and "（必填）" in vfield("4:image").inner_text())
+        vp.locator("select[data-pc='0:mode']").select_option(index=0)
+        check("常用设置里能选视频编辑模型（两个，默认万相 2.7），「怎么改」默认是空的（付费操作不能让示例文字直接跑）",
+              vp.locator("select[data-pc='0:5:model']").locator("option").all_inner_texts() == ["wan2.7-videoedit（默认）", "happyhorse-1.0-video-edit"]
+              and vp.locator("select[data-pc='0:5:model']").input_value() == "wan2.7-videoedit" and vp.locator("textarea[data-pc='0:5:prompt']").input_value() == "")
+        vp.locator(".pcw-step").first.locator("input[type=file][accept='video/*']").first.set_input_files(vclip)
+        vp.wait_for_function("document.querySelector(\"select[data-pc='0:2:file']\").value !== ''", timeout=15000)
+        check("上传了视频：缺的提示没了，能运行", not vp.locator(".pcw-step .pcw-btn-sm").first.is_disabled() and vp.evaluate("window.__proChat.state.assets.map(a => a.kind).join()") == "video")
+        vp.locator("textarea[data-pc='0:5:prompt']").fill("把画面换成水彩画风格，其他保持不变")
+        vp.locator("select[data-pc='0:5:model']").select_option("happyhorse-1.0-video-edit")
+        vp.locator(".pcw-step .pcw-btn-sm").first.click()
+        vp.wait_for_function("[...document.querySelectorAll('.pcw-step .pcw-badge')].every(e => e.textContent.startsWith('已完成'))", timeout=40000)
+        r17 = h.comfy.runs[-1]["prompt"]
+        e5, e2 = r17["5"]["inputs"], r17["2"]["inputs"]
+        check("提交给 ComfyUI 的 17：怎么改 / 模型 / 清晰度 / 声音 / 时长都对，视频是素材库里那一个；模式是「只用一句话改」，两张参考图的开关门接的是模式节点的 use_ref1 / use_ref2",
+              e5["prompt"] == "把画面换成水彩画风格，其他保持不变" and e5["model"] == "happyhorse-1.0-video-edit" and e5["resolution"] == "720P" and e5["audio"] == "保留原视频的声音" and e5["duration"] == 0
+              and e5["prompt_extend"] is True and e5["watermark"] is False and e2["file"].startswith("助手/") and e2["file"].endswith(".mp4")
+              and r17["77"]["inputs"]["mode"].startswith("只用一句话改") and r17["21"]["inputs"]["enabled"] == ["77", 0] and r17["22"]["inputs"]["enabled"] == ["77", 1], json.dumps(r17["5"]["inputs"], ensure_ascii=False)[:200])
+        check("17 的结果是视频：卡片里有播放器，素材库里多了这个视频（共 2 个视频）", vp.locator(".pcw-step video").count() >= 1 and vp.evaluate("window.__proChat.state.assets.map(a => a.kind).join()") == "video,video")
+        # 18 视频拼接：视频 1 用上一步的结果、视频 2 用上传的；视频 3 / 4 不给 = 占位视频；短边下拉提交的是数字
+        vp.locator(".pcw-bar select.pcw-addsel").select_option("18")
+        vp.wait_for_function("document.querySelectorAll('.pcw-step').length === 2", timeout=10000)
+        check("18 视频拼接：视频 1、2 必填，视频 3、4 不用", "（必填）" in vp.locator(".pcw-field:has(select[data-pc='1:2:file'])").first.inner_text() and "（必填）" in vp.locator(".pcw-field:has(select[data-pc='1:3:file'])").first.inner_text()
+              and "（必填）" not in vp.locator(".pcw-field:has(select[data-pc='1:4:file'])").first.inner_text())
+        vp.locator("select[data-pc='1:2:file']").select_option("s:1:1")
+        vp.locator("select[data-pc='1:3:file']").select_option("a:1")
+        vp.locator(".pcw-step").nth(1).locator("details.pcw-settings").first.evaluate("e => { e.open = true }")
+        vp.locator(".pcw-step").nth(1).locator(".pcw-btn-sm").first.click()
+        vp.wait_for_function("document.querySelectorAll('.pcw-step .pcw-badge')[1].textContent.startsWith('已完成')", timeout=40000)
+        r18 = h.comfy.runs[-1]["prompt"]
+        c10 = r18["10"]["inputs"]
+        check("提交给 ComfyUI 的 18：视频 1 是上一步结果、视频 2 是上传的，没给的视频 3 / 4 还是占位视频；转场 / 比例 / 短边（数字 720，不是文字）",
+              r18["2"]["inputs"]["file"].startswith("助手/") and r18["3"]["inputs"]["file"].startswith("助手/") and r18["2"]["inputs"]["file"] != r18["3"]["inputs"]["file"]
+              and r18["4"]["inputs"]["file"] == "请上传视频.mp4" and r18["5"]["inputs"]["file"] == "请上传视频.mp4"
+              and c10["transition"] == "淡入淡出" and c10["transition_s"] == 0.6 and c10["ratio"] == "跟第一段" and c10["short_side"] == 720 and isinstance(c10["short_side"], int) and c10["keep_audio"] is True, json.dumps(c10, ensure_ascii=False)[:200])
+        # 19 视频换人：AI 排的方案里擅自勾了「已获授权」→ 去掉并提示；用户自己勾的才算，AI 改方案时保留
+        vp.click("text=清空全部")
+        vp.wait_for_function("window.__proChat.state.assets.length === 0 && !window.__proChat.state.plan", timeout=10000)
+        vp.set_input_files(".pcw-left input[type=file]", prod)
+        vp.wait_for_selector(".pcw-draft")
+        vp.fill(".pcw-row textarea", "视频换人")
+        vp.keyboard.press("Enter")
+        vp.wait_for_function("document.querySelectorAll('.pcw-step').length === 2", timeout=20000)
+        vp.wait_for_function("window.__proChat.state.busy === false", timeout=15000)
+        check("AI 排的方案：图生视频成片 → 视频换人", vp.locator(".pcw-step-name").all_inner_texts() == ["图生视频成片", "视频换人"], str(vp.locator(".pcw-step-name").all_inner_texts()))
+        vp.locator(".pcw-step").nth(1).locator("details.pcw-settings").first.evaluate("e => { e.open = true }")
+        tick = vp.locator("input[data-pc='1:5:authorized']")
+        check("AI 把「我确认人像是本人或已获授权」勾上了也不算：框是空的，提示里写着要自己勾", not tick.is_checked() and "要你自己勾选" in vp.locator(".pcw-notice, .pcw-list").first.inner_text() + vp.locator(".pcw-list").inner_text())
+        check("换人的质量选了「专业」（AI 填的「专业」认出了完整选项）", vp.locator("select[data-pc='1:5:quality']").input_value() == "专业（wan-pro，更流畅、更贵）")
+        tick.check()
+        h.comfy.runs.clear()
+        vp.click("text=运行全部")
+        vp.wait_for_function("[...document.querySelectorAll('.pcw-step .pcw-badge')].every(e => e.textContent.startsWith('已完成'))", timeout=60000)
+        r19 = h.comfy.runs[-1]["prompt"]
+        n5 = r19["5"]["inputs"]
+        check("提交给 ComfyUI 的 19：勾了确认、质量是「专业」、人物照片是素材库里的图、视频是第 1 步做出来的", n5["authorized"] is True and n5["quality"] == "专业（wan-pro，更流畅、更贵）"
+              and r19["2"]["inputs"]["image"].startswith("助手/") and r19["3"]["inputs"]["file"].startswith("助手/") and r19["3"]["inputs"]["file"].endswith(".mp4"), json.dumps(n5, ensure_ascii=False)[:160])
+        vp.fill(".pcw-row textarea", "质量改成标准质量")
+        vp.keyboard.press("Enter")
+        vp.wait_for_function("window.__proChat.state.busy === false && document.querySelector(\"select[data-pc='1:5:quality']\") && document.querySelector(\"select[data-pc='1:5:quality']\").value.startsWith('标准')", timeout=20000)
+        vp.locator(".pcw-step").nth(1).locator("details.pcw-settings").first.evaluate("e => { e.open = true }")
+        check("AI 改方案（质量改标准）：用户自己勾的确认保留着，不再出现「要你自己勾选」的提示", vp.locator("input[data-pc='1:5:authorized']").is_checked() and "要你自己勾选" not in vp.locator(".pcw-notice").inner_text(), vp.locator(".pcw-notice").inner_text()[:100])
+        check("第 1 步（出视频）没动，结果保留；第 2 步设置变了要重跑", vp.locator(".pcw-step .pcw-badge").all_inner_texts()[0].startswith("已完成") and not vp.locator(".pcw-step .pcw-badge").all_inner_texts()[1].startswith("已完成"), str(vp.locator(".pcw-step .pcw-badge").all_inner_texts()))
+        cv.close()
+
         # 应用目录：还在加载 → 写「加载中」；读不到 → 自动再试两次，还不行写「没加载出来，点这里重试」，点一下就再试
         cx = browser.new_context(viewport={"width": 1440, "height": 900})
         cat_mode, held = {"m": "hold"}, []
@@ -1113,7 +1202,7 @@ def main():
         for r in held:
             r.continue_()
         cp.wait_for_function("document.querySelectorAll('.pcw-bar select.pcw-addsel option').length > 5", timeout=20000)
-        check("目录回来后下拉里有 16 个应用，提示变成「＋ 添加一步…」", cp.locator(".pcw-bar select.pcw-addsel option").count() == 17 and cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text() == "＋ 添加一步…", cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text())
+        check("目录回来后下拉里有 19 个应用，提示变成「＋ 添加一步…」", cp.locator(".pcw-bar select.pcw-addsel option").count() == 20 and cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text() == "＋ 添加一步…", cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text())
         cp.close()
         # 只有第一次请求失败：自动再试，不用点
         cat_mode["m"] = "first_fails"
@@ -1127,7 +1216,7 @@ def main():
         cp.goto(base)
         cp.wait_for_selector(".pcw-bar select.pcw-addsel")
         cp.wait_for_function("document.querySelectorAll('.pcw-bar select.pcw-addsel option').length > 5", timeout=20000)
-        check("第一次读目录失败：过几秒自己再试，应用就出来了（不用点）", cp.locator(".pcw-bar select.pcw-addsel option").count() == 17 and seen[0] == 2, f"请求 {seen[0]} 次")
+        check("第一次读目录失败：过几秒自己再试，应用就出来了（不用点）", cp.locator(".pcw-bar select.pcw-addsel option").count() == 20 and seen[0] == 2, f"请求 {seen[0]} 次")
         cp.close()
         # 一直读不到：自动再试到次数用完，写「没加载出来，点这里重试」，点一下才再试
         cat_mode["m"] = "fail"
@@ -1146,7 +1235,7 @@ def main():
         check("自动重试用完以后不会自己再试（要点一下）", cp.locator(".pcw-bar select.pcw-addsel option").count() == 1)
         cp.locator(".pcw-bar select.pcw-addsel").dispatch_event("mousedown")
         cp.wait_for_function("document.querySelectorAll('.pcw-bar select.pcw-addsel option').length > 5", timeout=20000)
-        check("网络好了、点一下下拉：目录重新读到，应用都出来了", cp.locator(".pcw-bar select.pcw-addsel option").count() == 17 and cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text() == "＋ 添加一步…")
+        check("网络好了、点一下下拉：目录重新读到，应用都出来了", cp.locator(".pcw-bar select.pcw-addsel option").count() == 20 and cp.locator(".pcw-bar select.pcw-addsel option").first.inner_text() == "＋ 添加一步…")
         cx.close()
 
         # 汇总
