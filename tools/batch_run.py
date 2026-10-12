@@ -1,8 +1,10 @@
 """批量跑 ComfyUI 工作流：把 UI 模板转成 API 格式，按 CSV 每行改参数，逐行提交并保存结果。
 
 用法：
-  python3 tools/batch_run.py <模板.json> <表.csv> [--server http://127.0.0.1:8188] [--timeout 600]
+  python3 tools/batch_run.py <模板.json> <表.csv> [--func 功能编号] [--server http://127.0.0.1:8188] [--timeout 600]
 CSV 表头写 `节点ID:控件名`，例如 `3:prompt`、`2:image`；值是本地图片路径时会先上传到 ComfyUI。
+工作流模板是合并应用（一个文件里好几个功能，如 workflows/1-图片/01-做图.app.json）时要用 --func 说明跑哪个功能（功能编号 = 工作台里的应用编号，如 06 商品一条龙）：
+脚本会把这个功能的节点抠出来再跑，节点编号还是旧的（表头写 `3:image` 就是 06 里的 3 号节点）；不写 --func 会提示有哪些功能。
 可选列 `out`：本行保存文件名前缀（默认 batch/行号），会覆盖模板里 SaveImage/SaveVideo/SaveAudio* 的 filename_prefix。
 已完成的行记在 <表>.done，重跑自动跳过。
 """
@@ -13,6 +15,22 @@ _spec = importlib.util.spec_from_file_location("pro_chat_api_convert", os.path.j
 _conv = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_conv)
 convert = _conv.convert
+family_of, family_view = _conv.family_of, _conv.family_view
+
+
+def pick_function(wf, func):
+    """合并应用 → 抠出 func（功能编号）那个功能的单功能工作流；普通的单功能模板原样返回（给了 --func 就报错：它不是合并应用）。"""
+    fam = family_of(wf)
+    if not fam:
+        if func:
+            raise SystemExit("这个模板不是合并应用，不用写 --func")
+        return wf
+    ids = [str(f["id"]) for f in fam["funcs"]]
+    if not func:
+        raise SystemExit("这是合并应用，要用 --func 说明跑哪个功能：" + "、".join(f"{f['id']} {f['name']}" for f in fam["funcs"]))
+    if str(func) not in ids:
+        raise SystemExit(f"这个应用里没有功能「{func}」，有：" + "、".join(f"{f['id']} {f['name']}" for f in fam["funcs"]))
+    return family_view(wf, ids.index(str(func)))
 
 
 def _req(server, path, data=None, ctype="application/json"):
@@ -73,8 +91,9 @@ def main():
     ap.add_argument("csv")
     ap.add_argument("--server", default="http://127.0.0.1:8188")
     ap.add_argument("--timeout", type=int, default=600, help="单行等待上限（秒）")
+    ap.add_argument("--func", default="", help="合并应用里的功能编号（如 06）；普通的单功能模板不用写")
     a = ap.parse_args()
-    api = convert(json.load(open(a.template)), _req(a.server, "/object_info"))
+    api = convert(pick_function(json.load(open(a.template)), a.func), _req(a.server, "/object_info"))
     donef = a.csv + ".done"
     done = set(open(donef).read().split()) if os.path.exists(donef) else set()
     for i, row in enumerate(csv.DictReader(open(a.csv, encoding="utf-8-sig")), 1):

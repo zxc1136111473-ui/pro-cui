@@ -1,0 +1,1860 @@
+{
+  "last_node_id": 9000,
+  "last_link_id": 24,
+  "nodes": [
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1800
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            5,
+            19
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-flash"
+      ],
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 1002,
+      "type": "LoadVideo",
+      "pos": [
+        640,
+        700
+      ],
+      "size": [
+        400,
+        400
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null,
+          "label": "【视频改视频】要改的视频"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "请上传视频.mp4",
+        "image"
+      ],
+      "title": "① 上传要修改的视频（2~10 秒；点节点上的上传按钮）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1003,
+      "type": "LoadImage",
+      "pos": [
+        640,
+        1170
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【视频改视频】参考图 1"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "② 参考图 1（只在「带参考图」的模式用）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1004,
+      "type": "LoadImage",
+      "pos": [
+        1138,
+        700
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【视频改视频】参考图 2"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "② 参考图 2（只在「带 2 张参考图」的模式用）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1005,
+      "type": "ProAliVideoEdit",
+      "pos": [
+        60,
+        700
+      ],
+      "size": [
+        520,
+        780
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 6
+        },
+        {
+          "name": "ref_image1",
+          "type": "IMAGE",
+          "link": 7
+        },
+        {
+          "name": "ref_image2",
+          "type": "IMAGE",
+          "link": 8
+        },
+        {
+          "name": "ref_image3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "ref_image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 5,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": null,
+          "label": "【视频改视频】怎么改（一句话）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliVideoEdit"
+      },
+      "widgets_values": [
+        "",
+        "wan2.7-videoedit",
+        "720P",
+        "保留原视频的声音",
+        0,
+        "跟原视频一样",
+        true,
+        false,
+        0,
+        "randomize"
+      ],
+      "title": "AI 改视频（阿里万相：视频先传到阿里，一般 1~5 分钟）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1006,
+      "type": "ProVideoSave",
+      "pos": [
+        1160,
+        1800
+      ],
+      "size": [
+        340,
+        140
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 10
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProVideoSave"
+      },
+      "widgets_values": [
+        "video/改视频"
+      ],
+      "title": "保存改好的视频",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 1077,
+      "type": "ProModeVideoEdit",
+      "pos": [
+        60,
+        510
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "【视频改视频】模式"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "use_ref1",
+          "type": "BOOLEAN",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "use_ref2",
+          "type": "BOOLEAN",
+          "links": [
+            3
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeVideoEdit"
+      },
+      "widgets_values": [
+        "只用一句话改（不带参考图）"
+      ],
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1021,
+      "type": "ProGate",
+      "pos": [
+        440,
+        1800
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 2
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 1,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "参考图 1 开关（跟模式走）"
+    },
+    {
+      "id": 1022,
+      "type": "ProGate",
+      "pos": [
+        440,
+        1980
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 4
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 3,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "参考图 2 开关（跟模式走）"
+    },
+    {
+      "id": 1900,
+      "type": "ProBlock",
+      "pos": [
+        750,
+        1800
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 9
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 11,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            10
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 保存改好的视频"
+    },
+    {
+      "id": 2002,
+      "type": "LoadVideo",
+      "pos": [
+        60,
+        2640
+      ],
+      "size": [
+        400,
+        400
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null,
+          "label": "【视频拼接】视频 1"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            12
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "请上传视频.mp4",
+        "image"
+      ],
+      "title": "① 上传视频 1（必填）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2003,
+      "type": "LoadVideo",
+      "pos": [
+        60,
+        3110
+      ],
+      "size": [
+        400,
+        400
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null,
+          "label": "【视频拼接】视频 2"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "请上传视频.mp4",
+        "image"
+      ],
+      "title": "② 上传视频 2（必填）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2004,
+      "type": "LoadVideo",
+      "pos": [
+        520,
+        2640
+      ],
+      "size": [
+        400,
+        400
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null,
+          "label": "【视频拼接】视频 3"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "请上传视频.mp4",
+        "image"
+      ],
+      "title": "③ 上传视频 3（可不传）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2005,
+      "type": "LoadVideo",
+      "pos": [
+        520,
+        3110
+      ],
+      "size": [
+        400,
+        400
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null,
+          "label": "【视频拼接】视频 4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            15
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "请上传视频.mp4",
+        "image"
+      ],
+      "title": "④ 上传视频 4（可不传）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2010,
+      "type": "ProVideoConcat",
+      "pos": [
+        60,
+        3720
+      ],
+      "size": [
+        480,
+        520
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video1",
+          "type": "VIDEO",
+          "link": 12
+        },
+        {
+          "name": "video2",
+          "type": "VIDEO",
+          "link": 13
+        },
+        {
+          "name": "video3",
+          "type": "VIDEO",
+          "link": 14
+        },
+        {
+          "name": "video4",
+          "type": "VIDEO",
+          "link": 15
+        },
+        {
+          "name": "transition",
+          "type": "COMBO",
+          "widget": {
+            "name": "transition"
+          },
+          "link": null,
+          "label": "【视频拼接】转场"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            16
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProVideoConcat"
+      },
+      "widgets_values": [
+        "淡入淡出",
+        0.6,
+        "跟第一段",
+        720,
+        "留黑边（画面完整）",
+        true
+      ],
+      "title": "视频拼接（按 1→4 的顺序接，可加转场；本地合成，不花钱）"
+    },
+    {
+      "id": 2011,
+      "type": "ProVideoSave",
+      "pos": [
+        1000,
+        3720
+      ],
+      "size": [
+        340,
+        140
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 17
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProVideoSave"
+      },
+      "widgets_values": [
+        "video/拼接"
+      ],
+      "title": "保存拼好的视频",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 2900,
+      "type": "ProBlock",
+      "pos": [
+        590,
+        3720
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 16
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 18,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            17
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 保存拼好的视频"
+    },
+    {
+      "id": 3002,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        5430
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【视频换人】人物照片"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            20
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "① 上传人物照片（要换成的那个人；只能用本人或已获授权的人像）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3003,
+      "type": "LoadVideo",
+      "pos": [
+        640,
+        4800
+      ],
+      "size": [
+        400,
+        400
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null,
+          "label": "【视频换人】要换人的视频"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            21
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "请上传视频.mp4",
+        "image"
+      ],
+      "title": "② 上传视频（里面的人会被换掉；2~30 秒；点节点上的上传按钮）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3005,
+      "type": "ProAliVideoSwap",
+      "pos": [
+        60,
+        4800
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 20
+        },
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 21
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 19,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "authorized",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "authorized"
+          },
+          "link": null,
+          "label": "【视频换人】我确认人像是本人或已获授权"
+        },
+        {
+          "name": "quality",
+          "type": "COMBO",
+          "widget": {
+            "name": "quality"
+          },
+          "link": null,
+          "label": "【视频换人】质量"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            22
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliVideoSwap"
+      },
+      "widgets_values": [
+        false,
+        "标准（wan-std，快一点、便宜）",
+        0,
+        "randomize",
+        true,
+        false
+      ],
+      "title": "视频换人（要先勾选「人像已获授权」；视频先传到阿里，一般几分钟）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3006,
+      "type": "ProVideoSave",
+      "pos": [
+        800,
+        6060
+      ],
+      "size": [
+        340,
+        140
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 23
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProVideoSave"
+      },
+      "widgets_values": [
+        "video/换人"
+      ],
+      "title": "保存换好人的视频",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 3900,
+      "type": "ProBlock",
+      "pos": [
+        390,
+        6060
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 22
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 24,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            23
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 保存换好人的视频"
+    },
+    {
+      "id": 9000,
+      "type": "ProFuncEdit",
+      "pos": [
+        60,
+        150
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "做什么"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "f0",
+          "type": "BOOLEAN",
+          "links": [
+            11
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "f1",
+          "type": "BOOLEAN",
+          "links": [
+            18
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "f2",
+          "type": "BOOLEAN",
+          "links": [
+            24
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProFuncEdit"
+      },
+      "widgets_values": [
+        "视频改视频"
+      ],
+      "title": "★ 先选做什么（只有选中的功能会运行）",
+      "color": "#232",
+      "bgcolor": "#353"
+    }
+  ],
+  "links": [
+    [
+      1,
+      1077,
+      0,
+      1021,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      2,
+      1003,
+      0,
+      1021,
+      0,
+      "IMAGE"
+    ],
+    [
+      3,
+      1077,
+      1,
+      1022,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      4,
+      1004,
+      0,
+      1022,
+      0,
+      "IMAGE"
+    ],
+    [
+      5,
+      31,
+      0,
+      1005,
+      5,
+      "STRING"
+    ],
+    [
+      6,
+      1002,
+      0,
+      1005,
+      0,
+      "VIDEO"
+    ],
+    [
+      7,
+      1021,
+      0,
+      1005,
+      1,
+      "*"
+    ],
+    [
+      8,
+      1022,
+      0,
+      1005,
+      2,
+      "*"
+    ],
+    [
+      9,
+      1005,
+      0,
+      1900,
+      0,
+      "VIDEO"
+    ],
+    [
+      10,
+      1900,
+      0,
+      1006,
+      0,
+      "*"
+    ],
+    [
+      11,
+      9000,
+      0,
+      1900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      12,
+      2002,
+      0,
+      2010,
+      0,
+      "VIDEO"
+    ],
+    [
+      13,
+      2003,
+      0,
+      2010,
+      1,
+      "VIDEO"
+    ],
+    [
+      14,
+      2004,
+      0,
+      2010,
+      2,
+      "VIDEO"
+    ],
+    [
+      15,
+      2005,
+      0,
+      2010,
+      3,
+      "VIDEO"
+    ],
+    [
+      16,
+      2010,
+      0,
+      2900,
+      0,
+      "VIDEO"
+    ],
+    [
+      17,
+      2900,
+      0,
+      2011,
+      0,
+      "*"
+    ],
+    [
+      18,
+      9000,
+      1,
+      2900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      19,
+      31,
+      0,
+      3005,
+      2,
+      "STRING"
+    ],
+    [
+      20,
+      3002,
+      0,
+      3005,
+      0,
+      "IMAGE"
+    ],
+    [
+      21,
+      3003,
+      0,
+      3005,
+      1,
+      "VIDEO"
+    ],
+    [
+      22,
+      3005,
+      0,
+      3900,
+      0,
+      "VIDEO"
+    ],
+    [
+      23,
+      3900,
+      0,
+      3006,
+      0,
+      "*"
+    ],
+    [
+      24,
+      9000,
+      2,
+      3900,
+      1,
+      "BOOLEAN"
+    ]
+  ],
+  "groups": [
+    {
+      "title": "★ 先选做什么：选一个功能，下面对应的那一块才会运行",
+      "bounding": [
+        30,
+        40,
+        580,
+        260
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {},
+      "id": 1
+    },
+    {
+      "id": 2,
+      "title": "【视频改视频】① 先填这里：选模式 → 传素材 → 调参数",
+      "bounding": [
+        30,
+        400,
+        1538,
+        1220
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "【视频改视频】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        1690,
+        1010,
+        420
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "【视频改视频】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1130,
+        1690,
+        400,
+        280
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "【视频拼接】① 先填这里：传素材",
+      "bounding": [
+        30,
+        2530,
+        920,
+        1010
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 6,
+      "title": "【视频拼接】② 自动处理，不用管（想调比例 / 参数，改这里的节点）",
+      "bounding": [
+        30,
+        3610,
+        850,
+        660
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 7,
+      "title": "【视频拼接】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        970,
+        3610,
+        400,
+        280
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 8,
+      "title": "【视频换人】① 先填这里：传素材 → 调参数",
+      "bounding": [
+        30,
+        4690,
+        1145,
+        1190
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 9,
+      "title": "【视频换人】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        5950,
+        650,
+        240
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 10,
+      "title": "【视频换人】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        770,
+        5950,
+        400,
+        280
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        145
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          9000,
+          "mode"
+        ],
+        [
+          1077,
+          "mode"
+        ],
+        [
+          1002,
+          "file"
+        ],
+        [
+          1005,
+          "prompt"
+        ],
+        [
+          1003,
+          "image"
+        ],
+        [
+          1004,
+          "image"
+        ],
+        [
+          2002,
+          "file"
+        ],
+        [
+          2003,
+          "file"
+        ],
+        [
+          2004,
+          "file"
+        ],
+        [
+          2005,
+          "file"
+        ],
+        [
+          2010,
+          "transition"
+        ],
+        [
+          3002,
+          "image"
+        ],
+        [
+          3003,
+          "file"
+        ],
+        [
+          3005,
+          "authorized"
+        ],
+        [
+          3005,
+          "quality"
+        ]
+      ],
+      "outputs": [
+        1006,
+        2011,
+        3006
+      ]
+    },
+    "appDescription": "改视频：视频改视频、视频拼接、视频换人。先在最上面选「做什么」，再填对应功能的设置（右栏里每个控件名前面标了它属于哪个功能）；只有选中的功能会运行，别的功能不会调接口、不花钱。",
+    "appFamily": {
+      "name": "改视频",
+      "func_node": 9000,
+      "funcs": [
+        {
+          "id": "17",
+          "name": "视频改视频",
+          "index": 0,
+          "base": 1000,
+          "shared": [
+            31
+          ],
+          "keys": {
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-flash"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  77,
+                  "mode"
+                ],
+                [
+                  2,
+                  "file"
+                ],
+                [
+                  5,
+                  "prompt"
+                ],
+                [
+                  3,
+                  "image"
+                ],
+                [
+                  4,
+                  "image"
+                ]
+              ],
+              "outputs": [
+                6
+              ]
+            },
+            "appDescription": "AI 改视频（阿里万相 2.7 视频编辑）：用户上传的（或前面步骤做出来的）一段 2~10 秒的视频 + 一句话说怎么改——换背景 / 换物体 / 删东西 / 换风格（水彩、动画…）/ 改镜头运动，也能复刻原视频里的动作、特效；可以再带 1~2 张参考图（模式 2、3），把图里的衣服、道具、场景用到视频里，「怎么改」里用「图片中的……」指代参考图。「怎么改」写 1~2 句话：改什么、改成什么，不想变的写「其他保持不变」。按秒计费、比图片贵不少，只在用户明确要改视频时才用。必须有视频。只改画面里的内容：不能当剪辑用（剪短 / 截取 / 加速 / 加字幕这些做不了，别拿它凑，白花钱），不能拼接多段视频（用「视频拼接」），也不能把视频里的人换成另一个人（用「视频换人」）。",
+            "appExtra": [
+              [
+                5,
+                "model",
+                "视频编辑模型",
+                "wan2.7-videoedit（默认）：视频 2~10 秒，720P 约 0.6 元/秒，能改比例 / 时长；happyhorse-1.0-video-edit：视频 3~15 秒（超过只用前 15 秒），更贵（720P 约 0.9 元/秒），不能改比例 / 时长。用户没点名要换就别改"
+              ],
+              [
+                5,
+                "resolution",
+                "出片清晰度",
+                "720P 便宜（默认）；1080P 贵约七成"
+              ]
+            ],
+            "appAdvanced": [
+              [
+                5,
+                "audio",
+                "出片的声音",
+                "默认保留原视频的声音；想让 AI 按指令重新做声音才改（比如指令里写了「加上海浪声」）"
+              ],
+              [
+                5,
+                "duration",
+                "只改前几秒（0 = 和原视频一样长）",
+                "2~10；只有万相 2.7 能设；出片只有前几秒、也更省钱——这是改视频时省钱用的，不是剪辑功能，用户只是想把视频剪短时不要用它"
+              ],
+              [
+                5,
+                "ratio",
+                "出片比例",
+                "默认跟原视频一样；只有万相 2.7 能改"
+              ],
+              [
+                5,
+                "prompt_extend",
+                "让 AI 润色指令",
+                "指令很短时有帮助；想让它严格照你写的做就关掉"
+              ],
+              [
+                5,
+                "watermark",
+                "出片加水印",
+                ""
+              ]
+            ],
+            "appCost": "按秒计费：输入视频秒数 + 输出视频秒数（万相 2.7：720P 约 0.6 元/秒、1080P 约 1 元/秒，所以一条 5 秒的视频约 6 元）；做一次要 1~5 分钟；失败的任务阿里不收费。视频超过 10 秒只会用前 10 秒；分辨率太大会先缩小、格式不对会先转成 mp4。",
+            "appRequired": [
+              [
+                2,
+                "file"
+              ],
+              [
+                3,
+                "image",
+                [
+                  2,
+                  3
+                ]
+              ],
+              [
+                4,
+                "image",
+                [
+                  3
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "id": "18",
+          "name": "视频拼接",
+          "index": 1,
+          "base": 2000,
+          "shared": [],
+          "keys": {},
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  2,
+                  "file"
+                ],
+                [
+                  3,
+                  "file"
+                ],
+                [
+                  4,
+                  "file"
+                ],
+                [
+                  5,
+                  "file"
+                ],
+                [
+                  10,
+                  "transition"
+                ]
+              ],
+              "outputs": [
+                11
+              ]
+            },
+            "appDescription": "把 2~4 段视频按顺序接成一条（服务器本地合成，免费）：可加转场（淡入淡出 / 黑场过渡 / 左滑推出 / 向上推出 / 擦除 / 圆形展开），各段画面大小、比例不一样时统一成同一个大小（留黑边或裁掉多余）。每段视频由用户上传，或用前面步骤做出来的视频（比如先用「图生视频成片」做几段，再拼起来）；至少要 2 段，视频 1、2 必填。拼好的视频要配音 / 字幕 / 背景音乐，再接「视频成片」；要改视频里的内容用「视频改视频」。",
+            "appExtra": [
+              [
+                10,
+                "transition_s",
+                "转场多长（秒）",
+                "默认 0.6；比最短那一段的一半还长时自动缩短"
+              ],
+              [
+                10,
+                "ratio",
+                "成片画面比例",
+                "默认跟第一段；想统一成竖屏短视频选 9:16 竖屏，各段不一样大时会留黑边（或按下面的设置裁掉多余的）"
+              ],
+              [
+                10,
+                "keep_audio",
+                "保留各段的声音",
+                "关掉就全部静音；没有声音的段会补静音，转场处声音一起淡入淡出"
+              ]
+            ],
+            "appAdvanced": [
+              [
+                10,
+                "short_side",
+                "成片清晰度（短边像素）",
+                "只在选了具体比例时用；720 = 720P"
+              ],
+              [
+                10,
+                "fit",
+                "某一段和成片比例不一样时",
+                "留黑边（画面完整）或裁掉多余的（铺满画面）"
+              ]
+            ],
+            "appCost": "不调接口、不花钱：在服务器上本地合成，十几秒的视频约十几秒到一分钟（服务器配置很低，别一次拼太长）；最多 4 段，拼出来不超过 10 分钟；成片是 720P 左右的 mp4，帧率最高 30。",
+            "appRequired": [
+              [
+                2,
+                "file"
+              ],
+              [
+                3,
+                "file"
+              ]
+            ]
+          }
+        },
+        {
+          "id": "19",
+          "name": "视频换人",
+          "index": 2,
+          "base": 3000,
+          "shared": [
+            31
+          ],
+          "keys": {
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-flash"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  2,
+                  "image"
+                ],
+                [
+                  3,
+                  "file"
+                ],
+                [
+                  5,
+                  "authorized"
+                ],
+                [
+                  5,
+                  "quality"
+                ]
+              ],
+              "outputs": [
+                6
+              ]
+            },
+            "appDescription": "视频换人（阿里万相 animate-mix）：用户说「换脸」「换人」「把视频里的人换成这个人」都用它——上传一张人物照片和一段视频，把视频里的人换成照片里的人，动作、表情、场景光线都保留；整个人（衣服、发型）跟着照片走，不是只换脸（reply 里要说清这一点）。只能用用户本人或已经获得授权的人像（明星 / 他人的照片不要用）；「我确认人像是本人或已获授权」必须由用户自己勾选，你不能替用户填，方案里不要写这一项。视频 2~30 秒，必须由用户上传（或用前面步骤做出来的视频），照片可以是用户上传的，或前面步骤做出来的图（比如用「文生图」做的虚拟人物）。按秒计费、比图片贵不少，只在用户明确要换人时才用。要给视频里的人换衣服 / 换背景这类，用「视频改视频」。",
+            "appAdvanced": [
+              [
+                5,
+                "check_image",
+                "先检查人物照片",
+                "处理前先检查照片合不合格（清晰的单人照）；不合格直接报错，不会白等；一般不用关"
+              ],
+              [
+                5,
+                "watermark",
+                "出片加水印",
+                ""
+              ]
+            ],
+            "appCost": "换的是整个人（衣服、发型也跟着照片走），不是只换脸。按输出视频的秒数计费：标准 0.6 元/秒、专业 0.9 元/秒（一条 5 秒的视频约 3 元）；做一次要几分钟（视频越长越久）；失败的任务阿里不收费。视频最长 30 秒，超过只用前 30 秒；人物照片和视频里的人要清晰、画面里是单个人（照片里的人画面占比跟视频里的人差不多效果最好）。",
+            "appRequired": [
+              [
+                2,
+                "image"
+              ],
+              [
+                3,
+                "file"
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "version": 0.4
+}

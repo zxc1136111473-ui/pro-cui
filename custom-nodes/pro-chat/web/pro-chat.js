@@ -344,6 +344,16 @@ function addStep(workflow) {
   save();
 }
 
+// 同一个应用里换一个功能（步骤卡片标题上的「做什么」下拉）：整步换成新功能的默认样子，所以这一步已经改过的设置 / 选过的文件 / 做好的结果会清掉，先问一声
+function changeFunction(i, workflow) {
+  const p = state.plan, cur = p && p.steps[i];
+  const a = (catalogApps || []).find((x) => x.workflow === workflow);
+  if (!cur || !a || cur.workflow === workflow) { view.renderPlan(); return; }
+  if (planLocked()) { view.renderPlan(); return; }
+  if (lib.stepHasWork(cur) && !window.confirm(`换成「${a.name}」会清掉这一步现在的设置和结果（素材库里的文件不受影响）。继续吗？`)) { view.renderPlan(); return; }
+  if (lib.swapFunction(p, i, a)) { view.renderPlan(); save(); }
+}
+
 // 折叠 / 展开一步（只是界面状态，运行中也能点）
 function toggleStep(i) {
   const p = state.plan;
@@ -662,17 +672,19 @@ async function openInApp(i) {
   try {
     const wf = await readJson(await api.fetchApi("/userdata/" + encodeURIComponent("workflows/" + step.path)));
     await app.loadGraphData(wf, true, true, `工作台 · ${step.name}`);
-    const set = (key, value) => {
-      const k = key.indexOf(":");
-      const node = app.graph.getNodeById(Number(key.slice(0, k)));
-      const w = node && node.widgets && node.widgets.find((x) => x.name === key.slice(k + 1));
+    const sc = step.schema || {};
+    const put = (nodeId, widget, value) => {
+      const node = app.graph.getNodeById(nodeId);
+      const w = node && node.widgets && node.widgets.find((x) => x.name === widget);
       if (!w) return;
       const vals = w.options && w.options.values;
       if (Array.isArray(vals) && !vals.includes(value)) w.options.values = [...vals, value];   // 素材在 input/助手/ 下，不在下拉里；补进去，前端才不会提示「缺少媒体」
       w.value = value;
       if (w.callback) w.callback(value);
     };
-    const sc = step.schema || {};
+    // 键是「旧的节点编号:控件名」；合并应用里（一个文件好几个功能）要换成合并后的节点编号（lib.nodeIdOf），并且先把顶上的「做什么」选成这个功能
+    const set = (key, value) => { const k = key.indexOf(":"); put(lib.nodeIdOf(sc, Number(key.slice(0, k))), key.slice(k + 1), value); };
+    if (sc.merged) { const k = sc.merged.func_key.indexOf(":"); put(Number(sc.merged.func_key.slice(0, k)), sc.merged.func_key.slice(k + 1), sc.merged.func); }
     if (step.mode && sc.mode) set(sc.mode.key, step.mode);
     Object.entries(step.fields || {}).forEach(([k, v]) => {
       const f = (sc.fields || {})[k];
@@ -750,7 +762,7 @@ function launcher(el) {
 // ── 注册 ─────────────────────────────────────────────────────────────────────────────────────────────
 const actions = {
   examples: EXAMPLES,
-  send, attach, onPaste, onDrop, uploadForField, changed, open, close, clearAll, clearPlan, runAll, runStep, stop, addStep, removeStep, openInApp, copyText, loadText,
+  send, attach, onPaste, onDrop, uploadForField, changed, open, close, clearAll, clearPlan, runAll, runStep, stop, addStep, changeFunction, removeStep, openInApp, copyText, loadText,
   reloadCatalog: () => { catalogFails = 0; return loadCatalog(); },
   toggleStep, toggleAll, applyPreset, removeAsset, durations,
   presets: () => catalogPresets,

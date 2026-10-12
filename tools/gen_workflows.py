@@ -2,6 +2,9 @@
 # 生成内置工作流模板（workflows/*.json 的来源，改模板改这里再运行：python3 tools/gen_workflows.py）。
 # 模板里不带 key：key 存在服务器 relayapi 的 relay_config.json 的 node_settings[节点 id] 里。
 #
+# 文件最下面把 19 个单功能工作流合并成 5 个应用文件（FAMILIES / merge_family：每个应用顶上一个「做什么」下拉，没选中的功能由功能开关拦住，细节见那一段的说明）；
+# 上面每个 wf_xxx 仍然搭一个完整的单功能工作流（功能编号 01~19 = 工作台 / AI 助手里的应用编号）。导入这个文件没有副作用（写文件在 main() 里），tests 直接 import 它拿 LEGACY / FAMILIES。
+# 下面写的是单功能工作流本身的约定：
 # 内置工作流按「任务」归并（同一任务的不同引擎 / 模式放进一个工作流）：
 #   画布最上面是「★ 先选模式」（pro-flow 的模式节点，中文下拉）和「★ 只填这里：一句话需求」（pro-ali 的写提示词节点）；
 #   模式节点输出「走第几路」和各种开关，「选择分支」「开关门」按它只执行选中的那一路（没选中的引擎不调接口、不花钱）。
@@ -15,7 +18,7 @@
 #   所以 AI 写的文字和出错信息要经 pro-flow 的 ProAppText 存成 .txt 才看得到（PreviewAny 返回的是裸字符串，应用界面不显示）。
 # 另外还有只给 AI 助手 / 工作台（pro-chat）用的登记，不会出现在应用右栏：g.app_extra（可调的设置：语速、比例、字幕字号……，高级的 advanced=True，
 #   工作台里折叠起来）、g.app_cost（费用 / 额度 / 注意事项）。这样应用界面保持简洁，工作台里又能调到所有常用设置。
-import glob, importlib.util, json, os
+import copy, glob, importlib.util, json, os
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 OUT = os.path.join(ROOT, "workflows")
@@ -25,16 +28,18 @@ _spec = importlib.util.spec_from_file_location("pro_flow", os.path.join(ROOT, "c
 FLOW = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(FLOW)
 
-# 类别文件夹（侧栏里显示成树）；编号 = 文件名前两位
-FOLDERS = {"1-图片": ("01", "02", "03", "04", "05", "06", "15", "16"), "2-文案与配音": ("07", "08", "09", "13"), "3-视频": ("10", "11", "12", "14", "17", "18", "19")}
+# 类别文件夹（侧栏里显示成树）；编号 = 文件名前两位（合并后的应用编号 01~05，见文件最下面的 FAMILIES）
+FOLDERS = {"1-图片": ("01", "02"), "2-文案与配音": ("03",), "3-视频": ("04", "05")}
 
-# 重新生成前清掉旧的，不留已经不再生成的文件
-for _f in glob.glob(os.path.join(OUT, "*", "*.json")):
-    os.remove(_f)
-for _d in glob.glob(os.path.join(OUT, "*")):
-    if os.path.isdir(_d) and not os.listdir(_d):
-        os.rmdir(_d)
-os.makedirs(OUT, exist_ok=True)
+
+def clean_output():
+    """重新生成前清掉旧的，不留已经不再生成的文件。"""
+    for _f in glob.glob(os.path.join(OUT, "*", "*.json")):
+        os.remove(_f)
+    for _d in glob.glob(os.path.join(OUT, "*")):
+        if os.path.isdir(_d) and not os.listdir(_d):
+            os.rmdir(_d)
+    os.makedirs(OUT, exist_ok=True)
 
 
 def write(name, obj):
@@ -111,6 +116,9 @@ for _b in (2, 3, 4):
         SPEC[f"ProPick{_b}x{_c}"] = ([(f"in{b}_{c}", "*", False) for b in range(_b) for c in range(_c)],
                                     [(f"out{c}", "*") for c in range(_c)], [("branch", "INT")])
 SPEC["ProGate"] = ([("value", "*", False)], [("value", "*")], [("enabled", "BOOLEAN")])
+SPEC["ProBlock"] = ([("value", "*", False)], [("value", "*")], [("enabled", "BOOLEAN")])
+for _n, (_title, _opts) in FLOW.FUNCS.items():
+    SPEC[_n] = ([], [(o, t) for o, t, _ in FLOW.func_outputs(_opts)], [])
 SPEC["ProAppText"] = ([("text", "STRING", False)], [], [])
 
 
@@ -157,7 +165,9 @@ class Graph:
     def app_in(self, nid, widget, label=None):
         """把节点 nid 的控件 widget 放进应用界面的右栏（按登记顺序从上到下）。label = 给这个控件起的中文名：同一个工作流里有两个
         「图像」上传、两个「比例」时必须起名，否则右栏是两行一模一样的字。名字写进节点的 inputs[].label，节点图里这个控件也显示它。
-        右栏不显示的控件（比如写提示词节点的「扩写指令」）不用登记；右栏里太长的名字会被截断，尽量 12 个字以内。"""
+        右栏不显示的控件（比如写提示词节点的「扩写指令」）不用登记；右栏里太长的名字会被截断，尽量 12 个字以内。
+        没起名的（模式、一句话需求）自动用节点里本来的显示名：合并成一个应用以后，右栏里要给每个控件加「【功能名】」前缀，所以每个都得有名字。"""
+        label = label or DEFAULT_LABELS.get(widget)
         if label:
             n = self.node(nid)
             inp = next((i for i in n["inputs"] if i["name"] == widget), None)
@@ -382,6 +392,7 @@ DIALOGUE_WIDGETS = ["小美：老板，这个苹果怎么卖呀？\n阿强：新
 
 
 # app_in 给控件起名时要在节点里补一个 inputs 条目，需要知道控件类型（按控件名查；这些名字在各节点里含义一致）
+DEFAULT_LABELS = {"mode": "模式", "idea": "一句话需求"}      # 和这两个控件在节点定义里的显示名一致（tests 里核对），没有起名的 app_in 用它
 APP_WIDGET_TYPES = {"mode": "COMBO", "image": "COMBO", "audio": "COMBO", "file": "COMBO", "ratio": "COMBO", "level": "COMBO", "style": "COMBO", "voice": "COMBO",
                     "idea": "STRING", "value": "STRING", "text": "STRING", "text1": "STRING", "text2": "STRING", "text3": "STRING", "script": "STRING",
                     **{f"role{i}_name": "STRING" for i in (1, 2, 3, 4)}, **{f"role{i}_voice": "COMBO" for i in (1, 2, 3, 4)},
@@ -750,14 +761,6 @@ def wf_pipeline():            # 06 商品一条龙：一张商品图 → 白底�
     g.app_desc("一张商品图一次出齐：白底主图（放大到 2048）+ 场景图 + 标题和卖点文案，网关约 1 分钟。必须上传商品图；只需要说想要的场景（场景一句话）。"
                "出图引擎在「模式」里选：默认「网关 Gemini」（gemini-image，网关只有这一个出图模型）；用户点名要阿里 / qwen-image 才选「阿里 qwen-image-…」那几项（每一项是一个阿里模型，没点名具体模型就选 2.0-pro）。")
     return g.build()
-
-
-write("01-文生图.app.json", wf_text_to_image())
-write("02-海报.app.json", wf_poster())
-write("03-商品改图与合成.app.json", wf_edit())
-write("04-多尺寸套图.app.json", wf_sizes())
-write("05-图片后处理.app.json", wf_post_process())
-write("06-商品一条龙.app.json", wf_pipeline())
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1170,16 +1173,175 @@ def wf_video_swap():          # 19 视频换人：一张人物照片 + 一段视
     return g.build()
 
 
-write("07-文案.app.json", wf_copy())
-write("08-配音.app.json", wf_voice())
-write("09-音乐.app.json", wf_music())
-write("10-文生视频成片.app.json", wf_text_to_video())
-write("11-视频成片.app.json", wf_compose())
-write("12-图生视频成片.app.json", wf_text_to_video(image=True))
-write("13-多角色配音.app.json", wf_dialogue())
-write("14-对白成片.app.json", wf_dialogue_video())
-write("15-商品抠图.app.json", wf_matte())
-write("16-图层合成.app.json", wf_layers())
-write("17-视频改视频.app.json", wf_video_edit())
-write("18-视频拼接.app.json", wf_video_concat())
-write("19-视频换人.app.json", wf_video_swap())
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 合并：19 个单功能工作流 → 5 个应用（每个应用 = 一个工作流文件，画布最上面一个「做什么」下拉）
+#   上面每个 wf_xxx 仍然搭出一个完整的单功能工作流（有自己的模式节点、写提示词节点、结果节点，节点编号 1~99）。这里把同一类的几个放进一个文件：
+#   · 每个功能的节点编号加 1000 × (序号 + 1)（第 1 个功能 1001~1099，第 2 个 2001~2099……）；Key 节点（1 网关 / 11 geminiweb / 21 Suno / 31 阿里）是按节点编号取 Key 的，
+#     所有功能共用同一个，编号不变；
+#   · 画布最上面加一个功能节点（ProFunc*，「做什么」下拉，编号 9000）；每个输出节点（保存 / 预览 / 文字结果）的每一条输入线前面插一个功能开关（ProBlock，编号 = 功能基数 + 900 起）：
+#     没选中的功能，开关拦住输出节点，上游也不运行（原理见 pro-flow）；
+#   · ComfyUI 自带的应用界面（右栏）列出所有功能的控件，每个控件名前面加「【功能名】」；
+#   · 工作台（pro-chat）不用这些合并后的节点：每个功能的设置（右栏控件 / 常用与高级设置 / 费用 / 描述……）原样记在 extra.appFamily.funcs[].extra 里（还是旧的节点编号），
+#     工作台按它把这个功能的节点抠出来（编号还原、功能开关去掉，见 pro-chat/api_convert.py 的 family_view）当单功能工作流用——所以工作台里跑的就是上面 wf_xxx 搭出来的那个。
+# ════════════════════════════════════════════════════════════════════════════
+LEGACY = {"01": wf_text_to_image, "02": wf_poster, "03": wf_edit, "04": wf_sizes, "05": wf_post_process, "06": wf_pipeline,
+          "07": wf_copy, "08": wf_voice, "09": wf_music, "10": wf_text_to_video, "11": wf_compose, "12": lambda: wf_text_to_video(image=True),
+          "13": wf_dialogue, "14": wf_dialogue_video, "15": wf_matte, "16": wf_layers, "17": wf_video_edit, "18": wf_video_concat, "19": wf_video_swap}
+# 文件编号、文件名里的名字、功能节点类、里面的功能（旧编号 = 目录里的应用编号，顺序和功能节点的下拉一致；名字取自 pro-flow 的 FUNCS）
+FAMILIES = [("01", "做图", "ProFuncImage", ["01", "02", "03", "04", "06"]),
+            ("02", "处理图", "ProFuncProcess", ["05", "15", "16"]),
+            ("03", "文案配音音乐", "ProFuncText", ["07", "08", "09", "13"]),
+            ("04", "做视频", "ProFuncVideo", ["10", "11", "12", "14"]),
+            ("05", "改视频", "ProFuncEdit", ["17", "18", "19"])]
+FUNC_ID = 9000                  # 功能节点（「做什么」下拉）的节点编号
+BASE_STEP = 1000                # 功能的节点编号基数的间隔（单功能工作流里的节点编号都在 1~99）
+GATE_ID0 = 900                  # 功能开关的节点编号 = 基数 + 900 起
+GATE_SIZE, GATE_W, GATE_STEP = (260, 100), 320, 140       # 功能开关节点的大小；结果区右移让出的宽度；开关一个挨一个往下排的间距
+BLOCK_GAP = 420                 # 功能块之间的空隙
+SHARED_KEYS = (1, 11, 21, 31)
+OUTPUT_NODE_TYPES = {"SaveImage", "PreviewImage", "PreviewAny", "SaveVideo", "SaveAudioAdvanced", "SaveAudio", "ProAppText", "ProSaveCutout", "ProLayerCompose", "ProVideoSave", "ProVideoDub"}
+FAMILY_EXTRA_KEYS = ("linearData", "appDescription", "appExtra", "appAdvanced", "appCost", "appRequired", "appCostUnlessModelFile")
+
+
+def legacy_workflows():
+    """19 个单功能工作流（旧编号 → 工作流）。tests 拿它当「工作台里每个功能该是什么样」的标准答案。"""
+    return {fid: build() for fid, build in LEGACY.items()}
+
+
+def _new_node(nid, ntype, pos, widgets, title, size=GATE_SIZE):
+    g = Graph()
+    g.add(nid, ntype, pos, size, widgets, title=title)
+    return g.nodes[0]
+
+
+def _gate_function(wf, k):
+    """给一个单功能工作流（节点编号 1~99）的每个输出节点的每一条输入线前面插一个功能开关（编号 900 起）；开关的 enabled 连到功能节点
+    （合并时用 -1 占位，换成 FUNC_ID）的第 k 个输出。「结果」区整体右移让出一列，开关放在「自动处理」区的最右边（分组框跟着变大）。返回开关的个数。"""
+    g_in, g_auto, g_out = wf["groups"]
+    assert g_out["title"].startswith("③") and g_auto["title"].startswith("②"), "分组框的顺序应该是 ① ② ③"
+    assert max(n["id"] for n in wf["nodes"]) < GATE_ID0, f"单功能工作流的节点编号要小于 {GATE_ID0}（{GATE_ID0} 起留给功能开关），不然合并后会撞号"
+    out_x, out_y, out_w, out_h = g_out["bounding"]
+    for n in wf["nodes"]:
+        if out_x <= n["pos"][0] < out_x + out_w and out_y <= n["pos"][1] < out_y + out_h:
+            n["pos"][0] += GATE_W
+    g_out["bounding"][0] += GATE_W
+    ax, ay, aw, ah = g_auto["bounding"]
+    gx, gy = ax + aw + 20, ay + 80
+    links = {l[0]: l for l in wf["links"]}
+    lid, gates = wf["last_link_id"], []
+    for o in [n for n in wf["nodes"] if n["type"] in OUTPUT_NODE_TYPES]:
+        for d, inp in enumerate(o["inputs"]):
+            if inp.get("link") is None:
+                continue
+            gid = GATE_ID0 + len(gates)
+            gate = _new_node(gid, "ProBlock", (gx, gy + len(gates) * GATE_STEP + 30), [True], "功能开关 → " + (o.get("title") or o["type"]))
+            L = links[inp["link"]]                               # [编号, 起点, 起点输出, 终点, 终点输入, 类型]：改成「原来的起点 → 开关」，沿用这条线的编号
+            L[3], L[4] = gid, 0
+            gate["inputs"][0]["link"] = L[0]
+            lid += 1
+            wf["links"].append([lid, gid, 0, o["id"], d, "*"])    # 开关 → 输出节点
+            inp["link"] = lid
+            gate["outputs"][0]["links"] = [lid]
+            lid += 1
+            wf["links"].append([lid, -1, k, gid, 1, "BOOLEAN"])   # 功能节点的第 k 个输出 → 开关的 enabled
+            gate["inputs"].append({"name": "enabled", "type": "BOOLEAN", "link": lid, "widget": {"name": "enabled"}})
+            gates.append(gate)
+    assert len(gates) <= BASE_STEP - GATE_ID0, f"功能开关太多了（{len(gates)} 个）：{GATE_ID0} 起放不下，合并后会撞到下一个功能的节点编号"
+    wf["nodes"] += gates
+    wf["last_link_id"] = lid
+    g_auto["bounding"][2] = max(aw, gx + GATE_SIZE[0] + 30 - ax)
+    g_auto["bounding"][3] = max(ah, 80 + len(gates) * GATE_STEP + 20)
+    return len(gates)
+
+
+def _unify_key(have, n):
+    """几个功能共用一个 Key 节点：设置得一样；只有「阿里文字」的模型名可能不同（06 / 07 / 12 要让 AI 看图，用 qwen3.8-omni-flash；其余只用到 Key 和地址），取能看图的那个。"""
+    if have["widgets_values"] == n["widgets_values"]:
+        return
+    assert have["id"] == 31 and have["widgets_values"][:-1] == n["widgets_values"][:-1], f"Key 节点 {have['id']} 的设置在几个功能里不一致"
+    have["widgets_values"] = ali_settings(ALI_TXT_BASE, "qwen3.8-omni-flash")
+
+
+def merge_family(num, name, func_cls, ids):
+    title, fnames = FLOW.FUNCS[func_cls]
+    assert len(fnames) == len(ids), f"{name}：功能节点 {func_cls} 的下拉有 {len(fnames)} 项，这里有 {len(ids)} 个功能"
+    assert BASE_STEP * (len(ids) + 1) <= FUNC_ID, f"{name}：功能太多，节点编号基数会撞到功能节点（{FUNC_ID}）"
+    nodes, links, groups, native_in, native_out, funcs, shared = [], [], [], [], [], [], {}
+    cursor = 400                                                          # 第一个功能块的顶部（上面是「先选做什么」）
+    for k, (fid, fname) in enumerate(zip(ids, fnames)):
+        wf = copy.deepcopy(LEGACY[fid]())
+        base = BASE_STEP * (k + 1)
+        _gate_function(wf, k)
+        keys = sorted(n["id"] for n in wf["nodes"] if n["type"] == "RelayAPISettings")
+        keys_values = {str(n["id"]): n["widgets_values"] for n in wf["nodes"] if n["type"] == "RelayAPISettings"}     # 这个功能自己的 Key 节点设置（合并后共用的那个可能是别的功能的版本，工作台里还原成这个）
+        assert set(keys) <= set(SHARED_KEYS), f"{fid}：Key 节点的编号只能是 {SHARED_KEYS}（Key 按节点编号存）"
+        mapid = lambda i, base=base, keys=keys: FUNC_ID if i == -1 else i if i in keys else base + i
+        y0 = min(g["bounding"][1] for g in wf["groups"])
+        y1 = max(g["bounding"][1] + g["bounding"][3] for g in wf["groups"])
+        dy = cursor - y0
+        cursor = y1 + dy + BLOCK_GAP
+        lmap = {}
+        for l in wf["links"]:
+            lmap[l[0]] = len(links) + 1
+            links.append([lmap[l[0]], mapid(l[1]), l[2], mapid(l[3]), l[4], l[5]])
+        for n in wf["nodes"]:
+            old = n["id"]
+            n["pos"][1] += dy
+            for i in n["inputs"]:
+                if i.get("link") is not None:
+                    i["link"] = lmap[i["link"]]
+            for o in n["outputs"]:
+                o["links"] = None                                          # 最后按完整的连线表重算
+            if old in keys:
+                if old in shared:
+                    _unify_key(shared[old], n)
+                    continue
+                shared[old] = n
+            else:
+                n["id"] = base + old
+            nodes.append(n)
+        for g in wf["groups"]:
+            g["bounding"][1] += dy
+            g["title"] = f"【{fname}】{g['title']}"
+            groups.append(g)
+        byid = {n["id"]: n for n in nodes}
+        ex = wf["extra"]
+        for nid, widget in ex["linearData"]["inputs"]:
+            inp = next(i for i in byid[mapid(nid)]["inputs"] if i["name"] == widget)
+            assert inp.get("label"), f"{fid} 的右栏控件 {nid}.{widget} 没有名字（g.app_in 要起名；模式 / 一句话需求有默认名）"
+            inp["label"] = f"【{fname}】{inp['label']}"
+            native_in.append([mapid(nid), widget])
+        native_out += [mapid(i) for i in ex["linearData"]["outputs"]]
+        funcs.append({"id": fid, "name": fname, "index": k, "base": base, "shared": keys, "keys": keys_values, "extra": {key: ex[key] for key in FAMILY_EXTRA_KEYS if key in ex}})
+    fnode = _new_node(FUNC_ID, func_cls, (60, 150), [fnames[0]], "★ 先选做什么（只有选中的功能会运行）", size=(520, 110))
+    fnode["color"], fnode["bgcolor"] = ROLE_COLORS["IN"]
+    fnode["inputs"].append({"name": "mode", "type": "COMBO", "widget": {"name": "mode"}, "link": None, "label": "做什么"})
+    nodes.append(fnode)
+    for order, n in enumerate(nodes):
+        n["order"] = order
+    byid = {n["id"]: n for n in nodes}
+    for l in links:                                                       # 按连线表重算每个输出口的 links
+        slot = byid[l[1]]["outputs"][l[2]]
+        slot["links"] = (slot["links"] or []) + [l[0]]
+    head = {"title": "★ 先选做什么：选一个功能，下面对应的那一块才会运行", "bounding": [30, 40, 580, 260], "color": GROUP_COLORS["IN"], "font_size": 28, "flags": {}}
+    groups = [head] + groups
+    for gid, g in enumerate(groups, 1):
+        g["id"] = gid
+        g.update({"id": gid})
+    desc = (f"{name}：" + "、".join(fnames) + "。先在最上面选「做什么」，再填对应功能的设置（右栏里每个控件名前面标了它属于哪个功能）；只有选中的功能会运行，别的功能不会调接口、不花钱。")
+    extra = {"ds": {"scale": INIT_SCALE, "offset": [round(INIT_XY[0] / INIT_SCALE - 30), round(INIT_XY[1] / INIT_SCALE - 40)]},
+             "linearMode": True, "linearData": {"inputs": [[FUNC_ID, "mode"]] + native_in, "outputs": native_out},
+             "appDescription": desc, "appFamily": {"name": name, "func_node": FUNC_ID, "funcs": funcs}}
+    return {"last_node_id": max(n["id"] for n in nodes), "last_link_id": len(links), "nodes": nodes, "links": links, "groups": groups, "config": {}, "extra": extra, "version": 0.4}
+
+
+def main():
+    clean_output()
+    for num, name, func_cls, ids in FAMILIES:
+        write(f"{num}-{name}.app.json", merge_family(num, name, func_cls, ids))
+
+
+if __name__ == "__main__":
+    main()

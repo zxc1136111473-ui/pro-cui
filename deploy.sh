@@ -368,6 +368,7 @@ wait_ready() {
 #   · 已存在且和仓库一样 → 不动；已存在但不一样 → 不覆盖（可能是你在网页里改过），只提示有几个不同，
 #     要换成仓库版本用 --refresh-workflows（先备份旧文件）。
 # 工作流不带 key：首次用在节点里填一次 Key 即可。
+# 铺完之后，合并前的旧版内置工作流（见 retire_legacy_workflows）会被移走。
 seed_workflows() {
   local srcdir="$APP_DIR/workflows" dstdir="$APP_DIR/data/user/default/workflows"
   [ -d "$srcdir" ] || return 0
@@ -386,6 +387,34 @@ seed_workflows() {
   if [ "${#differ[@]}" -gt 0 ]; then
     warn "有 ${#differ[@]} 个内置工作流和仓库版本不同（新版，或者你在网页里改过）：$(printf '%s ' "${differ[@]:0:4}")$([ "${#differ[@]}" -gt 4 ] && printf '…')"
     say "    换成仓库版本：$(self_cmd) --refresh-workflows（旧文件会先备份到 data/user/default/workflows-旧版备份-时间/，不删）"
+  fi
+  retire_legacy_workflows
+}
+
+# 合并前的旧版内置工作流：以前是 19 个单功能应用（每个一个文件），现在合并成 5 个应用（见 tools/gen_workflows.py 的 FAMILIES）。升级后旧的 19 个不会自己消失，
+# 会和新的 5 个并存（侧栏里一共 24 个，工作台目录里同编号的以新的为准，但侧栏还是乱的）。这里把它们移到 data/user/default/workflows-旧版备份-时间/（不删），
+# 只在仓库里的新文件都已经铺进去之后才移，免得出现「旧的没了、新的还没来」的空档；旧文件被移走后再运行是空操作；你自己存的工作流不碰。
+retire_legacy_workflows() {
+  local srcdir="$APP_DIR/workflows" dstdir="$APP_DIR/data/user/default/workflows"
+  [ -d "$srcdir" ] && [ -d "$dstdir" ] || return 0
+  local legacy=("1-图片/01-文生图.app.json" "1-图片/02-海报.app.json" "1-图片/03-商品改图与合成.app.json" "1-图片/04-多尺寸套图.app.json"
+                "1-图片/05-图片后处理.app.json" "1-图片/06-商品一条龙.app.json" "1-图片/15-商品抠图.app.json" "1-图片/16-图层合成.app.json"
+                "2-文案与配音/07-文案.app.json" "2-文案与配音/08-配音.app.json" "2-文案与配音/09-音乐.app.json" "2-文案与配音/13-多角色配音.app.json"
+                "3-视频/10-文生视频成片.app.json" "3-视频/11-视频成片.app.json" "3-视频/12-图生视频成片.app.json" "3-视频/14-对白成片.app.json"
+                "3-视频/17-视频改视频.app.json" "3-视频/18-视频拼接.app.json" "3-视频/19-视频换人.app.json")
+  local f rel bak="" n=0
+  while IFS= read -r -d '' f; do                       # 仓库里的每个工作流都已经在位（内容可以不一样：你改过的不覆盖）
+    [ -e "$dstdir/${f#"$srcdir"/}" ] || return 0
+  done < <(find "$srcdir" -name '*.json' -print0)
+  for rel in "${legacy[@]}"; do
+    [ -e "$dstdir/$rel" ] || continue
+    [ -e "$srcdir/$rel" ] && continue                  # 仓库里现在还有同名文件（不该发生）：不动
+    [ -n "$bak" ] || bak="$APP_DIR/data/user/default/workflows-旧版备份-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$(dirname "$bak/$rel")"
+    mv "$dstdir/$rel" "$bak/$rel" && n=$((n + 1))
+  done
+  if [ "$n" -gt 0 ]; then
+    ok "合并前的旧版工作流 $n 个已移到 ${bak}（里面的功能都合并进了新的 5 个应用；确认没问题再自己删）"
   fi
 }
 
@@ -407,11 +436,6 @@ do_refresh_workflows() {
       cp -p "$dstdir/$rel" "$bak/$rel" && cp "$f" "$dstdir/$rel" && n_upd=$((n_upd + 1))
     fi
   done < <(find "$srcdir" -name '*.json' -print0)
-  # 仓库里没有的（可能是旧版内置的，也可能是你自己存的）：只列出来
-  while IFS= read -r -d '' f; do
-    rel="${f#"$dstdir"/}"
-    [ -e "$srcdir/$rel" ] || stale+=("$rel")
-  done < <(find "$dstdir" -name '*.json' -print0)
   if [ "$n_new" -eq 0 ] && [ "$n_upd" -eq 0 ]; then
     ok "内置工作流已经和仓库一致，没有要换的"
   else
@@ -419,6 +443,11 @@ do_refresh_workflows() {
     [ "$n_upd" -eq 0 ] || say "    换掉的旧版已备份到 ${bak}（确认没问题再自己删）"
     say "    网页里已经打开的标签还是旧内容：关掉再从左侧列表重新打开"
   fi
+  retire_legacy_workflows                                                    # 合并前的旧版先移走，下面列的才是真正「不在仓库里的」
+  while IFS= read -r -d '' f; do                                             # 仓库里没有的（可能是旧版内置的，也可能是你自己存的）：只列出来
+    rel="${f#"$dstdir"/}"
+    [ -e "$srcdir/$rel" ] || stale+=("$rel")
+  done < <(find "$dstdir" -name '*.json' -print0)
   if [ "${#stale[@]}" -gt 0 ]; then
     say ""
     say "  工作流目录里还有 ${#stale[@]} 个不在仓库里的（旧版内置的，或你自己存的），没动：$(printf '%s ' "${stale[@]:0:6}")$([ "${#stale[@]}" -gt 6 ] && printf '…')"

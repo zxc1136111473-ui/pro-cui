@@ -74,6 +74,8 @@ export const CSS = `
 .pcw-step-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .pcw-num{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;background:var(--p-primary-color,#3b82f6);color:#fff;font-size:12px}
 .pcw-step-name{font-size:14px}
+.pcw-fam{opacity:.7;font-size:12px;margin-right:6px}
+.pcw-funcsel{font-size:14px;font-weight:600;max-width:240px}
 .pcw-badge{padding:1px 8px;border-radius:10px;font-size:12px;background:rgba(127,127,127,.25)}
 .pcw-b-running{background:rgba(59,130,246,.3)}
 .pcw-b-done{background:rgba(34,197,94,.28)}
@@ -439,11 +441,20 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     const b = stepButtons(i);
     updateButtons(b, st);
     const fold = h("button", { class: "pcw-fold", title: collapsed ? "展开这一步" : "折叠这一步（只留一行，步骤多的时候一屏看得下）", "aria-expanded": String(!collapsed), text: collapsed ? "▸" : "▾", onclick: () => actions.toggleStep(i) });
-    const head = h("div", { class: "pcw-step-head" }, fold, h("span", { class: "pcw-num", text: String(i + 1) }), h("b", { class: "pcw-step-name", text: step.name }), badge, h("span", { class: "pcw-spacer" }),
+    const funcs = lib.siblings(catalog() || [], step.workflow);                  // 这一步所在的应用里的所有功能（合并应用）：标题上画一个「做什么」下拉；单独的应用就是一个名字
+    let title = h("b", { class: "pcw-step-name", text: step.name });
+    let funcSel = null;
+    if (funcs.length > 1) {
+      const sel = funcSel = h("select", { class: "pcw-funcsel", "data-pc": `${i}:func`, disabled: locked || !!state.running, title: `这个应用里的功能：${funcs.map((a) => a.name).join("、")}；换一个功能会清掉这一步现在的设置和结果`, onchange: () => actions.changeFunction(i, sel.value) },
+        funcs.map((a) => h("option", { value: a.workflow, text: a.name, selected: a.workflow === step.workflow })));
+      title = h("span", { class: "pcw-step-name" }, h("span", { class: "pcw-fam", text: ((funcs[0].family || {}).name || "") + " ›" }), sel);
+    }
+    const head = h("div", { class: "pcw-step-head" }, fold, h("span", { class: "pcw-num", text: String(i + 1) }), title, badge, h("span", { class: "pcw-spacer" }),
       h("span", { style: "display:inline-flex;gap:6px" }, b.main, b.open, b.del));
     const prog = h("div", { class: "pcw-prog", style: "display:none" }, h("i"));
     const box = h("div", { class: "pcw-step" + (collapsed ? " pcw-collapsed" : ""), "data-step": String(i) }, head, prog, step.note ? h("div", { class: "pcw-note", text: step.note }) : null);       // 费用 / 额度的提醒统一放在方案顶部（updateBar），卡片里不再重复
     box._badge = badge;
+    box._funcSel = funcSel;
     box._buttons = b;
     box._prog = prog;
     updateProgress(box, step);
@@ -501,6 +512,7 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
         el._badge.className = `pcw-badge pcw-b-${st.kind}`;
         el._badge.textContent = badgeText(step, st);
         updateButtons(el._buttons, st);
+        if (el._funcSel) el._funcSel.disabled = !!(state.running || state.busy);                    // 换功能和删除一样：有步骤在运行 / 等 AI 回复时不让动
         updateProgress(el, step);
       });
     }
@@ -553,9 +565,10 @@ export function createView({ state, url, actions, catalog, catalogStatus }) {
     runBtn.title = blocked.length ? "有步骤还缺必填的素材，先补上" : state.busy ? "AI 正在想，等它回复后再运行" : "";
     const apps = catalog() || [];
     const holder = apps.length ? "＋ 添加一步…" : catalogStatus && catalogStatus() === "failed" ? "＋ 添加一步（应用目录没加载出来，点这里重试）" : "＋ 添加一步（应用目录加载中…）";
-    if (addSel.options.length !== apps.length + 1) {                      // 目录加载好了才补选项（下拉打开时不去动它）；按分类（图片 / 文案与配音 / 视频）分组
+    const fams = lib.families(apps);
+    if (addSel.options.length !== fams.length + 1) {                      // 目录加载好了才补选项（下拉打开时不去动它）；一项 = 一个应用（做图 / 处理图 / …），里面的功能在步骤卡片标题上的「做什么」下拉里选
       addSel.replaceChildren(h("option", { value: "", text: holder }),
-        ...lib.groupApps(apps).map((g) => h("optgroup", { label: g.group }, g.apps.map((a) => h("option", { value: a.workflow, text: `${a.workflow} ${a.name}`, title: a.desc })))));
+        ...fams.map((f) => h("option", { value: f.first.workflow, text: f.single ? `${f.first.workflow} ${f.first.name}` : f.name, title: f.single ? f.first.desc : `里面的功能：${f.apps.map((a) => a.name).join("、")}` })));
     } else if (addSel.options[0].text !== holder) {
       addSel.options[0].text = holder;
     }

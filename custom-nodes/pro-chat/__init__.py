@@ -25,6 +25,7 @@ from urllib.parse import urlparse
 
 from . import catalog as cat_mod
 from . import chat, presets, run
+from .api_convert import family_of, family_view
 from .chat import ChatError
 
 NODE_CLASS_MAPPINGS = {}
@@ -221,6 +222,8 @@ def _run_once(payload, post=None):
         raise ChatError(404, f"没有编号为「{payload.get('workflow')}」的应用")
     with open(os.path.join(workflows_dir(), app["path"]), encoding="utf-8") as f:
         wf = json.load(f)
+    if family_of(wf):                                        # 合并应用：只取这个功能的节点（和合并之前的单功能工作流一样，没有别的功能的节点和功能开关）
+        wf = family_view(wf, next(i for i, fn in enumerate(family_of(wf)["funcs"]) if str(fn["id"]) == app["id"]))
     api, sel, warns = run.prepare_run(app, wf, object_info(), payload, asset_exists)
     resp = run.submit_prompt(api, str(payload.get("client_id") or ""), comfy_port(), app["titles"], post=post)
     partial = run.describe_error({"node_errors": resp.get("node_errors")}, app["titles"])
@@ -291,7 +294,7 @@ def handle_preset(payload):
 def handle_catalog(_payload=None):
     """应用目录（给工作台手动加步骤用）：每个应用的编号、名字、用途、能改什么；还有聊天助手能选的模型。"""
     cat = cat_mod.build_catalog(workflows_dir(), object_info(), models_dir())
-    return {"apps": [{"workflow": a["id"], "name": a["name"], "path": a["path"], "group": a["group"], "desc": a["desc"], "schema": cat_mod.schema(a)} for a in cat.values()],
+    return {"apps": [{"workflow": a["id"], "name": a["name"], "path": a["path"], "group": a["group"], "family": a.get("family"), "desc": a["desc"], "schema": cat_mod.schema(a)} for a in cat.values()],
             "models": chat.model_list(),                     # 聊天助手能选的模型（界面下拉用）
             "presets": presets.listing(cat)}                 # 一键方案（界面下拉用）
 

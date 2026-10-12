@@ -331,6 +331,68 @@ class Lib(unittest.TestCase):
           L.groupApps(null), L.groupApps([])]))''')
         self.assertEqual(r, [[["图片", ["01", "02"]], ["文案与配音", ["07"]], ["其他", ["99", "98"]]], [], []])
 
+    # 合并应用的目录条目：n 个功能，同一个 family（name + funcs）；03 号只产出文字，其余产出图片
+    FAM = r'''const fam = (name, ...ids) => ids.map((id) => ({ workflow: id, name: "功能" + id, group: name, family: { name, funcs: ids }, schema: { produces: id === "03" ? ["text"] : ["image"], files: {}, fields: {} } }));
+'''
+
+    def test_families_put_a_merged_apps_functions_into_one_entry_and_leave_single_apps_alone(self):
+        r = js(self.FAM + '''const apps = [...fam("做图", "01", "02", "04"), { workflow: "99", name: "自己做的", group: "工具" }, ...fam("改视频", "17", "18"), null];
+          console.log(JSON.stringify([L.families(apps).map((f) => [f.name, f.first.workflow, f.apps.map((a) => a.workflow), f.single]), L.families(null), L.families([])]))''')
+        self.assertEqual(r, [[["做图", "01", ["01", "02", "04"], False], ["自己做的", "99", ["99"], True], ["改视频", "17", ["17", "18"], False]], [], []])
+
+    def test_siblings_are_the_functions_of_the_same_app_in_catalog_order(self):
+        r = js(self.FAM + '''const apps = [...fam("做图", "01", "02", "04"), { workflow: "99", name: "自己做的" }];
+          console.log(JSON.stringify([L.siblings(apps, "02").map((a) => a.workflow), L.siblings(apps, "99"), L.siblings(apps, "nope"), L.siblings(null, "01")]))''')
+        self.assertEqual(r, [["01", "02", "04"], [], [], []])
+
+    def test_swap_function_resets_the_step_keeps_the_fold_and_drops_refs_the_new_function_cannot_feed(self):
+        r = js(self.FAM + '''const apps = fam("做图", "01", "02", "03");
+          const a = L.newStep(apps[0]); a.fields = { x: 1 }; a.mode = "B 模式"; a.state = "done"; a.result = { items: [] }; a.collapsed = true; a.note = "旧说明";
+          const b = app("07"); b.files = { "4:image": { step: 1, n: 1 }, "5:audio": { asset: 3 } };
+          const p = plan(a, b);
+          const ok = L.swapFunction(p, 0, apps[2]);                                         // 换成只产出文字的功能：后面那步引用它的图片就没了
+          const s0 = p.steps[0];
+          const bad = [L.swapFunction(p, 5, apps[1]), L.swapFunction(p, 0, null), L.swapFunction(null, 0, apps[1])];
+          console.log(JSON.stringify([ok, s0.workflow, s0.name, s0.state, s0.mode, s0.fields, s0.result === undefined, s0.collapsed, s0.note, p.steps[1].files, bad]))''')
+        self.assertEqual(r, [True, "03", "功能03", "idle", None, {}, True, True, "", {"5:audio": {"asset": 3}}, [False, False, False]])
+        r = js(self.FAM + '''const apps = fam("做图", "01", "02", "03");
+          const b = app("07"); b.files = { "4:image": { step: 1, n: 1 } };
+          const p = plan(L.newStep(apps[0]), b);
+          L.swapFunction(p, 0, apps[1]);                                                    // 新功能也产出图片：引用保留
+          console.log(JSON.stringify(p.steps[1].files))''')
+        self.assertEqual(r, {"4:image": {"step": 1, "n": 1}})
+
+    def test_swap_function_resets_a_second_result_reference_to_the_first_because_the_new_step_has_no_results_yet(self):
+        r = js(self.FAM + """const apps = fam("做图", "01", "02", "03");
+          const b = app("07"); b.files = { "4:image": { step: 1, n: 2 } };                // 06 一条龙那样引用「步骤 1.2」（第 2 张图）
+          const p = plan(L.newStep(apps[0]), b);
+          L.swapFunction(p, 0, apps[1]);                                                  // 换成只出 1 张图的功能：下拉里只有「第 1 个」，引用改成第 1 个
+          const choices = L.fileChoices(p, [], 1, "image").steps.map((c) => c.value);
+          console.log(JSON.stringify([p.steps[1].files["4:image"], choices, choices.includes(L.refToValue(p.steps[1].files["4:image"]))]))""")
+        self.assertEqual(r, [{"step": 1, "n": 1}, ["s:1:1"], True])
+
+    def test_a_restored_plan_keeps_the_merged_app_info_of_its_steps_but_drops_a_malformed_one(self):
+        """存档里的步骤恢复后还要能「在应用里打开」：schema.merged（旧节点编号 → 合并后的编号、「做什么」选哪项）不能丢；格式不对的当没有。"""
+        r = js(self.FAM + """const apps = fam("做图", "01", "02");
+          const a = L.newStep(apps[0]); a.schema.merged = { base: 5000, shared: [1, 31, "x"], func_key: "9000:mode", func: "商品一条龙" };
+          const b = L.newStep(apps[1]); b.schema.merged = { base: "5000", shared: [], func_key: "9000:mode", func: "海报" };         // 基数不是整数：不要
+          const c = L.newStep(apps[1]); c.schema.merged = { base: 2000, shared: [1], func_key: "<script>", func: "海报" };               // 键的格式不对：不要
+          const back = L.fromStorage(L.toStorage({ messages: [], assets: [], plan: plan(a, b, c), draft: [], chain: null }));
+          const sc = back.plan.steps.map((s) => s.schema.merged);
+          console.log(JSON.stringify([sc, L.nodeIdOf(back.plan.steps[0].schema, 70), L.nodeIdOf(back.plan.steps[0].schema, 31)]))""")
+        self.assertEqual(r, [[{"base": 5000, "shared": [1, 31], "func_key": "9000:mode", "func": "商品一条龙"}, None, None], 5070, 31])
+
+    def test_node_id_of_maps_old_ids_into_a_merged_file_but_keeps_shared_key_nodes(self):
+        r = js('''const sc = { merged: { base: 5000, shared: [1, 31] } };
+          console.log(JSON.stringify([L.nodeIdOf(sc, 70), L.nodeIdOf(sc, 77), L.nodeIdOf(sc, 1), L.nodeIdOf(sc, 31), L.nodeIdOf({}, 70), L.nodeIdOf(null, 70), L.nodeIdOf({ merged: { base: 1000 } }, 5)]))''')
+        self.assertEqual(r, [5070, 5077, 1, 31, 70, 70, 5])
+
+    def test_step_has_work_matches_what_plan_has_work_looks_at(self):
+        r = js('''const a = app("01"), b = app("01"), c = app("01"), d = app("01"), e = app("01");
+          b.fields = { "70:idea": "x" }; c.mode = "B 模式"; d.files = { "4:image": { asset: 1 } }; e.state = "done";
+          console.log(JSON.stringify([L.stepHasWork(a), L.stepHasWork(b), L.stepHasWork(c), L.stepHasWork(d), L.stepHasWork(e), L.stepHasWork(null), L.planHasWork(plan(a)), L.planHasWork(plan(a, b))]))''')
+        self.assertEqual(r, [False, True, True, True, True, False, False, True])
+
     def test_durations_keep_the_last_five_and_estimate_with_the_median(self):
         r = js('''const d = {}, a = app("01"), b = app("01"), c = app("02");
           b.mode = "B 模式";

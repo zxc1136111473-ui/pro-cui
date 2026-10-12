@@ -430,8 +430,12 @@ export function valueToRef(v) {
 }
 
 // 方案里有没有「动过的东西」：跑过 / 有结果 / 改过设置 / 换过模式 / 选过文件。换方案之前要不要先问一声用
+export function stepHasWork(st) {
+  return !!st && (st.state !== "idle" || !!st.result || !!st.mode || Object.keys(st.fields || {}).length > 0 || Object.keys(st.files || {}).length > 0);
+}
+
 export function planHasWork(plan) {
-  return !!plan && (plan.steps || []).some((st) => st.state !== "idle" || st.result || st.mode || Object.keys(st.fields || {}).length || Object.keys(st.files || {}).length);
+  return !!plan && (plan.steps || []).some(stepHasWork);
 }
 
 // 方案里用到的费用 / 注意（给方案顶部的提醒）：[{index, name, text}]
@@ -454,6 +458,53 @@ export function groupApps(apps) {
     by[g].push(a);
   }
   return order.map((group) => ({ group, apps: by[group] }));
+}
+
+// 应用目录 → 「添加一步」下拉里的各项：合并应用里的几个功能放在一起（成一项，名字是应用名；功能的顺序按目录里的），单独的一个应用自成一项。
+// 每项 {name, apps, first, single}：first = 加这一步时默认用的功能（第一个）；single = 不是合并应用里的功能（用户自己存的单功能应用），名字前面带编号。
+export function families(apps) {
+  const order = [], by = new Map();
+  for (const a of apps || []) {
+    if (!a) continue;
+    const named = !!(a.family && a.family.name);
+    const key = named ? "f:" + a.family.name : "a:" + a.workflow;
+    if (!by.has(key)) { by.set(key, { name: named ? a.family.name : a.name, apps: [], single: !named }); order.push(key); }
+    by.get(key).apps.push(a);
+  }
+  return order.map((k) => { const f = by.get(k); return { name: f.name, apps: f.apps, first: f.apps[0], single: f.single }; });
+}
+
+// 这个应用（功能）所在的合并应用里的所有功能（目录里的条目，按 family.funcs 的顺序）；不是合并应用里的功能返回空数组
+export function siblings(apps, workflow) {
+  const cur = (apps || []).find((a) => a && a.workflow === workflow);
+  if (!cur || !cur.family || !Array.isArray(cur.family.funcs)) return [];
+  return cur.family.funcs.map((id) => (apps || []).find((a) => a && a.workflow === id)).filter(Boolean);
+}
+
+// 把第 i 步（下标）换成同一个应用里的另一个功能：整步换成新功能的默认样子（设置、文件、结果都清掉，折叠状态留着），
+// 后面步骤里引用这一步结果的文件：新功能不产出那一类文件的，引用去掉（要重新选）；产出的，引用改成「第 1 个」（新的一步还没运行，只能选第 1 个）。返回 false = 没换（越界 / 没有这个功能）。
+export function swapFunction(plan, i, app) {
+  const old = plan && plan.steps ? plan.steps[i] : null;
+  if (!old || !app) return false;
+  const fresh = newStep(app);
+  if (typeof old.collapsed === "boolean") fresh.collapsed = old.collapsed;
+  plan.steps[i] = fresh;
+  const produces = ((app.schema || {}).produces) || [];
+  for (const later of plan.steps.slice(i + 1)) {
+    for (const [key, ref] of Object.entries(later.files || {})) {
+      const f = ((later.schema || {}).files || {})[key];
+      if (!(ref && ref.step === i + 1 && f)) continue;
+      if (!produces.includes(f.kind)) delete later.files[key];
+      else if (ref.n && ref.n !== 1) later.files[key] = { step: ref.step, n: 1 };                // 新的一步还没运行，下拉里只有「第 1 个」；原来选的第几个在新功能里不一定有（06 的第 2 张图 → 01 只出 1 张）
+    }
+  }
+  return true;
+}
+
+// 工作流里的节点编号：合并应用里每个功能的节点编号 = 旧编号 + base（共用的 Key 节点不变）；schema.merged 是后端给的对应关系，没有就原样
+export function nodeIdOf(schema, oldId) {
+  const m = schema && schema.merged;
+  return m && Array.isArray(m.shared) && !m.shared.includes(oldId) ? m.base + oldId : oldId;
 }
 
 // 一次运行耗时的记录（存在这个浏览器里）：key = 应用 + 模式（同一个应用不同模式差很多：网关出图约 1 分钟、阿里约半分钟、视频要好几分钟），
@@ -733,8 +784,13 @@ function cleanSchema(sc) {
     const opts = src.mode.options.map(str);
     mode = { key: src.mode.key, label: str(src.mode.label) || "模式", options: opts, default: opts.includes(str(src.mode.default)) ? str(src.mode.default) : opts[0] };
   }
-  return { mode, fields, files, outputs: Array.isArray(src.outputs) ? src.outputs : [], results: Array.isArray(src.results) ? src.results.map(str) : [],
+  const out = { mode, fields, files, outputs: Array.isArray(src.outputs) ? src.outputs : [], results: Array.isArray(src.results) ? src.results.map(str) : [],
     produces: Array.isArray(src.produces) ? src.produces.filter((k) => typeof k === "string") : [], cost: str(src.cost), desc: str(src.desc), titles: isObj(src.titles) ? src.titles : {} };
+  const m = src.merged;                                                       // 合并应用里的功能：旧节点编号 → 合并后的对应关系（「在应用里打开」要用，lib.nodeIdOf）；格式不对就当没有
+  if (isObj(m) && Number.isInteger(m.base) && m.base > 0 && Array.isArray(m.shared) && typeof m.func_key === "string" && /^\d+:\w+$/.test(m.func_key) && typeof m.func === "string") {
+    out.merged = { base: m.base, shared: m.shared.filter((n) => Number.isInteger(n)), func_key: m.func_key, func: m.func };
+  }
+  return out;
 }
 
 function cleanRef(r) {

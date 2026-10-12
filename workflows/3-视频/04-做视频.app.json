@@ -1,0 +1,7302 @@
+{
+  "last_node_id": 9000,
+  "last_link_id": 148,
+  "nodes": [
+    {
+      "id": 11,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1598
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            4,
+            88
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "video",
+        "Veo",
+        "v1/videos",
+        "https://www.runninghub.cn",
+        "veo3.1",
+        "",
+        "http://airelay-geminiweb:8083",
+        "gemini-video"
+      ],
+      "title": "Key：geminiweb（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 1012,
+      "type": "RelayVideoGenerator",
+      "pos": [
+        440,
+        1470
+      ],
+      "size": [
+        420,
+        420
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 4,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 5,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            10
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            21,
+            23
+          ],
+          "slot_index": 2
+        },
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayVideoGenerator"
+      },
+      "widgets_values": [
+        "（由 AI 扩写节点提供）",
+        "16:9",
+        "720P",
+        "8",
+        1,
+        "fixed",
+        "false",
+        "false"
+      ],
+      "title": "① 文生视频（Veo）"
+    },
+    {
+      "id": 1006,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        1160,
+        970
+      ],
+      "size": [
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "STRING",
+          "widget": {
+            "name": "value"
+          },
+          "link": null,
+          "label": "【文生视频成片】配音文案（配音模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            7,
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！"
+      ],
+      "title": "② 配音文案（只在「出视频，再配音」模式用；同时用于配音和字幕）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1003,
+      "type": "ProAliTTS",
+      "pos": [
+        440,
+        2150
+      ],
+      "size": [
+        440,
+        460
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 6,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 7,
+          "widget": {
+            "name": "text"
+          }
+        },
+        {
+          "name": "voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "voice"
+          },
+          "link": null,
+          "label": "【文生视频成片】配音音色（配音模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            9,
+            13
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliTTS"
+      },
+      "widgets_values": [
+        "（由文案框提供）",
+        "Cherry",
+        "qwen3-tts-flash",
+        "Chinese",
+        "",
+        1.0,
+        0.0,
+        ""
+      ],
+      "title": "配音"
+    },
+    {
+      "id": 1007,
+      "type": "ProSubtitles",
+      "pos": [
+        990,
+        1650
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "voice",
+          "type": "AUDIO",
+          "link": 9
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 8,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": [
+            19
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProSubtitles"
+      },
+      "widgets_values": [
+        "（由文案框提供）",
+        16,
+        0.0,
+        "subtitles/字幕"
+      ],
+      "title": "字幕（按配音停顿对齐，同时存 .srt）"
+    },
+    {
+      "id": 1004,
+      "type": "LoadAudio",
+      "pos": [
+        1160,
+        700
+      ],
+      "size": [
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "COMBO",
+          "widget": {
+            "name": "audio"
+          },
+          "link": null,
+          "label": "【文生视频成片】背景音乐（配音模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            16
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "无背景音乐.wav",
+        "",
+        ""
+      ],
+      "title": "③ 背景音乐（配音模式用，默认静音=不加）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1005,
+      "type": "ProVideoDub",
+      "pos": [
+        2260,
+        1470
+      ],
+      "size": [
+        420,
+        480
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 24
+        },
+        {
+          "name": "voice",
+          "type": "AUDIO",
+          "link": 26
+        },
+        {
+          "name": "bgm",
+          "type": "AUDIO",
+          "link": 28
+        },
+        {
+          "name": "subtitles",
+          "type": "STRING",
+          "link": 30
+        },
+        {
+          "name": "keep_original_audio",
+          "type": "BOOLEAN",
+          "link": 32,
+          "widget": {
+            "name": "keep_original_audio"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProVideoDub"
+      },
+      "widgets_values": [
+        -14,
+        0,
+        1.5,
+        false,
+        "video/成片",
+        "烧进画面",
+        46,
+        70
+      ],
+      "title": "④ 合成成片（保留原声 / 替换成配音，跟模式走）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 1077,
+      "type": "ProModeTextVideo",
+      "pos": [
+        60,
+        510
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "【文生视频成片】模式"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "dub",
+          "type": "BOOLEAN",
+          "links": [
+            12,
+            15,
+            18
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "keep_original",
+          "type": "BOOLEAN",
+          "links": [
+            11
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeTextVideo"
+      },
+      "widgets_values": [
+        "只出视频（保留 Veo 自带声音）"
+      ],
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1470
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1,
+            6,
+            42,
+            43,
+            85,
+            93,
+            129
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-omni-flash"
+      ],
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 1,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1534
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            2,
+            86
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "image",
+        "banana-2",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "grok-video-3",
+        "",
+        "http://airelay-newapi:3000",
+        "gemini-image"
+      ],
+      "title": "Key：网关（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 1070,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        700
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "gateway_info",
+          "type": "STRING",
+          "link": 2,
+          "widget": {
+            "name": "gateway_info"
+          }
+        },
+        {
+          "name": "idea",
+          "type": "STRING",
+          "widget": {
+            "name": "idea"
+          },
+          "link": null,
+          "label": "【文生视频成片】一句话需求"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            3,
+            5,
+            22
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "一只橘猫在绿色草地上奔跑，写实风格，白天，镜头跟拍",
+        "你是文生视频提示词写手。把下面的一句话需求扩写成一段中文视频提示词（60~120 字）：写清主体、动作、场景、镜头运动（如跟拍/推近/环绕）、光线和风格；只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。只输出提示词本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话需求",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1074,
+      "type": "PreviewAny",
+      "pos": [
+        640,
+        700
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 34
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 扩写出的结果（想看模型写了什么）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1021,
+      "type": "ProGate",
+      "pos": [
+        990,
+        1470
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 13
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 12,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "配音开关（跟模式走）"
+    },
+    {
+      "id": 1022,
+      "type": "ProGate",
+      "pos": [
+        440,
+        1970
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 16
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 15,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            17
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "背景音乐开关（跟模式走）"
+    },
+    {
+      "id": 1023,
+      "type": "ProGate",
+      "pos": [
+        1540,
+        1470
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 19
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 18,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            20
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "字幕开关（跟模式走）"
+    },
+    {
+      "id": 1078,
+      "type": "PreviewAny",
+      "pos": [
+        2260,
+        2020
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 36
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "状态：视频（Veo）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 1090,
+      "type": "ProAppText",
+      "pos": [
+        2260,
+        2200
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 38
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "AI 写的视频提示词",
+        false
+      ],
+      "title": "应用界面 · AI 写的视频提示词",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 1091,
+      "type": "ProAppText",
+      "pos": [
+        2260,
+        2280
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 40
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "出错信息：视频",
+        true
+      ],
+      "title": "应用界面 · 出错信息：视频",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 1900,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        1470
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 10
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 25,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            24
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 1901,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        1610
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 14
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 27,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            26
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 1902,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        1750
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 17
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 29,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            28
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 1903,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        1890
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 20
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 31,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            30
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 1904,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        2030
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 11
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 33,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            32
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 1905,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        2170
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 3
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 35,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            34
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → AI 扩写出的结果（想看模型写了什么）"
+    },
+    {
+      "id": 1906,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        2310
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 21
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 37,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            36
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 状态：视频（Veo）"
+    },
+    {
+      "id": 1907,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        2450
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 25,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 22
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 39,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            38
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · AI 写的视频提示词"
+    },
+    {
+      "id": 1908,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        2590
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 26,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 23
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 41,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            40
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · 出错信息：视频"
+    },
+    {
+      "id": 2002,
+      "type": "LoadVideo",
+      "pos": [
+        560,
+        3440
+      ],
+      "size": [
+        400,
+        400
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null,
+          "label": "【视频成片】上传视频"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            47,
+            56
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "请上传视频.mp4",
+        "image"
+      ],
+      "title": "① 上传视频（模式 1、2 用；点节点上的上传按钮）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2004,
+      "type": "LoadAudio",
+      "pos": [
+        1031,
+        3440
+      ],
+      "size": [
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "COMBO",
+          "widget": {
+            "name": "audio"
+          },
+          "link": null,
+          "label": "【视频成片】背景音乐"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            66
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "无背景音乐.wav",
+        "",
+        ""
+      ],
+      "title": "④ 背景音乐（模式 1、3 用，默认静音=不加）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2006,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        60,
+        3440
+      ],
+      "size": [
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 29,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "STRING",
+          "widget": {
+            "name": "value"
+          },
+          "link": null,
+          "label": "【视频成片】配音文案（配音模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            44,
+            45,
+            60
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "夏日清凉，新鲜脆甜，限时三天，欢迎选购。"
+      ],
+      "title": "② 配音文案（模式 1、3 用；同时用于配音和字幕）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2003,
+      "type": "ProAliTTS",
+      "pos": [
+        440,
+        4710
+      ],
+      "size": [
+        440,
+        460
+      ],
+      "flags": {},
+      "order": 30,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 42,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 44,
+          "widget": {
+            "name": "text"
+          }
+        },
+        {
+          "name": "voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "voice"
+          },
+          "link": null,
+          "label": "【视频成片】配音音色（配音模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            46,
+            54,
+            64
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliTTS"
+      },
+      "widgets_values": [
+        "（由文案框提供）",
+        "Cherry",
+        "qwen3-tts-flash",
+        "Chinese",
+        "",
+        1.0,
+        0.0,
+        ""
+      ],
+      "title": "配音"
+    },
+    {
+      "id": 2007,
+      "type": "ProSubtitles",
+      "pos": [
+        990,
+        5320
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 31,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "voice",
+          "type": "AUDIO",
+          "link": 46
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 45,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": [
+            59
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProSubtitles"
+      },
+      "widgets_values": [
+        "（由文案框提供）",
+        16,
+        0.0,
+        "subtitles/字幕"
+      ],
+      "title": "字幕 · 文案版（按配音停顿对齐，同时存 .srt）"
+    },
+    {
+      "id": 2009,
+      "type": "ProVideoAudio",
+      "pos": [
+        440,
+        4540
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 47
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            48,
+            50
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProVideoAudio"
+      },
+      "widgets_values": [],
+      "title": "取音轨（模式 2：不解码画面）"
+    },
+    {
+      "id": 2010,
+      "type": "ProAliASR",
+      "pos": [
+        990,
+        5080
+      ],
+      "size": [
+        400,
+        160
+      ],
+      "flags": {},
+      "order": 33,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 48
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 43,
+          "widget": {
+            "name": "info"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            49,
+            62
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliASR"
+      },
+      "widgets_values": [
+        "auto"
+      ],
+      "title": "阿里听写（模式 2）"
+    },
+    {
+      "id": 2015,
+      "type": "ProSubtitles",
+      "pos": [
+        1540,
+        4540
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 34,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "voice",
+          "type": "AUDIO",
+          "link": 50
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 49,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": [
+            61
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProSubtitles"
+      },
+      "widgets_values": [
+        "（由听写结果提供）",
+        16,
+        0.0,
+        "subtitles/字幕"
+      ],
+      "title": "字幕 · 听写版（同时存 .srt）"
+    },
+    {
+      "id": 2012,
+      "type": "LoadImage",
+      "pos": [
+        60,
+        3710
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 35,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【视频成片】图片 1（轮播模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            51
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "③ 图片 1（模式 3 用，最多接 8 张，可用 01~04 出的图）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2013,
+      "type": "LoadImage",
+      "pos": [
+        560,
+        3910
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【视频成片】图片 2（轮播模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            52
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "③ 图片 2（模式 3 用，最多接 8 张，可用 01~04 出的图）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2014,
+      "type": "LoadImage",
+      "pos": [
+        1031,
+        3710
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【视频成片】图片 3（轮播模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            53
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "③ 图片 3（模式 3 用，最多接 8 张，可用 01~04 出的图）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2008,
+      "type": "ProSlideshow",
+      "pos": [
+        990,
+        4540
+      ],
+      "size": [
+        420,
+        460
+      ],
+      "flags": {},
+      "order": 38,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 51
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 52
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": 53
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image8",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "fit_audio",
+          "type": "AUDIO",
+          "link": 54
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            57
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProSlideshow"
+      },
+      "widgets_values": [
+        "9:16",
+        720,
+        2.5,
+        0.5,
+        1.15,
+        24,
+        "video/轮播"
+      ],
+      "title": "图片轮播（模式 3；时长自动跟配音走）"
+    },
+    {
+      "id": 2005,
+      "type": "ProVideoDub",
+      "pos": [
+        2850,
+        4540
+      ],
+      "size": [
+        420,
+        480
+      ],
+      "flags": {},
+      "order": 39,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 73
+        },
+        {
+          "name": "voice",
+          "type": "AUDIO",
+          "link": 75
+        },
+        {
+          "name": "bgm",
+          "type": "AUDIO",
+          "link": 77
+        },
+        {
+          "name": "subtitles",
+          "type": "STRING",
+          "link": 79
+        },
+        {
+          "name": "keep_original_audio",
+          "type": "BOOLEAN",
+          "link": 81,
+          "widget": {
+            "name": "keep_original_audio"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProVideoDub"
+      },
+      "widgets_values": [
+        -14,
+        0,
+        1.5,
+        false,
+        "video/成片",
+        "烧进画面",
+        46,
+        70
+      ],
+      "title": "⑤ 合成成片（保留原声 / 替换成配音，跟模式走）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 2077,
+      "type": "ProModeCompose",
+      "pos": [
+        60,
+        3250
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 40,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "【视频成片】模式"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "source",
+          "type": "INT",
+          "links": [
+            55
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "subs",
+          "type": "INT",
+          "links": [
+            58
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "use_voice",
+          "type": "BOOLEAN",
+          "links": [
+            63
+          ],
+          "slot_index": 2
+        },
+        {
+          "name": "use_bgm",
+          "type": "BOOLEAN",
+          "links": [
+            65
+          ],
+          "slot_index": 3
+        },
+        {
+          "name": "keep_original",
+          "type": "BOOLEAN",
+          "links": [
+            71
+          ],
+          "slot_index": 4
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeCompose"
+      },
+      "widgets_values": [
+        "上传视频 + 配音文案（替换原声）"
+      ],
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2016,
+      "type": "ProPick2x1",
+      "pos": [
+        1540,
+        4880
+      ],
+      "size": [
+        300,
+        150
+      ],
+      "flags": {},
+      "order": 41,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 56
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 57
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 55,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            67
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "视频来源（上传 / 图片轮播）"
+    },
+    {
+      "id": 2017,
+      "type": "ProPick2x2",
+      "pos": [
+        2090,
+        4540
+      ],
+      "size": [
+        300,
+        180
+      ],
+      "flags": {},
+      "order": 42,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 59
+        },
+        {
+          "name": "in0_1",
+          "type": "*",
+          "link": 60
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 61
+        },
+        {
+          "name": "in1_1",
+          "type": "*",
+          "link": 62
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 58,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            68
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "out1",
+          "type": "*",
+          "links": [
+            72
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x2"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "字幕来源（文案 / 听写）"
+    },
+    {
+      "id": 2018,
+      "type": "ProGate",
+      "pos": [
+        990,
+        5660
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 43,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 64
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 63,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            69
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "配音开关（跟模式走）"
+    },
+    {
+      "id": 2019,
+      "type": "ProGate",
+      "pos": [
+        440,
+        5250
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 44,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 66
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 65,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            70
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "背景音乐开关（跟模式走）"
+    },
+    {
+      "id": 2020,
+      "type": "PreviewAny",
+      "pos": [
+        2850,
+        5090
+      ],
+      "size": [
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 45,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 83
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "字幕文字（文案 / 听写结果）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 2900,
+      "type": "ProBlock",
+      "pos": [
+        2440,
+        4540
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 46,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 67
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 74,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            73
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ⑤ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 2901,
+      "type": "ProBlock",
+      "pos": [
+        2440,
+        4680
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 47,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 69
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 76,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            75
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ⑤ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 2902,
+      "type": "ProBlock",
+      "pos": [
+        2440,
+        4820
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 48,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 70
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 78,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            77
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ⑤ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 2903,
+      "type": "ProBlock",
+      "pos": [
+        2440,
+        4960
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 49,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 68
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 80,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            79
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ⑤ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 2904,
+      "type": "ProBlock",
+      "pos": [
+        2440,
+        5100
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 50,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 71
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 82,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            81
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ⑤ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 2905,
+      "type": "ProBlock",
+      "pos": [
+        2440,
+        5240
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 51,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 72
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 84,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            83
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 字幕文字（文案 / 听写结果）"
+    },
+    {
+      "id": 3012,
+      "type": "RelayVideoGenerator",
+      "pos": [
+        440,
+        7680
+      ],
+      "size": [
+        420,
+        420
+      ],
+      "flags": {},
+      "order": 52,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 88,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 90
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 89,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            97
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            108,
+            110
+          ],
+          "slot_index": 2
+        },
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayVideoGenerator"
+      },
+      "widgets_values": [
+        "（由 AI 扩写节点提供）",
+        "16:9",
+        "720P",
+        "8",
+        1,
+        "fixed",
+        "false",
+        "false"
+      ],
+      "title": "① 图生视频（Veo）"
+    },
+    {
+      "id": 3002,
+      "type": "LoadImage",
+      "pos": [
+        1160,
+        7050
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 53,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【图生视频成片】参考图"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            90,
+            91
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "上传参考图（作为视频的首帧 / 参考图）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3015,
+      "type": "ImageScaleToMaxDimension",
+      "pos": [
+        440,
+        8900
+      ],
+      "size": [
+        320,
+        90
+      ],
+      "flags": {},
+      "order": 54,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 91
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            92
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScaleToMaxDimension"
+      },
+      "widgets_values": [
+        "lanczos",
+        768
+      ],
+      "title": "缩到最长边 768（别删）"
+    },
+    {
+      "id": 3006,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        1160,
+        6780
+      ],
+      "size": [
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 55,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "STRING",
+          "widget": {
+            "name": "value"
+          },
+          "link": null,
+          "label": "【图生视频成片】配音文案（配音模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            94,
+            95
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "快来看，这只橘猫在草地上撒欢奔跑，太可爱啦！"
+      ],
+      "title": "② 配音文案（只在「出视频，再配音」模式用；同时用于配音和字幕）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3003,
+      "type": "ProAliTTS",
+      "pos": [
+        440,
+        8360
+      ],
+      "size": [
+        440,
+        460
+      ],
+      "flags": {},
+      "order": 56,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 93,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 94,
+          "widget": {
+            "name": "text"
+          }
+        },
+        {
+          "name": "voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "voice"
+          },
+          "link": null,
+          "label": "【图生视频成片】配音音色（配音模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            96,
+            100
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliTTS"
+      },
+      "widgets_values": [
+        "（由文案框提供）",
+        "Cherry",
+        "qwen3-tts-flash",
+        "Chinese",
+        "",
+        1.0,
+        0.0,
+        ""
+      ],
+      "title": "配音"
+    },
+    {
+      "id": 3007,
+      "type": "ProSubtitles",
+      "pos": [
+        990,
+        7860
+      ],
+      "size": [
+        440,
+        260
+      ],
+      "flags": {},
+      "order": 57,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "voice",
+          "type": "AUDIO",
+          "link": 96
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 95,
+          "widget": {
+            "name": "text"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": [
+            106
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProSubtitles"
+      },
+      "widgets_values": [
+        "（由文案框提供）",
+        16,
+        0.0,
+        "subtitles/字幕"
+      ],
+      "title": "字幕（按配音停顿对齐，同时存 .srt）"
+    },
+    {
+      "id": 3004,
+      "type": "LoadAudio",
+      "pos": [
+        1160,
+        6510
+      ],
+      "size": [
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 58,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "COMBO",
+          "widget": {
+            "name": "audio"
+          },
+          "link": null,
+          "label": "【图生视频成片】背景音乐（配音模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            103
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "无背景音乐.wav",
+        "",
+        ""
+      ],
+      "title": "③ 背景音乐（配音模式用，默认静音=不加）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3005,
+      "type": "ProVideoDub",
+      "pos": [
+        2260,
+        7680
+      ],
+      "size": [
+        420,
+        480
+      ],
+      "flags": {},
+      "order": 59,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 111
+        },
+        {
+          "name": "voice",
+          "type": "AUDIO",
+          "link": 113
+        },
+        {
+          "name": "bgm",
+          "type": "AUDIO",
+          "link": 115
+        },
+        {
+          "name": "subtitles",
+          "type": "STRING",
+          "link": 117
+        },
+        {
+          "name": "keep_original_audio",
+          "type": "BOOLEAN",
+          "link": 119,
+          "widget": {
+            "name": "keep_original_audio"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProVideoDub"
+      },
+      "widgets_values": [
+        -14,
+        0,
+        1.5,
+        false,
+        "video/成片",
+        "烧进画面",
+        46,
+        70
+      ],
+      "title": "④ 合成成片（保留原声 / 替换成配音，跟模式走）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 3077,
+      "type": "ProModeTextVideo",
+      "pos": [
+        60,
+        6320
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 60,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "【图生视频成片】模式"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "dub",
+          "type": "BOOLEAN",
+          "links": [
+            99,
+            102,
+            105
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "keep_original",
+          "type": "BOOLEAN",
+          "links": [
+            98
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeTextVideo"
+      },
+      "widgets_values": [
+        "只出视频（保留 Veo 自带声音）"
+      ],
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3070,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        6510
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 61,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 85,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 92
+        },
+        {
+          "name": "gateway_info",
+          "type": "STRING",
+          "link": 86,
+          "widget": {
+            "name": "gateway_info"
+          }
+        },
+        {
+          "name": "idea",
+          "type": "STRING",
+          "widget": {
+            "name": "idea"
+          },
+          "link": null,
+          "label": "【图生视频成片】一句话需求"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            87,
+            89,
+            109
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "镜头缓慢推近，商品轻轻转动，光线柔和，画面自然流畅",
+        "你是图生视频提示词写手。你会看到一张图（视频的第一帧 / 参考图）和用户的一句话需求（想让画面怎么动）。请写成一段中文视频提示词（60~120 字）：先用一两句话写清图里有什么——主体的外观（形状、颜色、材质）、背景和光线，只写你看得到的，不要编造；再写画面怎么动——主体的动作、镜头运动（缓慢推近/环绕/平移/固定）；主体的外观和背景保持不变；只描述一个连续镜头，不要切镜头，画面里不要出现文字字幕。只输出提示词本身，不要解释，不要加引号或标题。",
+        "qwen3.8-omni-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话需求（说想让画面怎么动；AI 会先看图，把图里的商品和背景写进提示词）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3074,
+      "type": "PreviewAny",
+      "pos": [
+        640,
+        6510
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 62,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 121
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 扩写出的结果（想看模型写了什么）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3021,
+      "type": "ProGate",
+      "pos": [
+        990,
+        7680
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 63,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 100
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 99,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            101
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "配音开关（跟模式走）"
+    },
+    {
+      "id": 3022,
+      "type": "ProGate",
+      "pos": [
+        440,
+        8180
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 64,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 103
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 102,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            104
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "背景音乐开关（跟模式走）"
+    },
+    {
+      "id": 3023,
+      "type": "ProGate",
+      "pos": [
+        1540,
+        7680
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 65,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 106
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 105,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            107
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "字幕开关（跟模式走）"
+    },
+    {
+      "id": 3078,
+      "type": "PreviewAny",
+      "pos": [
+        2260,
+        8230
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 66,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 123
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "状态：视频（Veo）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 3090,
+      "type": "ProAppText",
+      "pos": [
+        2260,
+        8410
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 67,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 125
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "AI 写的视频提示词",
+        false
+      ],
+      "title": "应用界面 · AI 写的视频提示词",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 3091,
+      "type": "ProAppText",
+      "pos": [
+        2260,
+        8490
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 68,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 127
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "出错信息：视频",
+        true
+      ],
+      "title": "应用界面 · 出错信息：视频",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 3900,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        7680
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 69,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 97
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 112,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            111
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 3901,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        7820
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 70,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 101
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 114,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            113
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 3902,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        7960
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 71,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 104
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 116,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            115
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 3903,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        8100
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 72,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 107
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 118,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            117
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 3904,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        8240
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 73,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 98
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 120,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            119
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ④ 合成成片（保留原声 / 替换成配音，跟模式走）"
+    },
+    {
+      "id": 3905,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        8380
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 74,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 87
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 122,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            121
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → AI 扩写出的结果（想看模型写了什么）"
+    },
+    {
+      "id": 3906,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        8520
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 75,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 108
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 124,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            123
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 状态：视频（Veo）"
+    },
+    {
+      "id": 3907,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        8660
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 76,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 109
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 126,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            125
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · AI 写的视频提示词"
+    },
+    {
+      "id": 3908,
+      "type": "ProBlock",
+      "pos": [
+        1850,
+        8800
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 77,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 110
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 128,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            127
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · 出错信息：视频"
+    },
+    {
+      "id": 4002,
+      "type": "LoadVideo",
+      "pos": [
+        680,
+        10230
+      ],
+      "size": [
+        400,
+        400
+      ],
+      "flags": {},
+      "order": 78,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "file",
+          "type": "COMBO",
+          "widget": {
+            "name": "file"
+          },
+          "link": null,
+          "label": "【对白成片】上传视频"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            135
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "请上传视频.mp4",
+        "image"
+      ],
+      "title": "① 上传视频（模式 1 用；点节点上的上传按钮）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4004,
+      "type": "LoadAudio",
+      "pos": [
+        1140,
+        10230
+      ],
+      "size": [
+        440,
+        200
+      ],
+      "flags": {},
+      "order": 79,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "COMBO",
+          "widget": {
+            "name": "audio"
+          },
+          "link": null,
+          "label": "【对白成片】背景音乐"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            140
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "无背景音乐.wav",
+        "",
+        ""
+      ],
+      "title": "③ 背景音乐（默认静音=不加）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4003,
+      "type": "ProAliDialogue",
+      "pos": [
+        60,
+        9740
+      ],
+      "size": [
+        560,
+        1100
+      ],
+      "flags": {},
+      "order": 80,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 129,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "script",
+          "type": "STRING",
+          "widget": {
+            "name": "script"
+          },
+          "link": null,
+          "label": "【对白成片】对白脚本（每行：角色：台词）"
+        },
+        {
+          "name": "role1_name",
+          "type": "STRING",
+          "widget": {
+            "name": "role1_name"
+          },
+          "link": null,
+          "label": "【对白成片】角色 1 名字"
+        },
+        {
+          "name": "role1_voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "role1_voice"
+          },
+          "link": null,
+          "label": "【对白成片】角色 1 音色"
+        },
+        {
+          "name": "role2_name",
+          "type": "STRING",
+          "widget": {
+            "name": "role2_name"
+          },
+          "link": null,
+          "label": "【对白成片】角色 2 名字"
+        },
+        {
+          "name": "role2_voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "role2_voice"
+          },
+          "link": null,
+          "label": "【对白成片】角色 2 音色"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            133,
+            138
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": [
+            139
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "report",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliDialogue"
+      },
+      "widgets_values": [
+        "小美：老板，这个苹果怎么卖呀？\n阿强：新到的红富士，脆甜多汁，今天只要九块九一斤。\n小美：那我先来五斤，再帮我挑几个大的。\n阿强：好嘞，马上给你装好！",
+        "小美",
+        "Cherry · 女 · 阳光亲切",
+        "阿强",
+        "Ethan · 男 · 朝气温暖，带北方口音",
+        "",
+        "Serena · 女 · 温柔",
+        "",
+        "Ryan · 男 · 节奏感强、戏感足",
+        "Neil · 男 · 新闻主播式播报",
+        "qwen3-tts-flash",
+        "Chinese",
+        1.0,
+        0.35,
+        true,
+        16,
+        true,
+        0.0,
+        "subtitles/对白字幕",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "title": "② 多角色对白（脚本、角色、音色都在这里）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4012,
+      "type": "LoadImage",
+      "pos": [
+        680,
+        9740
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 81,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【对白成片】图片 1（轮播模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            130
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "④ 图片 1（模式 2 用，最多 3 张，可用 01~04 出的图）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4013,
+      "type": "LoadImage",
+      "pos": [
+        1140,
+        9740
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 82,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【对白成片】图片 2（轮播模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            131
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "④ 图片 2（模式 2 用，最多 3 张，可用 01~04 出的图）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4014,
+      "type": "LoadImage",
+      "pos": [
+        1640,
+        9740
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 83,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【对白成片】图片 3（轮播模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            132
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "④ 图片 3（模式 2 用，最多 3 张，可用 01~04 出的图）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4008,
+      "type": "ProSlideshow",
+      "pos": [
+        440,
+        11050
+      ],
+      "size": [
+        420,
+        460
+      ],
+      "flags": {},
+      "order": 84,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 130
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 131
+        },
+        {
+          "name": "image3",
+          "type": "IMAGE",
+          "link": 132
+        },
+        {
+          "name": "image4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image8",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "fit_audio",
+          "type": "AUDIO",
+          "link": 133
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            136
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProSlideshow"
+      },
+      "widgets_values": [
+        "9:16",
+        720,
+        2.5,
+        0.5,
+        1.15,
+        24,
+        "video/轮播"
+      ],
+      "title": "图片轮播（模式 2；时长自动跟对白走）"
+    },
+    {
+      "id": 4005,
+      "type": "ProVideoDub",
+      "pos": [
+        1730,
+        11050
+      ],
+      "size": [
+        420,
+        480
+      ],
+      "flags": {},
+      "order": 85,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 141
+        },
+        {
+          "name": "voice",
+          "type": "AUDIO",
+          "link": 143
+        },
+        {
+          "name": "bgm",
+          "type": "AUDIO",
+          "link": 145
+        },
+        {
+          "name": "subtitles",
+          "type": "STRING",
+          "link": 147
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProVideoDub"
+      },
+      "widgets_values": [
+        -14,
+        0,
+        1.5,
+        false,
+        "video/成片",
+        "烧进画面",
+        46,
+        70
+      ],
+      "title": "⑤ 合成成片（对白替换原声，字幕烧进画面）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 4077,
+      "type": "ProModeDialogueVideo",
+      "pos": [
+        60,
+        9550
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 86,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "【对白成片】模式"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "source",
+          "type": "INT",
+          "links": [
+            134
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeDialogueVideo"
+      },
+      "widgets_values": [
+        "对白配到上传的视频上（替换原声，烧字幕）"
+      ],
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4016,
+      "type": "ProPick2x1",
+      "pos": [
+        970,
+        11050
+      ],
+      "size": [
+        300,
+        150
+      ],
+      "flags": {},
+      "order": 87,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 135
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 136
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 134,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            137
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "视频来源（上传 / 图片轮播）"
+    },
+    {
+      "id": 4900,
+      "type": "ProBlock",
+      "pos": [
+        1320,
+        11050
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 88,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 137
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 142,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            141
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ⑤ 合成成片（对白替换原声，字幕烧进画面）"
+    },
+    {
+      "id": 4901,
+      "type": "ProBlock",
+      "pos": [
+        1320,
+        11190
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 89,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 138
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 144,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            143
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ⑤ 合成成片（对白替换原声，字幕烧进画面）"
+    },
+    {
+      "id": 4902,
+      "type": "ProBlock",
+      "pos": [
+        1320,
+        11330
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 90,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 140
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 146,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            145
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ⑤ 合成成片（对白替换原声，字幕烧进画面）"
+    },
+    {
+      "id": 4903,
+      "type": "ProBlock",
+      "pos": [
+        1320,
+        11470
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 91,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 139
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 148,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            147
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → ⑤ 合成成片（对白替换原声，字幕烧进画面）"
+    },
+    {
+      "id": 9000,
+      "type": "ProFuncVideo",
+      "pos": [
+        60,
+        150
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 92,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "做什么"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "f0",
+          "type": "BOOLEAN",
+          "links": [
+            25,
+            27,
+            29,
+            31,
+            33,
+            35,
+            37,
+            39,
+            41
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "f1",
+          "type": "BOOLEAN",
+          "links": [
+            74,
+            76,
+            78,
+            80,
+            82,
+            84
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "f2",
+          "type": "BOOLEAN",
+          "links": [
+            112,
+            114,
+            116,
+            118,
+            120,
+            122,
+            124,
+            126,
+            128
+          ],
+          "slot_index": 2
+        },
+        {
+          "name": "f3",
+          "type": "BOOLEAN",
+          "links": [
+            142,
+            144,
+            146,
+            148
+          ],
+          "slot_index": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProFuncVideo"
+      },
+      "widgets_values": [
+        "文生视频成片"
+      ],
+      "title": "★ 先选做什么（只有选中的功能会运行）",
+      "color": "#232",
+      "bgcolor": "#353"
+    }
+  ],
+  "links": [
+    [
+      1,
+      31,
+      0,
+      1070,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      1,
+      0,
+      1070,
+      2,
+      "STRING"
+    ],
+    [
+      3,
+      1070,
+      0,
+      1905,
+      0,
+      "STRING"
+    ],
+    [
+      4,
+      11,
+      0,
+      1012,
+      0,
+      "STRING"
+    ],
+    [
+      5,
+      1070,
+      0,
+      1012,
+      8,
+      "STRING"
+    ],
+    [
+      6,
+      31,
+      0,
+      1003,
+      0,
+      "STRING"
+    ],
+    [
+      7,
+      1006,
+      0,
+      1003,
+      1,
+      "STRING"
+    ],
+    [
+      8,
+      1006,
+      0,
+      1007,
+      1,
+      "STRING"
+    ],
+    [
+      9,
+      1003,
+      0,
+      1007,
+      0,
+      "AUDIO"
+    ],
+    [
+      10,
+      1012,
+      0,
+      1900,
+      0,
+      "VIDEO"
+    ],
+    [
+      11,
+      1077,
+      1,
+      1904,
+      0,
+      "BOOLEAN"
+    ],
+    [
+      12,
+      1077,
+      0,
+      1021,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      13,
+      1003,
+      0,
+      1021,
+      0,
+      "AUDIO"
+    ],
+    [
+      14,
+      1021,
+      0,
+      1901,
+      0,
+      "*"
+    ],
+    [
+      15,
+      1077,
+      0,
+      1022,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      16,
+      1004,
+      0,
+      1022,
+      0,
+      "AUDIO"
+    ],
+    [
+      17,
+      1022,
+      0,
+      1902,
+      0,
+      "*"
+    ],
+    [
+      18,
+      1077,
+      0,
+      1023,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      19,
+      1007,
+      0,
+      1023,
+      0,
+      "STRING"
+    ],
+    [
+      20,
+      1023,
+      0,
+      1903,
+      0,
+      "*"
+    ],
+    [
+      21,
+      1012,
+      2,
+      1906,
+      0,
+      "STRING"
+    ],
+    [
+      22,
+      1070,
+      0,
+      1907,
+      0,
+      "STRING"
+    ],
+    [
+      23,
+      1012,
+      2,
+      1908,
+      0,
+      "STRING"
+    ],
+    [
+      24,
+      1900,
+      0,
+      1005,
+      0,
+      "*"
+    ],
+    [
+      25,
+      9000,
+      0,
+      1900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      26,
+      1901,
+      0,
+      1005,
+      1,
+      "*"
+    ],
+    [
+      27,
+      9000,
+      0,
+      1901,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      28,
+      1902,
+      0,
+      1005,
+      2,
+      "*"
+    ],
+    [
+      29,
+      9000,
+      0,
+      1902,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      30,
+      1903,
+      0,
+      1005,
+      3,
+      "*"
+    ],
+    [
+      31,
+      9000,
+      0,
+      1903,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      32,
+      1904,
+      0,
+      1005,
+      4,
+      "*"
+    ],
+    [
+      33,
+      9000,
+      0,
+      1904,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      34,
+      1905,
+      0,
+      1074,
+      0,
+      "*"
+    ],
+    [
+      35,
+      9000,
+      0,
+      1905,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      36,
+      1906,
+      0,
+      1078,
+      0,
+      "*"
+    ],
+    [
+      37,
+      9000,
+      0,
+      1906,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      38,
+      1907,
+      0,
+      1090,
+      0,
+      "*"
+    ],
+    [
+      39,
+      9000,
+      0,
+      1907,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      40,
+      1908,
+      0,
+      1091,
+      0,
+      "*"
+    ],
+    [
+      41,
+      9000,
+      0,
+      1908,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      42,
+      31,
+      0,
+      2003,
+      0,
+      "STRING"
+    ],
+    [
+      43,
+      31,
+      0,
+      2010,
+      1,
+      "STRING"
+    ],
+    [
+      44,
+      2006,
+      0,
+      2003,
+      1,
+      "STRING"
+    ],
+    [
+      45,
+      2006,
+      0,
+      2007,
+      1,
+      "STRING"
+    ],
+    [
+      46,
+      2003,
+      0,
+      2007,
+      0,
+      "AUDIO"
+    ],
+    [
+      47,
+      2002,
+      0,
+      2009,
+      0,
+      "VIDEO"
+    ],
+    [
+      48,
+      2009,
+      0,
+      2010,
+      0,
+      "AUDIO"
+    ],
+    [
+      49,
+      2010,
+      0,
+      2015,
+      1,
+      "STRING"
+    ],
+    [
+      50,
+      2009,
+      0,
+      2015,
+      0,
+      "AUDIO"
+    ],
+    [
+      51,
+      2012,
+      0,
+      2008,
+      0,
+      "IMAGE"
+    ],
+    [
+      52,
+      2013,
+      0,
+      2008,
+      1,
+      "IMAGE"
+    ],
+    [
+      53,
+      2014,
+      0,
+      2008,
+      2,
+      "IMAGE"
+    ],
+    [
+      54,
+      2003,
+      0,
+      2008,
+      8,
+      "AUDIO"
+    ],
+    [
+      55,
+      2077,
+      0,
+      2016,
+      2,
+      "INT"
+    ],
+    [
+      56,
+      2002,
+      0,
+      2016,
+      0,
+      "VIDEO"
+    ],
+    [
+      57,
+      2008,
+      0,
+      2016,
+      1,
+      "VIDEO"
+    ],
+    [
+      58,
+      2077,
+      1,
+      2017,
+      4,
+      "INT"
+    ],
+    [
+      59,
+      2007,
+      0,
+      2017,
+      0,
+      "STRING"
+    ],
+    [
+      60,
+      2006,
+      0,
+      2017,
+      1,
+      "STRING"
+    ],
+    [
+      61,
+      2015,
+      0,
+      2017,
+      2,
+      "STRING"
+    ],
+    [
+      62,
+      2010,
+      0,
+      2017,
+      3,
+      "STRING"
+    ],
+    [
+      63,
+      2077,
+      2,
+      2018,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      64,
+      2003,
+      0,
+      2018,
+      0,
+      "AUDIO"
+    ],
+    [
+      65,
+      2077,
+      3,
+      2019,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      66,
+      2004,
+      0,
+      2019,
+      0,
+      "AUDIO"
+    ],
+    [
+      67,
+      2016,
+      0,
+      2900,
+      0,
+      "*"
+    ],
+    [
+      68,
+      2017,
+      0,
+      2903,
+      0,
+      "*"
+    ],
+    [
+      69,
+      2018,
+      0,
+      2901,
+      0,
+      "*"
+    ],
+    [
+      70,
+      2019,
+      0,
+      2902,
+      0,
+      "*"
+    ],
+    [
+      71,
+      2077,
+      4,
+      2904,
+      0,
+      "BOOLEAN"
+    ],
+    [
+      72,
+      2017,
+      1,
+      2905,
+      0,
+      "*"
+    ],
+    [
+      73,
+      2900,
+      0,
+      2005,
+      0,
+      "*"
+    ],
+    [
+      74,
+      9000,
+      1,
+      2900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      75,
+      2901,
+      0,
+      2005,
+      1,
+      "*"
+    ],
+    [
+      76,
+      9000,
+      1,
+      2901,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      77,
+      2902,
+      0,
+      2005,
+      2,
+      "*"
+    ],
+    [
+      78,
+      9000,
+      1,
+      2902,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      79,
+      2903,
+      0,
+      2005,
+      3,
+      "*"
+    ],
+    [
+      80,
+      9000,
+      1,
+      2903,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      81,
+      2904,
+      0,
+      2005,
+      4,
+      "*"
+    ],
+    [
+      82,
+      9000,
+      1,
+      2904,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      83,
+      2905,
+      0,
+      2020,
+      0,
+      "*"
+    ],
+    [
+      84,
+      9000,
+      1,
+      2905,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      85,
+      31,
+      0,
+      3070,
+      0,
+      "STRING"
+    ],
+    [
+      86,
+      1,
+      0,
+      3070,
+      2,
+      "STRING"
+    ],
+    [
+      87,
+      3070,
+      0,
+      3905,
+      0,
+      "STRING"
+    ],
+    [
+      88,
+      11,
+      0,
+      3012,
+      0,
+      "STRING"
+    ],
+    [
+      89,
+      3070,
+      0,
+      3012,
+      8,
+      "STRING"
+    ],
+    [
+      90,
+      3002,
+      0,
+      3012,
+      1,
+      "IMAGE"
+    ],
+    [
+      91,
+      3002,
+      0,
+      3015,
+      0,
+      "IMAGE"
+    ],
+    [
+      92,
+      3015,
+      0,
+      3070,
+      1,
+      "IMAGE"
+    ],
+    [
+      93,
+      31,
+      0,
+      3003,
+      0,
+      "STRING"
+    ],
+    [
+      94,
+      3006,
+      0,
+      3003,
+      1,
+      "STRING"
+    ],
+    [
+      95,
+      3006,
+      0,
+      3007,
+      1,
+      "STRING"
+    ],
+    [
+      96,
+      3003,
+      0,
+      3007,
+      0,
+      "AUDIO"
+    ],
+    [
+      97,
+      3012,
+      0,
+      3900,
+      0,
+      "VIDEO"
+    ],
+    [
+      98,
+      3077,
+      1,
+      3904,
+      0,
+      "BOOLEAN"
+    ],
+    [
+      99,
+      3077,
+      0,
+      3021,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      100,
+      3003,
+      0,
+      3021,
+      0,
+      "AUDIO"
+    ],
+    [
+      101,
+      3021,
+      0,
+      3901,
+      0,
+      "*"
+    ],
+    [
+      102,
+      3077,
+      0,
+      3022,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      103,
+      3004,
+      0,
+      3022,
+      0,
+      "AUDIO"
+    ],
+    [
+      104,
+      3022,
+      0,
+      3902,
+      0,
+      "*"
+    ],
+    [
+      105,
+      3077,
+      0,
+      3023,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      106,
+      3007,
+      0,
+      3023,
+      0,
+      "STRING"
+    ],
+    [
+      107,
+      3023,
+      0,
+      3903,
+      0,
+      "*"
+    ],
+    [
+      108,
+      3012,
+      2,
+      3906,
+      0,
+      "STRING"
+    ],
+    [
+      109,
+      3070,
+      0,
+      3907,
+      0,
+      "STRING"
+    ],
+    [
+      110,
+      3012,
+      2,
+      3908,
+      0,
+      "STRING"
+    ],
+    [
+      111,
+      3900,
+      0,
+      3005,
+      0,
+      "*"
+    ],
+    [
+      112,
+      9000,
+      2,
+      3900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      113,
+      3901,
+      0,
+      3005,
+      1,
+      "*"
+    ],
+    [
+      114,
+      9000,
+      2,
+      3901,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      115,
+      3902,
+      0,
+      3005,
+      2,
+      "*"
+    ],
+    [
+      116,
+      9000,
+      2,
+      3902,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      117,
+      3903,
+      0,
+      3005,
+      3,
+      "*"
+    ],
+    [
+      118,
+      9000,
+      2,
+      3903,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      119,
+      3904,
+      0,
+      3005,
+      4,
+      "*"
+    ],
+    [
+      120,
+      9000,
+      2,
+      3904,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      121,
+      3905,
+      0,
+      3074,
+      0,
+      "*"
+    ],
+    [
+      122,
+      9000,
+      2,
+      3905,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      123,
+      3906,
+      0,
+      3078,
+      0,
+      "*"
+    ],
+    [
+      124,
+      9000,
+      2,
+      3906,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      125,
+      3907,
+      0,
+      3090,
+      0,
+      "*"
+    ],
+    [
+      126,
+      9000,
+      2,
+      3907,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      127,
+      3908,
+      0,
+      3091,
+      0,
+      "*"
+    ],
+    [
+      128,
+      9000,
+      2,
+      3908,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      129,
+      31,
+      0,
+      4003,
+      0,
+      "STRING"
+    ],
+    [
+      130,
+      4012,
+      0,
+      4008,
+      0,
+      "IMAGE"
+    ],
+    [
+      131,
+      4013,
+      0,
+      4008,
+      1,
+      "IMAGE"
+    ],
+    [
+      132,
+      4014,
+      0,
+      4008,
+      2,
+      "IMAGE"
+    ],
+    [
+      133,
+      4003,
+      0,
+      4008,
+      8,
+      "AUDIO"
+    ],
+    [
+      134,
+      4077,
+      0,
+      4016,
+      2,
+      "INT"
+    ],
+    [
+      135,
+      4002,
+      0,
+      4016,
+      0,
+      "VIDEO"
+    ],
+    [
+      136,
+      4008,
+      0,
+      4016,
+      1,
+      "VIDEO"
+    ],
+    [
+      137,
+      4016,
+      0,
+      4900,
+      0,
+      "*"
+    ],
+    [
+      138,
+      4003,
+      0,
+      4901,
+      0,
+      "AUDIO"
+    ],
+    [
+      139,
+      4003,
+      1,
+      4903,
+      0,
+      "STRING"
+    ],
+    [
+      140,
+      4004,
+      0,
+      4902,
+      0,
+      "AUDIO"
+    ],
+    [
+      141,
+      4900,
+      0,
+      4005,
+      0,
+      "*"
+    ],
+    [
+      142,
+      9000,
+      3,
+      4900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      143,
+      4901,
+      0,
+      4005,
+      1,
+      "*"
+    ],
+    [
+      144,
+      9000,
+      3,
+      4901,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      145,
+      4902,
+      0,
+      4005,
+      2,
+      "*"
+    ],
+    [
+      146,
+      9000,
+      3,
+      4902,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      147,
+      4903,
+      0,
+      4005,
+      3,
+      "*"
+    ],
+    [
+      148,
+      9000,
+      3,
+      4903,
+      1,
+      "BOOLEAN"
+    ]
+  ],
+  "groups": [
+    {
+      "title": "★ 先选做什么：选一个功能，下面对应的那一块才会运行",
+      "bounding": [
+        30,
+        40,
+        580,
+        260
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {},
+      "id": 1
+    },
+    {
+      "id": 2,
+      "title": "【文生视频成片】① 先填这里：选模式 → 写一句话 → 传素材",
+      "bounding": [
+        30,
+        400,
+        1600,
+        890
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "【文生视频成片】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        1360,
+        2110,
+        1360
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "【文生视频成片】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        2230,
+        1360,
+        480,
+        960
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "【视频成片】① 先填这里：选模式 → 传素材",
+      "bounding": [
+        30,
+        3140,
+        1471,
+        1220
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 6,
+      "title": "【视频成片】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        4430,
+        2700,
+        1360
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 7,
+      "title": "【视频成片】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        2820,
+        4430,
+        500,
+        890
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 8,
+      "title": "【图生视频成片】① 先填这里：选模式 → 写一句话 → 传素材",
+      "bounding": [
+        30,
+        6210,
+        1600,
+        1290
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 9,
+      "title": "【图生视频成片】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        7570,
+        2110,
+        1450
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 10,
+      "title": "【图生视频成片】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        2230,
+        7570,
+        480,
+        960
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 11,
+      "title": "【对白成片】① 先填这里：选模式 → 传素材 → 调参数",
+      "bounding": [
+        30,
+        9440,
+        2040,
+        1430
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 12,
+      "title": "【对白成片】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        10940,
+        1580,
+        660
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 13,
+      "title": "【对白成片】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1700,
+        10940,
+        480,
+        620
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        145
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          9000,
+          "mode"
+        ],
+        [
+          1077,
+          "mode"
+        ],
+        [
+          1070,
+          "idea"
+        ],
+        [
+          1006,
+          "value"
+        ],
+        [
+          1003,
+          "voice"
+        ],
+        [
+          1004,
+          "audio"
+        ],
+        [
+          2077,
+          "mode"
+        ],
+        [
+          2002,
+          "file"
+        ],
+        [
+          2006,
+          "value"
+        ],
+        [
+          2003,
+          "voice"
+        ],
+        [
+          2012,
+          "image"
+        ],
+        [
+          2013,
+          "image"
+        ],
+        [
+          2014,
+          "image"
+        ],
+        [
+          2004,
+          "audio"
+        ],
+        [
+          3077,
+          "mode"
+        ],
+        [
+          3070,
+          "idea"
+        ],
+        [
+          3002,
+          "image"
+        ],
+        [
+          3006,
+          "value"
+        ],
+        [
+          3003,
+          "voice"
+        ],
+        [
+          3004,
+          "audio"
+        ],
+        [
+          4077,
+          "mode"
+        ],
+        [
+          4002,
+          "file"
+        ],
+        [
+          4003,
+          "script"
+        ],
+        [
+          4003,
+          "role1_name"
+        ],
+        [
+          4003,
+          "role1_voice"
+        ],
+        [
+          4003,
+          "role2_name"
+        ],
+        [
+          4003,
+          "role2_voice"
+        ],
+        [
+          4012,
+          "image"
+        ],
+        [
+          4013,
+          "image"
+        ],
+        [
+          4014,
+          "image"
+        ],
+        [
+          4004,
+          "audio"
+        ]
+      ],
+      "outputs": [
+        1005,
+        1090,
+        1091,
+        2005,
+        3005,
+        3090,
+        3091,
+        4005
+      ]
+    },
+    "appDescription": "做视频：文生视频成片、视频成片、图生视频成片、对白成片。先在最上面选「做什么」，再填对应功能的设置（右栏里每个控件名前面标了它属于哪个功能）；只有选中的功能会运行，别的功能不会调接口、不花钱。",
+    "appFamily": {
+      "name": "做视频",
+      "func_node": 9000,
+      "funcs": [
+        {
+          "id": "10",
+          "name": "文生视频成片",
+          "index": 0,
+          "base": 1000,
+          "shared": [
+            1,
+            11,
+            31
+          ],
+          "keys": {
+            "11": [
+              "video",
+              "Veo",
+              "v1/videos",
+              "https://www.runninghub.cn",
+              "veo3.1",
+              "",
+              "http://airelay-geminiweb:8083",
+              "gemini-video"
+            ],
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-flash"
+            ],
+            "1": [
+              "image",
+              "banana-2",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "grok-video-3",
+              "",
+              "http://airelay-newapi:3000",
+              "gemini-image"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  77,
+                  "mode"
+                ],
+                [
+                  70,
+                  "idea"
+                ],
+                [
+                  6,
+                  "value"
+                ],
+                [
+                  3,
+                  "voice"
+                ],
+                [
+                  4,
+                  "audio"
+                ]
+              ],
+              "outputs": [
+                5,
+                90,
+                91
+              ]
+            },
+            "appDescription": "用文字生成约 10 秒的视频（Veo，占每天约 3 个的额度，约 2~4 分钟）：只出视频（保留自带声音）/ 出视频再配音 + 烧字幕（配音文案要写；配音音色可选，默认 Cherry，用户没指定音色就别改）。",
+            "appExtra": [
+              [
+                70,
+                "model",
+                "写提示词的模型",
+                "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3；谷歌的 gemini-3.5-flash-lite（谷歌里最快）/ gemini-3.6-flash-thinking / gemini-3.1-pro（最强但慢，约 20~40 秒）走网关，都比阿里慢。用户没点名要换就别改"
+              ],
+              [
+                3,
+                "speed",
+                "配音语速",
+                "1 是正常；慢一点 0.85，快一点 1.2"
+              ],
+              [
+                5,
+                "subtitle_mode",
+                "字幕",
+                "有配音文案时默认烧进画面；不要字幕选「不加字幕」（字幕文件仍会另存）"
+              ]
+            ],
+            "appAdvanced": [
+              [
+                12,
+                "ratio",
+                "视频比例",
+                "竖屏短视频选 9:16；Veo 只有横屏 16:9 和竖屏 9:16。这条网关照不照办没验证过，以出来的视频为准",
+                [
+                  "16:9",
+                  "9:16"
+                ]
+              ],
+              [
+                12,
+                "duration",
+                "视频时长（秒）",
+                "Veo 支持 4 / 6 / 8 秒。这条网关照不照办没验证过（实测默认出来约 10 秒）",
+                [
+                  "4",
+                  "6",
+                  "8"
+                ]
+              ],
+              [
+                12,
+                "size",
+                "视频清晰度",
+                ""
+              ],
+              [
+                12,
+                "enhance_prompt",
+                "让 Veo 自己再润色提示词",
+                ""
+              ],
+              [
+                12,
+                "enable_HD",
+                "Veo 高清模式",
+                ""
+              ],
+              [
+                3,
+                "language",
+                "配音语种",
+                "念什么语言就选什么，默认 Chinese"
+              ],
+              [
+                3,
+                "volume_db",
+                "配音音量增减（dB）",
+                "0 是不变，+3 大一点，-3 小一点"
+              ],
+              [
+                3,
+                "model",
+                "配音模型",
+                "要用「语气指令」必须选 qwen3-tts-instruct-flash"
+              ],
+              [
+                3,
+                "instructions",
+                "配音语气指令",
+                "只有 instruct 模型有效，例如：语气热情洪亮，语速偏快，像直播间主播带货"
+              ],
+              [
+                5,
+                "subtitle_font_size",
+                "字幕字号",
+                ""
+              ],
+              [
+                5,
+                "subtitle_bottom_margin",
+                "字幕离画面底边的距离（像素）",
+                ""
+              ],
+              [
+                5,
+                "voice_volume_db",
+                "成片里配音音量增减（dB）",
+                ""
+              ],
+              [
+                5,
+                "bgm_volume_db",
+                "背景音乐音量增减（dB）",
+                "默认 -14，比配音轻很多"
+              ],
+              [
+                5,
+                "bgm_fade_out_s",
+                "背景音乐淡出（秒）",
+                ""
+              ],
+              [
+                7,
+                "max_chars",
+                "字幕每行最多字数",
+                ""
+              ],
+              [
+                7,
+                "offset_s",
+                "字幕提前 / 延后（秒）",
+                "正数是延后，负数是提前"
+              ]
+            ],
+            "appCost": "Veo 视频每天只有约 3 个额度，出一个要 2~4 分钟，约一半会失败（失败时再运行一次）；实测出来是 1280×720 横屏、约 10 秒。没明确要视频就别主动加这一步。"
+          }
+        },
+        {
+          "id": "11",
+          "name": "视频成片",
+          "index": 1,
+          "base": 2000,
+          "shared": [
+            31
+          ],
+          "keys": {
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-flash"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  77,
+                  "mode"
+                ],
+                [
+                  2,
+                  "file"
+                ],
+                [
+                  6,
+                  "value"
+                ],
+                [
+                  3,
+                  "voice"
+                ],
+                [
+                  12,
+                  "image"
+                ],
+                [
+                  13,
+                  "image"
+                ],
+                [
+                  14,
+                  "image"
+                ],
+                [
+                  4,
+                  "audio"
+                ]
+              ],
+              "outputs": [
+                5
+              ]
+            },
+            "appDescription": "用用户已有的素材合成成片：上传视频 + 配音文案（替换原声）/ 上传视频 + 听写字幕 / 多张图片轮播 + 配音文案（配音音色可选，默认 Cherry，用户没指定音色就别改）。必须由用户自己上传视频或图片（视频聊天里传不了，要去「应用」里传）。",
+            "appExtra": [
+              [
+                3,
+                "speed",
+                "配音语速",
+                "1 是正常；慢一点 0.85，快一点 1.2"
+              ],
+              [
+                5,
+                "subtitle_mode",
+                "字幕",
+                "有配音文案时默认烧进画面；不要字幕选「不加字幕」（字幕文件仍会另存）"
+              ],
+              [
+                8,
+                "ratio",
+                "轮播画面比例",
+                "图片轮播模式用"
+              ],
+              [
+                8,
+                "seconds_per_image",
+                "每张图停留（秒）",
+                "图片轮播模式用；时长最终会跟配音走"
+              ]
+            ],
+            "appAdvanced": [
+              [
+                3,
+                "language",
+                "配音语种",
+                "念什么语言就选什么，默认 Chinese"
+              ],
+              [
+                3,
+                "volume_db",
+                "配音音量增减（dB）",
+                "0 是不变，+3 大一点，-3 小一点"
+              ],
+              [
+                3,
+                "model",
+                "配音模型",
+                "要用「语气指令」必须选 qwen3-tts-instruct-flash"
+              ],
+              [
+                3,
+                "instructions",
+                "配音语气指令",
+                "只有 instruct 模型有效，例如：语气热情洪亮，语速偏快，像直播间主播带货"
+              ],
+              [
+                5,
+                "subtitle_font_size",
+                "字幕字号",
+                ""
+              ],
+              [
+                5,
+                "subtitle_bottom_margin",
+                "字幕离画面底边的距离（像素）",
+                ""
+              ],
+              [
+                5,
+                "voice_volume_db",
+                "成片里配音音量增减（dB）",
+                ""
+              ],
+              [
+                5,
+                "bgm_volume_db",
+                "背景音乐音量增减（dB）",
+                "默认 -14，比配音轻很多"
+              ],
+              [
+                5,
+                "bgm_fade_out_s",
+                "背景音乐淡出（秒）",
+                ""
+              ],
+              [
+                8,
+                "transition_s",
+                "图片切换时长（秒）",
+                ""
+              ],
+              [
+                8,
+                "zoom",
+                "轮播慢慢放大的倍数",
+                "1 是不放大"
+              ],
+              [
+                8,
+                "short_side",
+                "轮播清晰度（短边像素）",
+                ""
+              ],
+              [
+                8,
+                "fps",
+                "轮播帧率",
+                ""
+              ],
+              [
+                10,
+                "language",
+                "听写语种",
+                "「听写字幕」模式用，auto 是自动识别"
+              ]
+            ],
+            "appRequired": [
+              [
+                2,
+                "file",
+                [
+                  1,
+                  2
+                ]
+              ],
+              [
+                12,
+                "image",
+                [
+                  3
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "id": "12",
+          "name": "图生视频成片",
+          "index": 2,
+          "base": 3000,
+          "shared": [
+            1,
+            11,
+            31
+          ],
+          "keys": {
+            "11": [
+              "video",
+              "Veo",
+              "v1/videos",
+              "https://www.runninghub.cn",
+              "veo3.1",
+              "",
+              "http://airelay-geminiweb:8083",
+              "gemini-video"
+            ],
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-omni-flash"
+            ],
+            "1": [
+              "image",
+              "banana-2",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "grok-video-3",
+              "",
+              "http://airelay-newapi:3000",
+              "gemini-image"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  77,
+                  "mode"
+                ],
+                [
+                  70,
+                  "idea"
+                ],
+                [
+                  2,
+                  "image"
+                ],
+                [
+                  6,
+                  "value"
+                ],
+                [
+                  3,
+                  "voice"
+                ],
+                [
+                  4,
+                  "audio"
+                ]
+              ],
+              "outputs": [
+                5,
+                90,
+                91
+              ]
+            },
+            "appDescription": "用一张图（用户上传的，或前面步骤做出来的）加一句话生成视频（Veo，约 2~4 分钟）：AI 先看图，把图里的商品、背景、光线写进视频提示词，同时把图当参考图发给 Veo；只出视频（保留自带声音）/ 出视频再配音 + 烧字幕（配音文案要写；配音音色可选，默认 Cherry，用户没指定音色就别改）。必须有一张图；一句话需求只写想让画面怎么动。",
+            "appExtra": [
+              [
+                70,
+                "model",
+                "写提示词的模型",
+                "这个应用要让 AI 看图，默认 qwen3.8-omni-flash（能看图）；谷歌的 gemini-* 也能看图（走网关，更慢）；换成别的阿里模型只能读文字、看不了图，会出错。用户没点名要换就别改"
+              ],
+              [
+                3,
+                "speed",
+                "配音语速",
+                "1 是正常；慢一点 0.85，快一点 1.2"
+              ],
+              [
+                5,
+                "subtitle_mode",
+                "字幕",
+                "有配音文案时默认烧进画面；不要字幕选「不加字幕」（字幕文件仍会另存）"
+              ]
+            ],
+            "appAdvanced": [
+              [
+                12,
+                "ratio",
+                "视频比例",
+                "竖屏短视频选 9:16；Veo 只有横屏 16:9 和竖屏 9:16。这条网关照不照办没验证过，以出来的视频为准",
+                [
+                  "16:9",
+                  "9:16"
+                ]
+              ],
+              [
+                12,
+                "duration",
+                "视频时长（秒）",
+                "Veo 支持 4 / 6 / 8 秒。这条网关照不照办没验证过（实测默认出来约 10 秒）",
+                [
+                  "4",
+                  "6",
+                  "8"
+                ]
+              ],
+              [
+                12,
+                "size",
+                "视频清晰度",
+                ""
+              ],
+              [
+                12,
+                "enhance_prompt",
+                "让 Veo 自己再润色提示词",
+                ""
+              ],
+              [
+                12,
+                "enable_HD",
+                "Veo 高清模式",
+                ""
+              ],
+              [
+                3,
+                "language",
+                "配音语种",
+                "念什么语言就选什么，默认 Chinese"
+              ],
+              [
+                3,
+                "volume_db",
+                "配音音量增减（dB）",
+                "0 是不变，+3 大一点，-3 小一点"
+              ],
+              [
+                3,
+                "model",
+                "配音模型",
+                "要用「语气指令」必须选 qwen3-tts-instruct-flash"
+              ],
+              [
+                3,
+                "instructions",
+                "配音语气指令",
+                "只有 instruct 模型有效，例如：语气热情洪亮，语速偏快，像直播间主播带货"
+              ],
+              [
+                5,
+                "subtitle_font_size",
+                "字幕字号",
+                ""
+              ],
+              [
+                5,
+                "subtitle_bottom_margin",
+                "字幕离画面底边的距离（像素）",
+                ""
+              ],
+              [
+                5,
+                "voice_volume_db",
+                "成片里配音音量增减（dB）",
+                ""
+              ],
+              [
+                5,
+                "bgm_volume_db",
+                "背景音乐音量增减（dB）",
+                "默认 -14，比配音轻很多"
+              ],
+              [
+                5,
+                "bgm_fade_out_s",
+                "背景音乐淡出（秒）",
+                ""
+              ],
+              [
+                7,
+                "max_chars",
+                "字幕每行最多字数",
+                ""
+              ],
+              [
+                7,
+                "offset_s",
+                "字幕提前 / 延后（秒）",
+                "正数是延后，负数是提前"
+              ]
+            ],
+            "appCost": "Veo 视频每天只有约 3 个额度，出一个要 2~4 分钟，约一半会失败（失败时再运行一次）；实测出来是 1280×720 横屏、约 10 秒。没明确要视频就别主动加这一步。参考图有没有真的传给 Veo 没能证实：视频里的商品应该和图相近（写提示词的 AI 先看了图），但不保证和图一模一样。",
+            "appRequired": [
+              [
+                2,
+                "image"
+              ]
+            ]
+          }
+        },
+        {
+          "id": "14",
+          "name": "对白成片",
+          "index": 3,
+          "base": 4000,
+          "shared": [
+            31
+          ],
+          "keys": {
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-flash"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  77,
+                  "mode"
+                ],
+                [
+                  2,
+                  "file"
+                ],
+                [
+                  3,
+                  "script"
+                ],
+                [
+                  3,
+                  "role1_name"
+                ],
+                [
+                  3,
+                  "role1_voice"
+                ],
+                [
+                  3,
+                  "role2_name"
+                ],
+                [
+                  3,
+                  "role2_voice"
+                ],
+                [
+                  12,
+                  "image"
+                ],
+                [
+                  13,
+                  "image"
+                ],
+                [
+                  14,
+                  "image"
+                ],
+                [
+                  4,
+                  "audio"
+                ]
+              ],
+              "outputs": [
+                5
+              ]
+            },
+            "appDescription": "把多角色对白配到视频上，替换原声、带角色名的字幕烧进画面。两种模式：对白配到上传的视频上（用户上传的，或前面步骤做出来的视频）/ 图片轮播（用户上传的，或前面步骤做出来的图，最多 3 张，时长跟对白走）。脚本每行写「角色：台词」，最多 4 个角色（另有「旁白：」），每个角色选一个音色（音色名后面写着性别和特点，按人物的性别 / 年龄 / 性格挑，两个角色别用同一个音色）。用户只说想要什么对话时，由你把对白脚本写出来填进「对白脚本」（口语化、每句 20 字以内、两三个来回就够），脚本里的角色名要和「角色 N 名字」一字不差。必须由用户自己上传视频或图片，或用前面步骤的结果（视频聊天里传不了，要去「应用」里传）。只要对白配音不要视频，用「多角色配音」。",
+            "appExtra": [
+              [
+                3,
+                "role3_name",
+                "角色 3 名字",
+                "没有第 3 个角色就留空；脚本里用到就必须填，和脚本里的名字一字不差"
+              ],
+              [
+                3,
+                "role3_voice",
+                "角色 3 音色",
+                "按人物的性别 / 年龄 / 性格从列表里挑，别和别的角色用同一个"
+              ],
+              [
+                3,
+                "role4_name",
+                "角色 4 名字",
+                "没有第 4 个角色就留空"
+              ],
+              [
+                3,
+                "role4_voice",
+                "角色 4 音色",
+                ""
+              ],
+              [
+                3,
+                "narrator_voice",
+                "旁白音色",
+                "脚本里写了「旁白：」或没写角色的行，用这个音色念"
+              ],
+              [
+                3,
+                "speed",
+                "对白语速",
+                "1 是正常；慢一点 0.85，快一点 1.2"
+              ],
+              [
+                5,
+                "subtitle_mode",
+                "字幕",
+                "有配音文案时默认烧进画面；不要字幕选「不加字幕」（字幕文件仍会另存）"
+              ],
+              [
+                8,
+                "ratio",
+                "轮播画面比例",
+                "图片轮播模式用"
+              ],
+              [
+                8,
+                "seconds_per_image",
+                "每张图停留（秒）",
+                "图片轮播模式用；时长最终会跟对白走"
+              ]
+            ],
+            "appAdvanced": [
+              [
+                3,
+                "gap_s",
+                "句与句之间的停顿（秒）",
+                "默认 0.35"
+              ],
+              [
+                3,
+                "show_names",
+                "字幕里写角色名",
+                "关掉就只显示台词"
+              ],
+              [
+                3,
+                "max_chars",
+                "字幕每行最多字数",
+                ""
+              ],
+              [
+                3,
+                "language",
+                "对白语种",
+                "念什么语言就选什么，默认 Chinese；方言音色选 Chinese 说的就是方言"
+              ],
+              [
+                3,
+                "model",
+                "配音模型",
+                "要用「语气指令」必须选 qwen3-tts-instruct-flash"
+              ],
+              [
+                3,
+                "role1_style",
+                "角色 1 语气指令",
+                "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+              ],
+              [
+                3,
+                "role2_style",
+                "角色 2 语气指令",
+                "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+              ],
+              [
+                3,
+                "role3_style",
+                "角色 3 语气指令",
+                "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+              ],
+              [
+                3,
+                "role4_style",
+                "角色 4 语气指令",
+                "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+              ],
+              [
+                3,
+                "volume_db",
+                "对白音量增减（dB）",
+                "0 是不变，+3 大一点，-3 小一点"
+              ],
+              [
+                3,
+                "reuse",
+                "没改的句子直接用上次的",
+                "关掉就全部重新合成（会重新计费）"
+              ],
+              [
+                5,
+                "subtitle_font_size",
+                "字幕字号",
+                ""
+              ],
+              [
+                5,
+                "subtitle_bottom_margin",
+                "字幕离画面底边的距离（像素）",
+                ""
+              ],
+              [
+                5,
+                "voice_volume_db",
+                "成片里配音音量增减（dB）",
+                ""
+              ],
+              [
+                5,
+                "bgm_volume_db",
+                "背景音乐音量增减（dB）",
+                "默认 -14，比配音轻很多"
+              ],
+              [
+                5,
+                "bgm_fade_out_s",
+                "背景音乐淡出（秒）",
+                ""
+              ],
+              [
+                8,
+                "transition_s",
+                "图片切换时长（秒）",
+                ""
+              ],
+              [
+                8,
+                "zoom",
+                "轮播慢慢放大的倍数",
+                "1 是不放大"
+              ],
+              [
+                8,
+                "short_side",
+                "轮播清晰度（短边像素）",
+                ""
+              ],
+              [
+                8,
+                "fps",
+                "轮播帧率",
+                ""
+              ]
+            ],
+            "appCost": "每句台词调用一次阿里配音（按字数计费，很便宜）；一次最多 40 句 / 1500 个字。上传视频模式：对白比视频长的部分会在视频结束处被截掉（每秒大约念 4~5 个字，Veo 出的视频约 10 秒，对白就控制在 40 个字以内）；图片轮播模式：视频时长自动跟对白走。",
+            "appRequired": [
+              [
+                2,
+                "file",
+                [
+                  1
+                ]
+              ],
+              [
+                12,
+                "image",
+                [
+                  2
+                ]
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "version": 0.4
+}

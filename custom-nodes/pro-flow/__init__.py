@@ -4,6 +4,9 @@
 - 选择分支（ProPick*）：按 branch 选一路输出。没选中的那一路**不会执行**（lazy），所以不会调接口、不花钱，
   也不会因为没填那一路的 Key 而报错。
 - 开关门（ProGate）：enabled 为假时输出 None（下游当作没连），为真时放行 value；同样 lazy。
+- 功能节点（ProFunc*）+ 功能开关（ProBlock）：几个功能合并进同一个应用（工作流文件）时用。功能节点是画布最上面的「做什么」下拉，
+  每个功能一个 BOOLEAN 输出（选中的那个是真）；每个输出节点（保存 / 预览）的每条输入线都要经过一个功能开关：功能没选中时开关输出
+  ExecutionBlocker，输出节点被静默跳过，开关的上游（lazy）也不会运行，所以没选的功能不会调接口、不花钱。
 - 应用界面文字（ProAppText）：让文字结果（AI 写的提示词 / 文案 / 出错信息）能在 ComfyUI 的「应用」界面里显示（见该类的说明）。
 
 注意：输出节点（保存 / 预览）不能直接接在某一路的节点上，否则 ComfyUI 会为了它强制执行那一路；要经过选择分支再接。
@@ -114,11 +117,28 @@ MODES = {
 }
 
 
-def _mode_class(name, title, options, outputs):
+# 功能表（合并后的应用顶上那个「做什么」下拉）：类名 → (显示名, 功能名列表)。功能名就是工作台里这一项的名字（也是目录里的应用名），
+# 顺序 = 应用里功能的顺序。每个功能一个 BOOLEAN 输出 f0..fN（选中的那个是真），接各功能的「功能开关」（ProBlock）的 enabled。
+# 一个应用 = 一个工作流文件 = 一个功能节点；哪几个旧编号的功能合进哪个文件见 tools/gen_workflows.py 的 FAMILIES。
+FUNCS = {
+    "ProFuncImage": ("功能：做图", ["文生图", "海报", "商品改图与合成", "多尺寸套图", "商品一条龙"]),
+    "ProFuncProcess": ("功能：处理图", ["图片后处理", "商品抠图", "图层合成"]),
+    "ProFuncText": ("功能：文案配音音乐", ["文案", "配音", "音乐", "多角色配音"]),
+    "ProFuncVideo": ("功能：做视频", ["文生视频成片", "视频成片", "图生视频成片", "对白成片"]),
+    "ProFuncEdit": ("功能：改视频", ["视频改视频", "视频拼接", "视频换人"]),
+}
+
+
+def func_outputs(options):
+    """功能节点的输出表（和 MODES 里的写法一样）：每个功能一个 BOOLEAN，选中它的那个选项上是真。"""
+    return [(f"f{i}", "BOOLEAN", [j == i for j in range(len(options))]) for i in range(len(options))]
+
+
+def _mode_class(name, title, options, outputs, label="模式"):
     class Mode:
         @classmethod
         def INPUT_TYPES(cls):
-            return {"required": {"mode": (list(options), {"default": options[0], "display_name": "模式"})}}
+            return {"required": {"mode": (list(options), {"default": options[0], "display_name": label})}}
 
         RETURN_TYPES = tuple(t for _, t, _ in outputs)
         RETURN_NAMES = tuple(n for n, _, _ in outputs)
@@ -180,6 +200,32 @@ class ProGate:
         return (value if enabled else None,)
 
 
+class ProBlock:
+    """功能开关（几个功能合并进一个应用时，每个输出节点的每条输入线都要经过一个）：
+    enabled 为真时放行 value；为假（这个功能没被选中）时输出 ExecutionBlocker(None)——ComfyUI 会静默跳过所有接在它后面的节点（输出节点也一样，
+    和 relayapi 的生成节点出错时的做法一样），而 value 是 lazy 输入，不要它就不会去算，所以没选中的功能上游一个节点都不会运行（不调接口、不花钱）。
+    必须是**每一条**输入线都过一个：输出节点其余没拦的输入，它们的上游照样会被执行（ComfyUI 先算完所有非 lazy 的输入，才发现有一条被拦住）。"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"enabled": ("BOOLEAN", {"default": True, "label_on": "用", "label_off": "不用", "display_name": "这个功能被选中了"})},
+                "optional": {"value": ("*", {"lazy": True})}}
+
+    RETURN_TYPES = ("*",)
+    RETURN_NAMES = ("value",)
+    FUNCTION = "block"
+    CATEGORY = "pro/flow"
+
+    def check_lazy_status(self, enabled, value=None):
+        return ["value"] if enabled and value is None else []
+
+    def block(self, enabled, value=None):
+        if enabled:
+            return (value,)
+        from comfy_execution.graph_utils import ExecutionBlocker      # 运行时才 import：这个文件在测试和生成脚本里也要能单独加载（只用标准库）
+        return (ExecutionBlocker(None),)
+
+
 def _app_text(text, only_on_error):
     """要显示的文字；None = 这次不显示。空文字不显示；only_on_error 时，成功（{"code": "success", ...}）不显示，失败显示出错原因。"""
     if text is None:
@@ -237,7 +283,8 @@ class ProAppText:
 
 
 def _build():
-    classes, names = {"ProGate": ProGate, "ProAppText": ProAppText}, {"ProGate": "开关门（不用时输出空）", "ProAppText": "应用界面：文字结果（折叠的小条，不用管）"}
+    classes = {"ProGate": ProGate, "ProBlock": ProBlock, "ProAppText": ProAppText}
+    names = {"ProGate": "开关门（不用时输出空）", "ProBlock": "功能开关（没选这个功能时拦住，上游也不运行）", "ProAppText": "应用界面：文字结果（折叠的小条，不用管）"}
     for b in (2, 3, 4):
         for c in (1, 2, 3):
             n, cls = _pick_class(b, c)
@@ -245,6 +292,9 @@ def _build():
             names[n] = f"选择分支（{b} 路 × {c} 个输出）"
     for n, (title, options, outputs) in MODES.items():
         classes[n] = _mode_class(n, title, options, outputs)
+        names[n] = title
+    for n, (title, options) in FUNCS.items():
+        classes[n] = _mode_class(n, title, options, func_outputs(options), label="做什么")
         names[n] = title
     return classes, names
 

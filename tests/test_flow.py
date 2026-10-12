@@ -79,6 +79,81 @@ class Gate(unittest.TestCase):
         self.assertEqual(node.gate(**kw), (None,))
 
 
+class Block(unittest.TestCase):
+    """ProBlock（功能开关）：功能被选中才放行；没选中输出 ExecutionBlocker(None)（下游静默跳过），而且不去要上游的值（lazy）。"""
+
+    def setUp(self):
+        self.blockers = types.ModuleType("comfy_execution.graph_utils")
+
+        class ExecutionBlocker:
+            def __init__(self, message):
+                self.message = message
+        self.blockers.ExecutionBlocker = ExecutionBlocker
+        self._saved = {k: sys.modules.get(k) for k in ("comfy_execution", "comfy_execution.graph_utils")}
+        sys.modules["comfy_execution"] = types.ModuleType("comfy_execution")
+        sys.modules["comfy_execution.graph_utils"] = self.blockers
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            if v is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = v
+
+    def test_selected_function_requests_and_passes_the_value(self):
+        node = CLS["ProBlock"]()
+        asked, kw = lazy_run(node, enabled=True, value="img")
+        self.assertEqual(asked, ["value"])
+        self.assertEqual(node.block(**kw), ("img",))
+
+    def test_unselected_function_is_blocked_silently_and_upstream_is_never_asked_for(self):
+        node = CLS["ProBlock"]()
+        asked, kw = lazy_run(node, enabled=False, value="img")
+        self.assertEqual(asked, [], "没选中的功能不能去要上游的值，否则上游（可能是要花钱的接口）会被运行")
+        (out,) = node.block(**kw)
+        self.assertIsInstance(out, self.blockers.ExecutionBlocker)
+        self.assertIsNone(out.message, "message 必须是 None：有 message 的拦截 ComfyUI 会弹出错误")
+
+    def test_a_selected_function_passes_none_through_like_an_open_gate(self):
+        node = CLS["ProBlock"]()
+        asked, kw = lazy_run(node, enabled=True, value=None)       # 上游算出来就是 None（比如里面的开关门关着）：照样放行，不死循环
+        self.assertEqual(asked, ["value"])
+        self.assertEqual(node.block(**kw), (None,))
+
+    def test_node_definition(self):
+        cls = CLS["ProBlock"]
+        self.assertEqual(cls.RETURN_TYPES, ("*",))
+        self.assertEqual(list(cls.INPUT_TYPES()["required"]), ["enabled"])
+        self.assertTrue(cls.INPUT_TYPES()["optional"]["value"][1]["lazy"])
+        self.assertFalse(getattr(cls, "OUTPUT_NODE", False))
+
+
+class Func(unittest.TestCase):
+    """ProFunc*（合并应用顶上的「做什么」）：每个功能一个 BOOLEAN 输出，选中的那个是真，其余是假。"""
+
+    def test_each_function_node_has_one_boolean_per_function_and_exactly_one_is_true(self):
+        self.assertEqual(sorted(flow.FUNCS), ["ProFuncEdit", "ProFuncImage", "ProFuncProcess", "ProFuncText", "ProFuncVideo"])
+        for name, (title, options) in flow.FUNCS.items():
+            cls = CLS[name]
+            self.assertEqual(cls.INPUT_TYPES()["required"]["mode"][0], options)
+            self.assertEqual(cls.INPUT_TYPES()["required"]["mode"][1]["display_name"], "做什么")
+            self.assertEqual(cls.RETURN_NAMES, tuple(f"f{i}" for i in range(len(options))))
+            self.assertEqual(set(cls.RETURN_TYPES), {"BOOLEAN"})
+            for i, opt in enumerate(options):
+                out = cls().go(opt)
+                self.assertEqual(out, tuple(j == i for j in range(len(options))), f"{name} 选「{opt}」")
+                self.assertEqual(sum(out), 1)
+
+    def test_function_names_are_unique_across_apps(self):
+        names = [o for _t, opts in flow.FUNCS.values() for o in opts]
+        self.assertEqual(len(names), len(set(names)), "功能名就是目录里的应用名，不能重复")
+        self.assertEqual(len(names), 19)
+
+    def test_a_function_node_is_not_confused_with_a_mode_node(self):
+        self.assertFalse([n for n in flow.FUNCS if n.startswith("ProMode")], "目录靠 ProMode 开头认模式节点，功能节点不能叫这个名字")
+        self.assertFalse(set(flow.FUNCS) & set(flow.MODES))
+
+
 class Mode(unittest.TestCase):
     def test_every_mode_returns_one_value_per_output(self):
         for name, (title, options, outputs) in flow.MODES.items():

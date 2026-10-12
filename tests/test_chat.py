@@ -60,8 +60,11 @@ CAT = cat_mod.build_catalog(WF_DIR, OI)
 
 
 def load_wf(app_id):
+    """这个应用（功能）的单功能工作流：合并应用的文件里按功能抠出来（和工作台运行时用的一样，见 api_convert.family_view）。"""
     with open(os.path.join(WF_DIR, CAT[app_id]["path"]), encoding="utf-8") as f:
-        return json.load(f)
+        wf = json.load(f)
+    fam = pc.family_of(wf)
+    return pc.family_view(wf, [str(x["id"]) for x in fam["funcs"]].index(app_id)) if fam else wf
 
 
 class Convert(unittest.TestCase):
@@ -93,6 +96,24 @@ class Convert(unittest.TestCase):
         self.assertEqual(bm.convert.__module__, "pro_chat_api_convert")
         for app_id in ("01", "08", "11"):
             self.assertEqual(bm.convert(load_wf(app_id), OI), run.convert(load_wf(app_id), OI))
+
+    def test_batch_run_cuts_one_function_out_of_a_merged_app(self):
+        """工作流文件是合并应用（一个文件好几个功能）：--func 抠出那个功能（和工作台运行时用的同一份），表头里的节点编号还是旧的；不写 / 写错会报错并列出有哪些功能。"""
+        spec = importlib.util.spec_from_file_location("t_batch_run2", os.path.join(ROOT, "tools", "batch_run.py"))
+        bm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bm)
+        with open(os.path.join(WF_DIR, CAT["06"]["path"]), encoding="utf-8") as f:
+            merged = json.load(f)
+        self.assertEqual(bm.convert(bm.pick_function(merged, "06"), OI), run.convert(load_wf("06"), OI))
+        self.assertIn("3", bm.convert(bm.pick_function(merged, "06"), OI), "节点编号是旧的（06 里的 3 号是商品图）")
+        for bad in ("", "99"):
+            with self.assertRaises(SystemExit) as cm:
+                bm.pick_function(merged, bad)
+            self.assertIn("06 商品一条龙", str(cm.exception))
+        plain = load_wf("06")
+        self.assertIs(bm.pick_function(plain, ""), plain)
+        with self.assertRaises(SystemExit):
+            bm.pick_function(plain, "06")
 
 
 class Catalog(unittest.TestCase):
@@ -441,8 +462,8 @@ class Catalog(unittest.TestCase):
         d = tempfile.mkdtemp()
         try:
             write_text(os.path.join(d, "坏的.app.json"), "{不是 json")
-            shutil.copy(os.path.join(WF_DIR, CAT["07"]["path"]), os.path.join(d, "07-文案.app.json"))
-            self.assertEqual(list(cat_mod.build_catalog(d, OI)), ["07"])
+            shutil.copy(os.path.join(WF_DIR, CAT["07"]["path"]), os.path.join(d, "03-文案配音音乐.app.json"))      # 合并应用：一个文件里 4 个功能，每个功能是目录里的一个应用
+            self.assertEqual(list(cat_mod.build_catalog(d, OI)), ["07", "08", "09", "13"])
         finally:
             shutil.rmtree(d)
 
@@ -953,7 +974,8 @@ class ChatTurn(unittest.TestCase):
 
 
 class Groups(unittest.TestCase):
-    """应用按文件夹分类：「添加一步」的下拉和给模型看的目录都按它分组。"""
+    """应用分组：合并应用里的功能按「应用名」分组（做图 / 处理图 / 文案配音音乐 / 做视频 / 改视频）；用户自己存的单功能文件按所在文件夹分组。
+    「添加一步」的下拉和给模型看的目录都按它分段。"""
 
     def test_group_name_comes_from_the_folder_without_its_number(self):
         g = cat_mod.group_name
@@ -962,15 +984,17 @@ class Groups(unittest.TestCase):
         self.assertEqual(g("1-图片\\01.app.json".replace("\\", os.sep)), "图片" if os.sep == "/" else g("1-图片/01.app.json"))
 
     def test_every_app_has_a_group_and_the_catalog_text_is_split_by_it(self):
-        self.assertEqual({a["group"] for a in CAT.values()}, {"图片", "文案与配音", "视频"})
-        self.assertEqual([CAT[k]["group"] for k in ("01", "06", "16", "07", "13", "10", "14")], ["图片"] * 3 + ["文案与配音"] * 2 + ["视频"] * 2)
+        self.assertEqual({a["group"] for a in CAT.values()}, {"做图", "处理图", "文案配音音乐", "做视频", "改视频"})
+        self.assertEqual([CAT[k]["group"] for k in ("01", "06", "16", "07", "13", "10", "14", "17", "19")], ["做图"] * 2 + ["处理图"] + ["文案配音音乐"] * 2 + ["做视频"] * 2 + ["改视频"] * 2)
         text = cat_mod.catalog_text(CAT)
         heads = [l for l in text.split("\n") if l.startswith("══")]
-        self.assertEqual(heads, ["══ 图片 ══", "══ 文案与配音 ══", "══ 视频 ══"])
-        self.assertLess(text.index("══ 图片 ══"), text.index("应用 01「文生图」"))
-        self.assertLess(text.index("应用 16「图层合成」"), text.index("══ 文案与配音 ══"))
-        self.assertLess(text.index("应用 13「多角色配音」"), text.index("══ 视频 ══"))
-        self.assertLess(text.index("══ 视频 ══"), text.index("应用 10「文生视频成片」"))
+        self.assertEqual(heads, ["══ 做图 ══", "══ 处理图 ══", "══ 文案配音音乐 ══", "══ 做视频 ══", "══ 改视频 ══"])
+        self.assertLess(text.index("══ 做图 ══"), text.index("应用 01「文生图」"))
+        self.assertLess(text.index("应用 06「商品一条龙」"), text.index("══ 处理图 ══"))
+        self.assertLess(text.index("应用 16「图层合成」"), text.index("══ 文案配音音乐 ══"))
+        self.assertLess(text.index("应用 13「多角色配音」"), text.index("══ 做视频 ══"))
+        self.assertLess(text.index("══ 做视频 ══"), text.index("应用 10「文生视频成片」"))
+        self.assertLess(text.index("应用 14「对白成片」"), text.index("══ 改视频 ══"))
 
 
 class Presets(unittest.TestCase):
@@ -1045,7 +1069,7 @@ class VideoApps(unittest.TestCase):
     def test_the_catalog_describes_the_three_new_apps(self):
         a17, a18, a19 = CAT["17"], CAT["18"], CAT["19"]
         self.assertEqual((a17["name"], a18["name"], a19["name"]), ("视频改视频", "视频拼接", "视频换人"))
-        self.assertTrue(all(CAT[i]["group"] == "视频" and CAT[i]["produces"] == ["video"] for i in ("17", "18", "19")))
+        self.assertTrue(all(CAT[i]["group"] == "改视频" and CAT[i]["produces"] == ["video"] for i in ("17", "18", "19")))
         self.assertEqual(a17["mode"]["options"], FLOW.MODES["ProModeVideoEdit"][1])
         self.assertIsNone(a18["mode"])
         self.assertIsNone(a19["mode"])
@@ -1902,10 +1926,41 @@ class Glue(unittest.TestCase):
 
     def test_the_catalog_gives_groups_and_presets_for_the_dropdowns(self):
         d = pc.handle_catalog()
-        self.assertEqual({a["group"] for a in d["apps"]}, {"图片", "文案与配音", "视频"})
-        self.assertEqual([a["workflow"] for a in d["apps"] if a["group"] == "视频"], ["10", "11", "12", "14", "17", "18", "19"])
+        self.assertEqual({a["group"] for a in d["apps"]}, {"做图", "处理图", "文案配音音乐", "做视频", "改视频"})
+        self.assertEqual([a["workflow"] for a in d["apps"] if a["group"] == "做视频"], ["10", "11", "12", "14"])
+        self.assertEqual([a["workflow"] for a in d["apps"] if a["group"] == "改视频"], ["17", "18", "19"])
+        for a in d["apps"]:                                                       # 每个功能都带着它所在应用的信息：名字和里面有哪几个功能（工作台画「做什么」下拉用）
+            self.assertEqual(a["family"]["name"], a["group"])
+            self.assertIn(a["workflow"], a["family"]["funcs"])
+            self.assertEqual(a["family"]["funcs"], [x["workflow"] for x in d["apps"] if x["group"] == a["group"]])
+            self.assertEqual(a["schema"]["merged"]["func"], a["name"])
         self.assertEqual([p["id"] for p in d["presets"]], [p["id"] for p in presets.PRESETS])
         self.assertTrue(all(p["name"] and p["desc"] for p in d["presets"]))
+
+    def test_the_merged_info_for_the_front_end_points_at_real_nodes_and_widgets_of_the_merged_file(self):
+        """「在应用里打开」靠 schema.merged 把旧节点编号换成合并后的、并把顶上的「做什么」选好：每个字段 / 文件 / 模式换算后的节点和控件、做什么的节点和选项，在合并文件里都要真有。"""
+        n_checked = 0
+        for a in pc.handle_catalog()["apps"]:
+            sc = a["schema"]
+            m = sc["merged"]
+            with open(os.path.join(WF_DIR, a["path"]), encoding="utf-8") as f:
+                nodes = {n["id"]: n for n in json.load(f)["nodes"]}
+            to_new = lambda old: old if old in m["shared"] else m["base"] + old
+            self.assertTrue(all(i in nodes for i in m["shared"]), f"{a['workflow']}: 共用的 Key 节点在合并文件里找不到")
+            fid, fw = m["func_key"].split(":")
+            self.assertIn(a["name"], FLOW.FUNCS[nodes[int(fid)]["type"]][1], f"{a['workflow']}: 「做什么」里没有这个功能")
+            self.assertEqual((m["func"], fw), (a["name"], "mode"))
+            keys = list(sc["fields"]) + list(sc["files"]) + ([sc["mode"]["key"]] if sc["mode"] else [])
+            for key in keys:
+                nid, widget = key.split(":", 1)
+                node = nodes.get(to_new(int(nid)))
+                self.assertIsNotNone(node, f"{a['workflow']}: {key} 换算后的节点 {to_new(int(nid))} 在合并文件里找不到")
+                spec = OI[node["type"]]["input"]
+                self.assertTrue(widget in spec.get("required", {}) or widget in spec.get("optional", {}), f"{a['workflow']}: {key} 换算后的节点 {node['id']}（{node['type']}）没有控件 {widget}")
+                n_checked += 1
+            if sc["mode"]:
+                self.assertTrue(nodes[to_new(int(sc["mode"]["key"].split(":")[0]))]["type"].startswith("ProMode"))
+        self.assertGreater(n_checked, 200, "19 个功能的字段 / 文件 / 模式一共 200 多个")
 
     def test_the_catalog_lists_the_chat_models(self):
         self.assertEqual(pc.handle_catalog()["models"], chat.model_list())

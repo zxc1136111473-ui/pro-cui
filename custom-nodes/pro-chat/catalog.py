@@ -1,6 +1,6 @@
 """应用目录：把工作流目录里的 *.app.json（ComfyUI 的「应用」）整理成助手能看懂、后端能校验的结构。
 
-每个应用 = 一个工作流文件。从 extra.linearData（右栏控件 / 结果节点）和节点定义（/object_info）推出：
+每个应用 = 一个工作流文件（合并应用：一个文件里有好几个功能，每个功能是一个应用，见下面的 load_family）。从 extra.linearData（右栏控件 / 结果节点）和节点定义（/object_info）推出：
 - mode：模式下拉（ProMode* 节点的 mode），选项原文
 - fields：能设的控件，键是「节点 id:控件名」：文字 / 选项 / 数字（整数、小数）/ 开关，每个带工作流里的默认值。来源有三处：
   应用右栏登记的（extra.linearData.inputs）、只给助手 / 工作台登记的常用设置（extra.appExtra）、高级设置（extra.appAdvanced，用户明确要求才改，方案卡片里折叠）；
@@ -20,7 +20,7 @@ import os
 import re
 from difflib import get_close_matches
 
-from .api_convert import convert
+from .api_convert import convert, family_of, family_view
 
 MAX_TEXT = 2000
 FILE_WIDGETS = {("LoadImage", "image"): "image", ("LoadVideo", "file"): "video", ("LoadAudio", "audio"): "audio"}
@@ -250,6 +250,24 @@ def load_app(wf, rel, oi):
     return app
 
 
+def load_family(wf, rel, oi):
+    """合并应用（一个文件里好几个功能，见 tools/gen_workflows.py）→ 应用条目的列表：每个功能一个，编号 = 功能的编号、名字 = 功能名，
+    设置全部来自 api_convert.family_view 抠出来的那个功能（和合并之前的单功能工作流一样）。
+    条目多出来的：group = 应用名（工作台 / 给模型看的目录按它分段）、family（这个应用里有哪几个功能，工作台按它画「做什么」下拉）、
+    merged（功能在合并文件里的节点编号对应关系，「在应用里打开」要用：旧编号 → 合并后的编号，以及「做什么」下拉要选哪一项）。"""
+    fam = family_of(wf)
+    ids = [f["id"] for f in fam["funcs"]]
+    apps = []
+    for k, f in enumerate(fam["funcs"]):
+        app = load_app(family_view(wf, k), rel, oi)
+        if app is None:
+            continue
+        app.update(id=str(f["id"]), name=str(f["name"]), group=str(fam["name"]), family={"name": str(fam["name"]), "funcs": ids},
+                   merged={"base": int(f["base"]), "shared": list(f.get("shared") or []), "func_key": f"{fam['func_node']}:mode", "func": str(f["name"])})
+        apps.append(app)
+    return apps
+
+
 def model_present(models_dir, rel):
     """相对 models/ 的路径 rel 指向的文件在不在（下载是先写 .part 再改名，所以在 = 下完了）。路径不合规（绝对路径、..）当不在。"""
     if not models_dir or not rel or os.path.isabs(rel) or ".." in rel.replace("\\", "/").split("/"):
@@ -260,15 +278,22 @@ def model_present(models_dir, rel):
 def build_catalog(workflows_dir, oi, models_dir=None):
     """目录：{应用编号: 应用条目}，按文件路径排序；读不了的文件跳过。
     models_dir（ComfyUI 的 models 目录）给了的话，「模型已经下好就不用再提醒」的费用说明会在这里去掉：每次现读，下好之后下一次请求就没有了。"""
-    cat = {}
+    loaded = []                                                   # [(路径, [应用条目])]，按文件路径排序
     for p in sorted(glob.glob(os.path.join(workflows_dir, "**", "*.app.json"), recursive=True)):
         try:
             with open(p, encoding="utf-8") as f:
                 wf = json.load(f)
-            app = load_app(wf, os.path.relpath(p, workflows_dir), oi)
+            rel = os.path.relpath(p, workflows_dir)
+            apps = load_family(wf, rel, oi) if family_of(wf) else [load_app(wf, rel, oi)]
         except Exception:
             continue
-        if app and app["id"] not in cat:
+        loaded.append([a for a in apps if a])
+    taken = {a["id"] for apps in loaded for a in apps if a.get("family")}      # 合并应用里的功能优先：升级后旧的单功能文件还没移走时，同编号的旧文件不再进目录
+    cat = {}
+    for apps in loaded:
+        for app in apps:
+            if app["id"] in cat or (not app.get("family") and app["id"] in taken):
+                continue
             if app["cost"] and model_present(models_dir, app["cost_unless_model_file"]):
                 app["cost"] = ""
             cat[app["id"]] = app
@@ -382,9 +407,12 @@ def catalog_text(cat):
 
 
 def schema(app):
-    """给前端画方案卡片用的：能改什么、结果怎么取。"""
-    return {"mode": app["mode"], "fields": app["fields"], "files": app["files"], "outputs": app["outputs"], "results": app["results"],
-            "produces": app["produces"], "cost": app["cost"], "desc": app["desc"], "titles": app["titles"]}
+    """给前端画方案卡片用的：能改什么、结果怎么取。合并应用里的功能多一项 merged（见 load_family）。"""
+    out = {"mode": app["mode"], "fields": app["fields"], "files": app["files"], "outputs": app["outputs"], "results": app["results"],
+           "produces": app["produces"], "cost": app["cost"], "desc": app["desc"], "titles": app["titles"]}
+    if app.get("merged"):
+        out["merged"] = app["merged"]
+    return out
 
 
 _PAREN_TAIL = re.compile(r"\s*[（(][^）)]*[）)]\s*$")

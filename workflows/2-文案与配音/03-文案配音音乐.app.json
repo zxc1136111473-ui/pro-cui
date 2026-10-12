@@ -1,0 +1,4082 @@
+{
+  "last_node_id": 9000,
+  "last_link_id": 80,
+  "nodes": [
+    {
+      "id": 1003,
+      "type": "LoadImage",
+      "pos": [
+        640,
+        700
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null,
+          "label": "【文案】商品图（看图模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "demo_product.png",
+        "image"
+      ],
+      "title": "商品图（只在「看图写文案」模式用）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1005,
+      "type": "ImageScaleToMaxDimension",
+      "pos": [
+        440,
+        1470
+      ],
+      "size": [
+        320,
+        90
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScaleToMaxDimension"
+      },
+      "widgets_values": [
+        "lanczos",
+        768
+      ],
+      "title": "缩到最长边 768（别删）"
+    },
+    {
+      "id": 31,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1534
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1,
+            14,
+            16,
+            17,
+            18,
+            44,
+            71
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "text",
+        "OpenaiText",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "claude-opus-4-6",
+        "",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen3.8-omni-flash"
+      ],
+      "title": "Key：阿里（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 1077,
+      "type": "ProModeCopy",
+      "pos": [
+        60,
+        510
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "【文案】模式"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "instruction",
+          "type": "STRING",
+          "links": [
+            3
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "use_image",
+          "type": "BOOLEAN",
+          "links": [
+            5
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeCopy"
+      },
+      "widgets_values": [
+        "文字写文案（按商品信息）"
+      ],
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        1470
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            2,
+            15,
+            45
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "image",
+        "banana-2",
+        "v1/chat/completions",
+        "https://www.runninghub.cn",
+        "grok-video-3",
+        "",
+        "http://airelay-newapi:3000",
+        "gemini-image"
+      ],
+      "title": "Key：网关（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 1070,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        700
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 1,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 8
+        },
+        {
+          "name": "gateway_info",
+          "type": "STRING",
+          "link": 2,
+          "widget": {
+            "name": "gateway_info"
+          }
+        },
+        {
+          "name": "instruction",
+          "type": "STRING",
+          "link": 3,
+          "widget": {
+            "name": "instruction"
+          }
+        },
+        {
+          "name": "idea",
+          "type": "STRING",
+          "widget": {
+            "name": "idea"
+          },
+          "link": null,
+          "label": "【文案】商品信息 / 原文"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            4,
+            9
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "新鲜红苹果：果形圆润，脆甜多汁，带果梗鲜叶，产地直发",
+        "（由模式节点提供）",
+        "qwen3.8-omni-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：商品信息（翻译模式：贴上要翻译的中文文案）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 1074,
+      "type": "PreviewAny",
+      "pos": [
+        1590,
+        1470
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 10
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "生成的文案",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 1006,
+      "type": "ProGate",
+      "pos": [
+        870,
+        1470
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 6
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 5,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            8
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGate"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "商品图开关（跟模式走）"
+    },
+    {
+      "id": 1090,
+      "type": "ProAppText",
+      "pos": [
+        1590,
+        1840
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 12
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "文案",
+        false
+      ],
+      "title": "应用界面 · 文案",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 1900,
+      "type": "ProBlock",
+      "pos": [
+        1180,
+        1470
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 4
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 11,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            10
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 生成的文案"
+    },
+    {
+      "id": 1901,
+      "type": "ProBlock",
+      "pos": [
+        1180,
+        1610
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 9
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 13,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            12
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · 文案"
+    },
+    {
+      "id": 2003,
+      "type": "ProAliTTS",
+      "pos": [
+        640,
+        2600
+      ],
+      "size": [
+        440,
+        460
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 16,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "custom_voice",
+          "type": "STRING",
+          "link": 28,
+          "widget": {
+            "name": "custom_voice"
+          }
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": null,
+          "label": "【配音】要念的文字"
+        },
+        {
+          "name": "voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "voice"
+          },
+          "link": null,
+          "label": "【配音】音色（预置模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            29
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliTTS"
+      },
+      "widgets_values": [
+        "夏日清凉节，全场满一百九十九减五十，限时三天，欢迎选购。",
+        "Cherry",
+        "qwen3-tts-flash",
+        "Chinese",
+        "",
+        1.0,
+        0.0,
+        ""
+      ],
+      "title": "配音（要念的文字在这里写；instruct 模型可写语气指令）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2004,
+      "type": "SaveAudioAdvanced",
+      "pos": [
+        1770,
+        3640
+      ],
+      "size": [
+        340,
+        200
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 34
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveAudioAdvanced"
+      },
+      "widgets_values": [
+        "audio/配音",
+        "mp3",
+        "V0"
+      ],
+      "title": "保存配音",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 2002,
+      "type": "ProAliVoiceDesign",
+      "pos": [
+        440,
+        3640
+      ],
+      "size": [
+        460,
+        420
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 17,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "voice_prompt",
+          "type": "STRING",
+          "link": 19,
+          "widget": {
+            "name": "voice_prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "voice",
+          "type": "STRING",
+          "links": [
+            24
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "preview",
+          "type": "AUDIO",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliVoiceDesign"
+      },
+      "widgets_values": [
+        "（由 AI 扩写节点提供）",
+        "欢迎选购我们的新品，限时三天，满一百九十九减五十。",
+        "myvoice",
+        "zh"
+      ],
+      "title": "设计新音色（只在该模式用；试听文字用来生成试听音频）"
+    },
+    {
+      "id": 2006,
+      "type": "LoadAudio",
+      "pos": [
+        640,
+        3130
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "COMBO",
+          "widget": {
+            "name": "audio"
+          },
+          "link": null,
+          "label": "【配音】样音（克隆模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            20
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "无背景音乐.wav",
+        "",
+        ""
+      ],
+      "title": "上传样音（克隆模式用，10~60 秒人声）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2007,
+      "type": "ProAliVoiceClone",
+      "pos": [
+        440,
+        4140
+      ],
+      "size": [
+        420,
+        200
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 20
+        },
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 18,
+          "widget": {
+            "name": "info"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "voice",
+          "type": "STRING",
+          "links": [
+            26
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliVoiceClone"
+      },
+      "widgets_values": [
+        "myclone"
+      ],
+      "title": "克隆音色（只克隆本人或已获授权的声音）"
+    },
+    {
+      "id": 2008,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        440,
+        4420
+      ],
+      "size": [
+        300,
+        100
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            22,
+            23,
+            27
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "（空：预置音色时用它占位）"
+    },
+    {
+      "id": 2077,
+      "type": "ProModeVoice",
+      "pos": [
+        60,
+        2410
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "【配音】模式"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "branch",
+          "type": "INT",
+          "links": [
+            21
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeVoice"
+      },
+      "widgets_values": [
+        "预置音色（在配音节点里选）"
+      ],
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2070,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        2600
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 14,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "gateway_info",
+          "type": "STRING",
+          "link": 15,
+          "widget": {
+            "name": "gateway_info"
+          }
+        },
+        {
+          "name": "idea",
+          "type": "STRING",
+          "widget": {
+            "name": "idea"
+          },
+          "link": null,
+          "label": "【配音】声音描述（设计模式）"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            19,
+            25
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "沉稳的中年男性，语速适中，声音温暖有磁性，适合产品介绍",
+        "你是配音音色描述写手。把下面的一句话需求扩写成一段中文音色描述（40~80 字）：写清性别和年龄感、音色质感、语速、情绪语气和适用场景；只描述声音，不要写台词。只输出描述本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话描述想要的声音（只在「设计新音色」模式用）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 2010,
+      "type": "ProPick3x2",
+      "pos": [
+        1010,
+        3640
+      ],
+      "size": [
+        300,
+        180
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 22
+        },
+        {
+          "name": "in0_1",
+          "type": "*",
+          "link": 23
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 24
+        },
+        {
+          "name": "in1_1",
+          "type": "*",
+          "link": 25
+        },
+        {
+          "name": "in2_0",
+          "type": "*",
+          "link": 26
+        },
+        {
+          "name": "in2_1",
+          "type": "*",
+          "link": 27
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 21,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            28,
+            30,
+            32
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "out1",
+          "type": "*",
+          "links": [
+            31,
+            33
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick3x2"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "按模式取结果（没选中的那一路不会运行）"
+    },
+    {
+      "id": 2011,
+      "type": "PreviewAny",
+      "pos": [
+        1770,
+        3910
+      ],
+      "size": [
+        400,
+        120
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 36
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "音色 id（复制到别的配音节点的「自定义音色」框里可反复使用）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 2012,
+      "type": "PreviewAny",
+      "pos": [
+        1770,
+        4100
+      ],
+      "size": [
+        460,
+        200
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 38
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 写的音色描述（只有「设计新音色」模式有）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 2090,
+      "type": "ProAppText",
+      "pos": [
+        1770,
+        4370
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 40
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "音色 id（可复制到别处）",
+        false
+      ],
+      "title": "应用界面 · 音色 id（可复制到别处）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 2091,
+      "type": "ProAppText",
+      "pos": [
+        1770,
+        4450
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 42
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "AI 写的音色描述",
+        false
+      ],
+      "title": "应用界面 · AI 写的音色描述",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 2900,
+      "type": "ProBlock",
+      "pos": [
+        1360,
+        3640
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 29
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 35,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            34
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 保存配音"
+    },
+    {
+      "id": 2901,
+      "type": "ProBlock",
+      "pos": [
+        1360,
+        3780
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 25,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 30
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 37,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            36
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 音色 id（复制到别的配音节点的「自定义音色」框里可反复使用）"
+    },
+    {
+      "id": 2902,
+      "type": "ProBlock",
+      "pos": [
+        1360,
+        3920
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 26,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 31
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 39,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            38
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → AI 写的音色描述（只有「设计新音色」模式有）"
+    },
+    {
+      "id": 2903,
+      "type": "ProBlock",
+      "pos": [
+        1360,
+        4060
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 32
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 41,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            40
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · 音色 id（可复制到别处）"
+    },
+    {
+      "id": 2904,
+      "type": "ProBlock",
+      "pos": [
+        1360,
+        4200
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 33
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 43,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            42
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · AI 写的音色描述"
+    },
+    {
+      "id": 11,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        6168
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 29,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            47
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "video",
+        "Veo",
+        "v1/videos",
+        "https://www.runninghub.cn",
+        "veo3.1",
+        "",
+        "http://airelay-geminiweb:8083",
+        "gemini-video"
+      ],
+      "title": "Key：geminiweb（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 21,
+      "type": "RelayAPISettings",
+      "pos": [
+        60,
+        6232
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 30,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            48
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelayAPISettings"
+      },
+      "widgets_values": [
+        "sound",
+        "Suno",
+        "suno/submit",
+        "https://www.runninghub.cn",
+        "suno_music",
+        "",
+        "http://airelay-newapi:3000",
+        "suno_music"
+      ],
+      "title": "Key：Suno（填一次）",
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 3012,
+      "type": "ProGeminiMusic",
+      "pos": [
+        440,
+        6040
+      ],
+      "size": [
+        400,
+        300
+      ],
+      "flags": {},
+      "order": 31,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 47,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 49,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            52
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            55
+          ],
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProGeminiMusic"
+      },
+      "widgets_values": [
+        "（由 AI 扩写节点提供）",
+        "gemini-music",
+        1,
+        "randomize"
+      ],
+      "title": "引擎 ① Gemini Lyria（经 geminiweb）"
+    },
+    {
+      "id": 3022,
+      "type": "RelaySoundGenerator",
+      "pos": [
+        440,
+        6420
+      ],
+      "size": [
+        400,
+        420
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 48,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "link": 50,
+          "widget": {
+            "name": "prompt"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            53
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "clip_id",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        },
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 2
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": [
+            56
+          ],
+          "slot_index": 3
+        },
+        {
+          "name": "audio_url",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 4
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RelaySoundGenerator"
+      },
+      "widgets_values": [
+        "描述模式",
+        "",
+        "pop, electronic",
+        "（由 AI 扩写节点提供）",
+        true,
+        "V4.5",
+        1,
+        "randomize",
+        "",
+        false,
+        "",
+        0
+      ],
+      "title": "引擎 ② Suno（经网关的 Suno 渠道）"
+    },
+    {
+      "id": 3005,
+      "type": "SaveAudioAdvanced",
+      "pos": [
+        1710,
+        6040
+      ],
+      "size": [
+        340,
+        200
+      ],
+      "flags": {},
+      "order": 33,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 61
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveAudioAdvanced"
+      },
+      "widgets_values": [
+        "audio/音乐",
+        "mp3",
+        "V0"
+      ],
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 3077,
+      "type": "ProModeMusic",
+      "pos": [
+        60,
+        5080
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 34,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "【音乐】模式"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "branch",
+          "type": "INT",
+          "links": [
+            51,
+            54
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProModeMusic"
+      },
+      "widgets_values": [
+        "Gemini Lyria（约 1 分钟，成功率约一半）"
+      ],
+      "title": "★ 先选模式",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3070,
+      "type": "ProAliPromptWriter",
+      "pos": [
+        60,
+        5270
+      ],
+      "size": [
+        520,
+        560
+      ],
+      "flags": {},
+      "order": 35,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 44,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "gateway_info",
+          "type": "STRING",
+          "link": 45,
+          "widget": {
+            "name": "gateway_info"
+          }
+        },
+        {
+          "name": "idea",
+          "type": "STRING",
+          "widget": {
+            "name": "idea"
+          },
+          "link": null,
+          "label": "【音乐】一句话需求"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            46,
+            49,
+            50,
+            59
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "response",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliPromptWriter"
+      },
+      "widgets_values": [
+        "舒缓钢琴加弦乐纯音乐，温暖治愈，适合产品视频配乐",
+        "你是配乐提示词写手。把下面的一句话需求扩写成一段中文音乐创作提示词（50~100 字）：写清风格、情绪、主要乐器、节奏速度和用途；纯音乐，不要歌词；时长约 30 秒。只输出提示词本身，不要解释，不要加引号或标题。",
+        "qwen3.8-flash",
+        1,
+        "randomize"
+      ],
+      "title": "★ 只填这里：一句话需求",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3074,
+      "type": "PreviewAny",
+      "pos": [
+        640,
+        5270
+      ],
+      "size": [
+        460,
+        300
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 63
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "AI 扩写出的结果（想看模型写了什么）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 3010,
+      "type": "ProPick2x1",
+      "pos": [
+        950,
+        6040
+      ],
+      "size": [
+        300,
+        150
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 52
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 53
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 51,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            57
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "按模式取音频（没选中的引擎不会运行）"
+    },
+    {
+      "id": 3013,
+      "type": "ProPick2x1",
+      "pos": [
+        950,
+        6270
+      ],
+      "size": [
+        300,
+        150
+      ],
+      "flags": {},
+      "order": 38,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "in0_0",
+          "type": "*",
+          "link": 55
+        },
+        {
+          "name": "in1_0",
+          "type": "*",
+          "link": 56
+        },
+        {
+          "name": "branch",
+          "type": "INT",
+          "link": 54,
+          "widget": {
+            "name": "branch"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out0",
+          "type": "*",
+          "links": [
+            58,
+            60
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProPick2x1"
+      },
+      "widgets_values": [
+        0
+      ],
+      "title": "按模式取状态（单独一个，失败时才看得到错误）"
+    },
+    {
+      "id": 3006,
+      "type": "PreviewAny",
+      "pos": [
+        1710,
+        6310
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 39,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 65
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "结果 / 错误信息（出错时这里显示原因）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 3090,
+      "type": "ProAppText",
+      "pos": [
+        1710,
+        6490
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 40,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 67
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "AI 写的音乐提示词",
+        false
+      ],
+      "title": "应用界面 · AI 写的音乐提示词",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 3091,
+      "type": "ProAppText",
+      "pos": [
+        1710,
+        6570
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 41,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 69
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "出错信息",
+        true
+      ],
+      "title": "应用界面 · 出错信息",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 3900,
+      "type": "ProBlock",
+      "pos": [
+        1300,
+        6040
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 42,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 57
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 62,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            61
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → SaveAudioAdvanced"
+    },
+    {
+      "id": 3901,
+      "type": "ProBlock",
+      "pos": [
+        1300,
+        6180
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 43,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 46
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 64,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            63
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → AI 扩写出的结果（想看模型写了什么）"
+    },
+    {
+      "id": 3902,
+      "type": "ProBlock",
+      "pos": [
+        1300,
+        6320
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 44,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 58
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 66,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            65
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 结果 / 错误信息（出错时这里显示原因）"
+    },
+    {
+      "id": 3903,
+      "type": "ProBlock",
+      "pos": [
+        1300,
+        6460
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 45,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 59
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 68,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            67
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · AI 写的音乐提示词"
+    },
+    {
+      "id": 3904,
+      "type": "ProBlock",
+      "pos": [
+        1300,
+        6600
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 46,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 60
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 70,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            69
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · 出错信息"
+    },
+    {
+      "id": 4003,
+      "type": "ProAliDialogue",
+      "pos": [
+        60,
+        7400
+      ],
+      "size": [
+        560,
+        1100
+      ],
+      "flags": {},
+      "order": 47,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "info",
+          "type": "STRING",
+          "link": 71,
+          "widget": {
+            "name": "info"
+          }
+        },
+        {
+          "name": "script",
+          "type": "STRING",
+          "widget": {
+            "name": "script"
+          },
+          "link": null,
+          "label": "【多角色配音】对白脚本（每行：角色：台词）"
+        },
+        {
+          "name": "role1_name",
+          "type": "STRING",
+          "widget": {
+            "name": "role1_name"
+          },
+          "link": null,
+          "label": "【多角色配音】角色 1 名字"
+        },
+        {
+          "name": "role1_voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "role1_voice"
+          },
+          "link": null,
+          "label": "【多角色配音】角色 1 音色"
+        },
+        {
+          "name": "role2_name",
+          "type": "STRING",
+          "widget": {
+            "name": "role2_name"
+          },
+          "link": null,
+          "label": "【多角色配音】角色 2 名字"
+        },
+        {
+          "name": "role2_voice",
+          "type": "COMBO",
+          "widget": {
+            "name": "role2_voice"
+          },
+          "link": null,
+          "label": "【多角色配音】角色 2 音色"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            72
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "srt",
+          "type": "STRING",
+          "links": [
+            73
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "report",
+          "type": "STRING",
+          "links": [
+            74
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProAliDialogue"
+      },
+      "widgets_values": [
+        "小美：老板，这个苹果怎么卖呀？\n阿强：新到的红富士，脆甜多汁，今天只要九块九一斤。\n小美：那我先来五斤，再帮我挑几个大的。\n阿强：好嘞，马上给你装好！",
+        "小美",
+        "Cherry · 女 · 阳光亲切",
+        "阿强",
+        "Ethan · 男 · 朝气温暖，带北方口音",
+        "",
+        "Serena · 女 · 温柔",
+        "",
+        "Ryan · 男 · 节奏感强、戏感足",
+        "Neil · 男 · 新闻主播式播报",
+        "qwen3-tts-flash",
+        "Chinese",
+        1.0,
+        0.35,
+        true,
+        16,
+        true,
+        0.0,
+        "subtitles/对白字幕",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "title": "多角色对白（脚本、角色、音色都在这里）",
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4004,
+      "type": "SaveAudioAdvanced",
+      "pos": [
+        800,
+        8710
+      ],
+      "size": [
+        340,
+        200
+      ],
+      "flags": {},
+      "order": 48,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 75
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveAudioAdvanced"
+      },
+      "widgets_values": [
+        "audio/对白",
+        "mp3",
+        "V0"
+      ],
+      "title": "保存对白配音",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 4090,
+      "type": "ProAppText",
+      "pos": [
+        800,
+        8980
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 49,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 77
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "字幕（SRT，带角色名）",
+        false
+      ],
+      "title": "应用界面 · 字幕（SRT，带角色名）",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 4091,
+      "type": "ProAppText",
+      "pos": [
+        800,
+        9060
+      ],
+      "size": [
+        300,
+        90
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 50,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 79
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "ProAppText"
+      },
+      "widgets_values": [
+        "对白说明",
+        false
+      ],
+      "title": "应用界面 · 对白说明",
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 4900,
+      "type": "ProBlock",
+      "pos": [
+        390,
+        8710
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 51,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 72
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 76,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            75
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 保存对白配音"
+    },
+    {
+      "id": 4901,
+      "type": "ProBlock",
+      "pos": [
+        390,
+        8850
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 52,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 73
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 78,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            77
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · 字幕（SRT，带角色名）"
+    },
+    {
+      "id": 4902,
+      "type": "ProBlock",
+      "pos": [
+        390,
+        8990
+      ],
+      "size": [
+        260,
+        100
+      ],
+      "flags": {},
+      "order": 53,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "link": 74
+        },
+        {
+          "name": "enabled",
+          "type": "BOOLEAN",
+          "link": 80,
+          "widget": {
+            "name": "enabled"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "*",
+          "links": [
+            79
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProBlock"
+      },
+      "widgets_values": [
+        true
+      ],
+      "title": "功能开关 → 应用界面 · 对白说明"
+    },
+    {
+      "id": 9000,
+      "type": "ProFuncText",
+      "pos": [
+        60,
+        150
+      ],
+      "size": [
+        520,
+        110
+      ],
+      "flags": {},
+      "order": 54,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode"
+          },
+          "link": null,
+          "label": "做什么"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "f0",
+          "type": "BOOLEAN",
+          "links": [
+            11,
+            13
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "f1",
+          "type": "BOOLEAN",
+          "links": [
+            35,
+            37,
+            39,
+            41,
+            43
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "f2",
+          "type": "BOOLEAN",
+          "links": [
+            62,
+            64,
+            66,
+            68,
+            70
+          ],
+          "slot_index": 2
+        },
+        {
+          "name": "f3",
+          "type": "BOOLEAN",
+          "links": [
+            76,
+            78,
+            80
+          ],
+          "slot_index": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ProFuncText"
+      },
+      "widgets_values": [
+        "文案"
+      ],
+      "title": "★ 先选做什么（只有选中的功能会运行）",
+      "color": "#232",
+      "bgcolor": "#353"
+    }
+  ],
+  "links": [
+    [
+      1,
+      31,
+      0,
+      1070,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      1,
+      0,
+      1070,
+      2,
+      "STRING"
+    ],
+    [
+      3,
+      1077,
+      0,
+      1070,
+      3,
+      "STRING"
+    ],
+    [
+      4,
+      1070,
+      0,
+      1900,
+      0,
+      "STRING"
+    ],
+    [
+      5,
+      1077,
+      1,
+      1006,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      6,
+      1005,
+      0,
+      1006,
+      0,
+      "IMAGE"
+    ],
+    [
+      7,
+      1003,
+      0,
+      1005,
+      0,
+      "IMAGE"
+    ],
+    [
+      8,
+      1006,
+      0,
+      1070,
+      1,
+      "*"
+    ],
+    [
+      9,
+      1070,
+      0,
+      1901,
+      0,
+      "STRING"
+    ],
+    [
+      10,
+      1900,
+      0,
+      1074,
+      0,
+      "*"
+    ],
+    [
+      11,
+      9000,
+      0,
+      1900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      12,
+      1901,
+      0,
+      1090,
+      0,
+      "*"
+    ],
+    [
+      13,
+      9000,
+      0,
+      1901,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      14,
+      31,
+      0,
+      2070,
+      0,
+      "STRING"
+    ],
+    [
+      15,
+      1,
+      0,
+      2070,
+      2,
+      "STRING"
+    ],
+    [
+      16,
+      31,
+      0,
+      2003,
+      0,
+      "STRING"
+    ],
+    [
+      17,
+      31,
+      0,
+      2002,
+      0,
+      "STRING"
+    ],
+    [
+      18,
+      31,
+      0,
+      2007,
+      1,
+      "STRING"
+    ],
+    [
+      19,
+      2070,
+      0,
+      2002,
+      1,
+      "STRING"
+    ],
+    [
+      20,
+      2006,
+      0,
+      2007,
+      0,
+      "AUDIO"
+    ],
+    [
+      21,
+      2077,
+      0,
+      2010,
+      6,
+      "INT"
+    ],
+    [
+      22,
+      2008,
+      0,
+      2010,
+      0,
+      "STRING"
+    ],
+    [
+      23,
+      2008,
+      0,
+      2010,
+      1,
+      "STRING"
+    ],
+    [
+      24,
+      2002,
+      0,
+      2010,
+      2,
+      "STRING"
+    ],
+    [
+      25,
+      2070,
+      0,
+      2010,
+      3,
+      "STRING"
+    ],
+    [
+      26,
+      2007,
+      0,
+      2010,
+      4,
+      "STRING"
+    ],
+    [
+      27,
+      2008,
+      0,
+      2010,
+      5,
+      "STRING"
+    ],
+    [
+      28,
+      2010,
+      0,
+      2003,
+      1,
+      "*"
+    ],
+    [
+      29,
+      2003,
+      0,
+      2900,
+      0,
+      "AUDIO"
+    ],
+    [
+      30,
+      2010,
+      0,
+      2901,
+      0,
+      "*"
+    ],
+    [
+      31,
+      2010,
+      1,
+      2902,
+      0,
+      "*"
+    ],
+    [
+      32,
+      2010,
+      0,
+      2903,
+      0,
+      "*"
+    ],
+    [
+      33,
+      2010,
+      1,
+      2904,
+      0,
+      "*"
+    ],
+    [
+      34,
+      2900,
+      0,
+      2004,
+      0,
+      "*"
+    ],
+    [
+      35,
+      9000,
+      1,
+      2900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      36,
+      2901,
+      0,
+      2011,
+      0,
+      "*"
+    ],
+    [
+      37,
+      9000,
+      1,
+      2901,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      38,
+      2902,
+      0,
+      2012,
+      0,
+      "*"
+    ],
+    [
+      39,
+      9000,
+      1,
+      2902,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      40,
+      2903,
+      0,
+      2090,
+      0,
+      "*"
+    ],
+    [
+      41,
+      9000,
+      1,
+      2903,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      42,
+      2904,
+      0,
+      2091,
+      0,
+      "*"
+    ],
+    [
+      43,
+      9000,
+      1,
+      2904,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      44,
+      31,
+      0,
+      3070,
+      0,
+      "STRING"
+    ],
+    [
+      45,
+      1,
+      0,
+      3070,
+      2,
+      "STRING"
+    ],
+    [
+      46,
+      3070,
+      0,
+      3901,
+      0,
+      "STRING"
+    ],
+    [
+      47,
+      11,
+      0,
+      3012,
+      0,
+      "STRING"
+    ],
+    [
+      48,
+      21,
+      0,
+      3022,
+      0,
+      "STRING"
+    ],
+    [
+      49,
+      3070,
+      0,
+      3012,
+      1,
+      "STRING"
+    ],
+    [
+      50,
+      3070,
+      0,
+      3022,
+      1,
+      "STRING"
+    ],
+    [
+      51,
+      3077,
+      0,
+      3010,
+      2,
+      "INT"
+    ],
+    [
+      52,
+      3012,
+      0,
+      3010,
+      0,
+      "AUDIO"
+    ],
+    [
+      53,
+      3022,
+      0,
+      3010,
+      1,
+      "AUDIO"
+    ],
+    [
+      54,
+      3077,
+      0,
+      3013,
+      2,
+      "INT"
+    ],
+    [
+      55,
+      3012,
+      1,
+      3013,
+      0,
+      "STRING"
+    ],
+    [
+      56,
+      3022,
+      3,
+      3013,
+      1,
+      "STRING"
+    ],
+    [
+      57,
+      3010,
+      0,
+      3900,
+      0,
+      "*"
+    ],
+    [
+      58,
+      3013,
+      0,
+      3902,
+      0,
+      "*"
+    ],
+    [
+      59,
+      3070,
+      0,
+      3903,
+      0,
+      "STRING"
+    ],
+    [
+      60,
+      3013,
+      0,
+      3904,
+      0,
+      "*"
+    ],
+    [
+      61,
+      3900,
+      0,
+      3005,
+      0,
+      "*"
+    ],
+    [
+      62,
+      9000,
+      2,
+      3900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      63,
+      3901,
+      0,
+      3074,
+      0,
+      "*"
+    ],
+    [
+      64,
+      9000,
+      2,
+      3901,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      65,
+      3902,
+      0,
+      3006,
+      0,
+      "*"
+    ],
+    [
+      66,
+      9000,
+      2,
+      3902,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      67,
+      3903,
+      0,
+      3090,
+      0,
+      "*"
+    ],
+    [
+      68,
+      9000,
+      2,
+      3903,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      69,
+      3904,
+      0,
+      3091,
+      0,
+      "*"
+    ],
+    [
+      70,
+      9000,
+      2,
+      3904,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      71,
+      31,
+      0,
+      4003,
+      0,
+      "STRING"
+    ],
+    [
+      72,
+      4003,
+      0,
+      4900,
+      0,
+      "AUDIO"
+    ],
+    [
+      73,
+      4003,
+      1,
+      4901,
+      0,
+      "STRING"
+    ],
+    [
+      74,
+      4003,
+      2,
+      4902,
+      0,
+      "STRING"
+    ],
+    [
+      75,
+      4900,
+      0,
+      4004,
+      0,
+      "*"
+    ],
+    [
+      76,
+      9000,
+      3,
+      4900,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      77,
+      4901,
+      0,
+      4090,
+      0,
+      "*"
+    ],
+    [
+      78,
+      9000,
+      3,
+      4901,
+      1,
+      "BOOLEAN"
+    ],
+    [
+      79,
+      4902,
+      0,
+      4091,
+      0,
+      "*"
+    ],
+    [
+      80,
+      9000,
+      3,
+      4902,
+      1,
+      "BOOLEAN"
+    ]
+  ],
+  "groups": [
+    {
+      "title": "★ 先选做什么：选一个功能，下面对应的那一块才会运行",
+      "bounding": [
+        30,
+        40,
+        580,
+        260
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {},
+      "id": 1
+    },
+    {
+      "id": 2,
+      "title": "【文案】① 先填这里：选模式 → 写一句话 → 传素材",
+      "bounding": [
+        30,
+        400,
+        1040,
+        890
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "【文案】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        1360,
+        1440,
+        380
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "【文案】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1560,
+        1360,
+        520,
+        520
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "【配音】① 先填这里：选模式 → 写一句话 → 传素材 → 调参数",
+      "bounding": [
+        30,
+        2300,
+        1080,
+        1160
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 6,
+      "title": "【配音】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        3530,
+        1620,
+        1020
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 7,
+      "title": "【配音】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1740,
+        3530,
+        520,
+        960
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 8,
+      "title": "【音乐】① 先填这里：选模式 → 写一句话",
+      "bounding": [
+        30,
+        4970,
+        1100,
+        890
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 9,
+      "title": "【音乐】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        5930,
+        1560,
+        940
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 10,
+      "title": "【音乐】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        1680,
+        5930,
+        420,
+        680
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 11,
+      "title": "【多角色配音】① 先填这里：调参数",
+      "bounding": [
+        30,
+        7290,
+        620,
+        1240
+      ],
+      "color": "#3f7f4f",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 12,
+      "title": "【多角色配音】② 自动处理，不用管（想调比例 / 参数，改这里的节点）；黄色的是 Key，点开填一次",
+      "bounding": [
+        30,
+        8600,
+        650,
+        520
+      ],
+      "color": "#6b6b6b",
+      "font_size": 28,
+      "flags": {}
+    },
+    {
+      "id": 13,
+      "title": "【多角色配音】③ 结果在这里（出错时错误信息也在这里）",
+      "bounding": [
+        770,
+        8600,
+        400,
+        500
+      ],
+      "color": "#3f6fa8",
+      "font_size": 28,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [
+        81,
+        145
+      ]
+    },
+    "linearMode": true,
+    "linearData": {
+      "inputs": [
+        [
+          9000,
+          "mode"
+        ],
+        [
+          1077,
+          "mode"
+        ],
+        [
+          1070,
+          "idea"
+        ],
+        [
+          1003,
+          "image"
+        ],
+        [
+          2077,
+          "mode"
+        ],
+        [
+          2003,
+          "text"
+        ],
+        [
+          2003,
+          "voice"
+        ],
+        [
+          2070,
+          "idea"
+        ],
+        [
+          2006,
+          "audio"
+        ],
+        [
+          3077,
+          "mode"
+        ],
+        [
+          3070,
+          "idea"
+        ],
+        [
+          4003,
+          "script"
+        ],
+        [
+          4003,
+          "role1_name"
+        ],
+        [
+          4003,
+          "role1_voice"
+        ],
+        [
+          4003,
+          "role2_name"
+        ],
+        [
+          4003,
+          "role2_voice"
+        ]
+      ],
+      "outputs": [
+        1090,
+        2004,
+        2090,
+        2091,
+        3005,
+        3090,
+        3091,
+        4004,
+        4090,
+        4091
+      ]
+    },
+    "appDescription": "文案配音音乐：文案、配音、音乐、多角色配音。先在最上面选「做什么」，再填对应功能的设置（右栏里每个控件名前面标了它属于哪个功能）；只有选中的功能会运行，别的功能不会调接口、不花钱。",
+    "appFamily": {
+      "name": "文案配音音乐",
+      "func_node": 9000,
+      "funcs": [
+        {
+          "id": "07",
+          "name": "文案",
+          "index": 0,
+          "base": 1000,
+          "shared": [
+            1,
+            31
+          ],
+          "keys": {
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-omni-flash"
+            ],
+            "1": [
+              "image",
+              "banana-2",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "grok-video-3",
+              "",
+              "http://airelay-newapi:3000",
+              "gemini-image"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  77,
+                  "mode"
+                ],
+                [
+                  70,
+                  "idea"
+                ],
+                [
+                  3,
+                  "image"
+                ]
+              ],
+              "outputs": [
+                90
+              ]
+            },
+            "appDescription": "写电商文案：文字写文案（按商品信息，3 条淘宝标题 + 5 条卖点）/ 看图写文案（要上传商品图）/ 把已有的中文文案翻译成英日韩西。",
+            "appExtra": [
+              [
+                70,
+                "model",
+                "写提示词的模型",
+                "「看图写文案」模式要让 AI 看图，必须用 qwen3.8-omni-flash（默认）；「写文案」「翻译」只读文字，可以换 qwen3.8-max 等别的模型试试。用户没点名要换就别改"
+              ]
+            ],
+            "appRequired": [
+              [
+                3,
+                "image",
+                [
+                  2
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "id": "08",
+          "name": "配音",
+          "index": 1,
+          "base": 2000,
+          "shared": [
+            1,
+            31
+          ],
+          "keys": {
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-flash"
+            ],
+            "1": [
+              "image",
+              "banana-2",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "grok-video-3",
+              "",
+              "http://airelay-newapi:3000",
+              "gemini-image"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  77,
+                  "mode"
+                ],
+                [
+                  3,
+                  "text"
+                ],
+                [
+                  3,
+                  "voice"
+                ],
+                [
+                  70,
+                  "idea"
+                ],
+                [
+                  6,
+                  "audio"
+                ]
+              ],
+              "outputs": [
+                4,
+                90,
+                91
+              ]
+            },
+            "appDescription": "把文字念成语音（mp3）：预置音色（49 个，在「音色」里选）/ 设计新音色（用文字描述想要的声音）/ 克隆声音（要用户自己上传 10~60 秒清晰人声样音，聊天里传不了，要去「应用」里传）。",
+            "appExtra": [
+              [
+                70,
+                "model",
+                "写提示词的模型",
+                "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3；谷歌的 gemini-3.5-flash-lite（谷歌里最快）/ gemini-3.6-flash-thinking / gemini-3.1-pro（最强但慢，约 20~40 秒）走网关，都比阿里慢。用户没点名要换就别改"
+              ],
+              [
+                3,
+                "speed",
+                "配音语速",
+                "1 是正常；慢一点 0.85，快一点 1.2"
+              ]
+            ],
+            "appAdvanced": [
+              [
+                3,
+                "language",
+                "配音语种",
+                "念什么语言就选什么，默认 Chinese"
+              ],
+              [
+                3,
+                "volume_db",
+                "配音音量增减（dB）",
+                "0 是不变，+3 大一点，-3 小一点"
+              ],
+              [
+                3,
+                "model",
+                "配音模型",
+                "要用「语气指令」必须选 qwen3-tts-instruct-flash"
+              ],
+              [
+                3,
+                "instructions",
+                "配音语气指令",
+                "只有 instruct 模型有效，例如：语气热情洪亮，语速偏快，像直播间主播带货"
+              ]
+            ],
+            "appCost": "「设计新音色」「克隆声音」两个模式会在阿里账号里新建音色（数量有限），用户明确要这样做才选；普通配音选「预置音色」。",
+            "appRequired": [
+              [
+                6,
+                "audio",
+                [
+                  3
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "id": "09",
+          "name": "音乐",
+          "index": 2,
+          "base": 3000,
+          "shared": [
+            1,
+            11,
+            21,
+            31
+          ],
+          "keys": {
+            "11": [
+              "video",
+              "Veo",
+              "v1/videos",
+              "https://www.runninghub.cn",
+              "veo3.1",
+              "",
+              "http://airelay-geminiweb:8083",
+              "gemini-video"
+            ],
+            "21": [
+              "sound",
+              "Suno",
+              "suno/submit",
+              "https://www.runninghub.cn",
+              "suno_music",
+              "",
+              "http://airelay-newapi:3000",
+              "suno_music"
+            ],
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-flash"
+            ],
+            "1": [
+              "image",
+              "banana-2",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "grok-video-3",
+              "",
+              "http://airelay-newapi:3000",
+              "gemini-image"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  77,
+                  "mode"
+                ],
+                [
+                  70,
+                  "idea"
+                ]
+              ],
+              "outputs": [
+                5,
+                90,
+                91
+              ]
+            },
+            "appDescription": "生成约 30 秒的纯音乐配乐：Gemini Lyria（默认，约 1 分钟，成功率约一半）或 Suno（需要先配好 Suno 渠道，没配就别选）。",
+            "appExtra": [
+              [
+                70,
+                "model",
+                "写提示词的模型",
+                "AI 把你的一句话扩写成完整提示词用的文字模型：默认 qwen3.8-flash（快、省）；想写得更好选 qwen3.8-max；也可以试 qwen3.7-plus / deepseek-v4-pro / kimi-k3；谷歌的 gemini-3.5-flash-lite（谷歌里最快）/ gemini-3.6-flash-thinking / gemini-3.1-pro（最强但慢，约 20~40 秒）走网关，都比阿里慢。用户没点名要换就别改"
+              ]
+            ],
+            "appAdvanced": [
+              [
+                22,
+                "tags",
+                "Suno 风格标签",
+                "英文逗号分隔，如 pop, electronic（只在 Suno 模式用）"
+              ],
+              [
+                22,
+                "make_instrumental",
+                "Suno 纯音乐（无人声）",
+                ""
+              ]
+            ]
+          }
+        },
+        {
+          "id": "13",
+          "name": "多角色配音",
+          "index": 3,
+          "base": 4000,
+          "shared": [
+            31
+          ],
+          "keys": {
+            "31": [
+              "text",
+              "OpenaiText",
+              "v1/chat/completions",
+              "https://www.runninghub.cn",
+              "claude-opus-4-6",
+              "",
+              "https://dashscope.aliyuncs.com/compatible-mode",
+              "qwen3.8-flash"
+            ]
+          },
+          "extra": {
+            "linearData": {
+              "inputs": [
+                [
+                  3,
+                  "script"
+                ],
+                [
+                  3,
+                  "role1_name"
+                ],
+                [
+                  3,
+                  "role1_voice"
+                ],
+                [
+                  3,
+                  "role2_name"
+                ],
+                [
+                  3,
+                  "role2_voice"
+                ]
+              ],
+              "outputs": [
+                4,
+                90,
+                91
+              ]
+            },
+            "appDescription": "把一段多角色对话念成语音（mp3）并给出带角色名的字幕（SRT）。脚本每行写「角色：台词」，最多 4 个角色（另有「旁白：」），每个角色选一个音色（音色名后面写着性别和特点，按人物的性别 / 年龄 / 性格挑，两个角色别用同一个音色）。用户只说想要什么对话时，由你把对白脚本写出来填进「对白脚本」（口语化、每句 20 字以内、两三个来回就够），脚本里的角色名要和「角色 N 名字」一字不差。要把对白配到视频上，用「对白成片」。",
+            "appExtra": [
+              [
+                3,
+                "role3_name",
+                "角色 3 名字",
+                "没有第 3 个角色就留空；脚本里用到就必须填，和脚本里的名字一字不差"
+              ],
+              [
+                3,
+                "role3_voice",
+                "角色 3 音色",
+                "按人物的性别 / 年龄 / 性格从列表里挑，别和别的角色用同一个"
+              ],
+              [
+                3,
+                "role4_name",
+                "角色 4 名字",
+                "没有第 4 个角色就留空"
+              ],
+              [
+                3,
+                "role4_voice",
+                "角色 4 音色",
+                ""
+              ],
+              [
+                3,
+                "narrator_voice",
+                "旁白音色",
+                "脚本里写了「旁白：」或没写角色的行，用这个音色念"
+              ],
+              [
+                3,
+                "speed",
+                "对白语速",
+                "1 是正常；慢一点 0.85，快一点 1.2"
+              ]
+            ],
+            "appAdvanced": [
+              [
+                3,
+                "gap_s",
+                "句与句之间的停顿（秒）",
+                "默认 0.35"
+              ],
+              [
+                3,
+                "show_names",
+                "字幕里写角色名",
+                "关掉就只显示台词"
+              ],
+              [
+                3,
+                "max_chars",
+                "字幕每行最多字数",
+                ""
+              ],
+              [
+                3,
+                "language",
+                "对白语种",
+                "念什么语言就选什么，默认 Chinese；方言音色选 Chinese 说的就是方言"
+              ],
+              [
+                3,
+                "model",
+                "配音模型",
+                "要用「语气指令」必须选 qwen3-tts-instruct-flash"
+              ],
+              [
+                3,
+                "role1_style",
+                "角色 1 语气指令",
+                "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+              ],
+              [
+                3,
+                "role2_style",
+                "角色 2 语气指令",
+                "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+              ],
+              [
+                3,
+                "role3_style",
+                "角色 3 语气指令",
+                "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+              ],
+              [
+                3,
+                "role4_style",
+                "角色 4 语气指令",
+                "只有 instruct 模型有效，例如：语气兴奋，语速偏快"
+              ],
+              [
+                3,
+                "volume_db",
+                "对白音量增减（dB）",
+                "0 是不变，+3 大一点，-3 小一点"
+              ],
+              [
+                3,
+                "reuse",
+                "没改的句子直接用上次的",
+                "关掉就全部重新合成（会重新计费）"
+              ]
+            ],
+            "appCost": "每句台词调用一次阿里配音（按字数计费，很便宜）；一次最多 40 句 / 1500 个字；改了几句再运行，只重新合成改过的句子，没改的用上次的。"
+          }
+        }
+      ]
+    }
+  },
+  "version": 0.4
+}

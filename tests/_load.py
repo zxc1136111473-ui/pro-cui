@@ -41,7 +41,9 @@ NEW_NODES = {"ProAliDialogue": ("pro-ali", "ProAliDialogue"), "ProMatte": ("pro-
              "ProAliPromptWriter": ("pro-ali", "ProAliPromptWriter"), "ProAliImage": ("pro-ali", "ProAliImage"), "ProAliImageEdit": ("pro-ali", "ProAliImageEdit"),
              "ProModeEngine": ("pro-flow", "ProModeEngine"),
              "ProAliVideoEdit": ("pro-ali", "ProAliVideoEdit"), "ProAliVideoSwap": ("pro-ali", "ProAliVideoSwap"), "ProVideoConcat": ("pro-video", "ProVideoConcat"),
-             "ProVideoSave": ("pro-video", "ProVideoSave"), "ProModeVideoEdit": ("pro-flow", "ProModeVideoEdit")}      # 这个服务器上有，但「模型」从文字框改成了下拉：定义以仓库里的为准，部署之后可以改回从 /object_info 抓
+             "ProVideoSave": ("pro-video", "ProVideoSave"), "ProModeVideoEdit": ("pro-flow", "ProModeVideoEdit"),
+             "ProBlock": ("pro-flow", "ProBlock"), "ProFuncImage": ("pro-flow", "ProFuncImage"), "ProFuncProcess": ("pro-flow", "ProFuncProcess"),
+             "ProFuncText": ("pro-flow", "ProFuncText"), "ProFuncVideo": ("pro-flow", "ProFuncVideo"), "ProFuncEdit": ("pro-flow", "ProFuncEdit")}      # 这个服务器上有，但「模型」从文字框改成了下拉：定义以仓库里的为准，部署之后可以改回从 /object_info 抓
 
 
 def new_node_classes():

@@ -19,7 +19,7 @@ def fn(name):
     return m.group(0)
 
 
-FUNCS = "\n".join(fn(n) for n in ("repo_files_differ", "scan_custom_nodes", "seed_custom_nodes", "seed_assets", "seed_workflows", "do_refresh_workflows", "do_sync"))
+FUNCS = "\n".join(fn(n) for n in ("repo_files_differ", "scan_custom_nodes", "seed_custom_nodes", "seed_assets", "seed_workflows", "retire_legacy_workflows", "do_refresh_workflows", "do_sync"))
 HEAD = '''set -euo pipefail
 say() { printf '%s\\n' "$*"; }
 ok() { printf 'OK %s\\n' "$*"; }
@@ -207,6 +207,65 @@ class Workflows(unittest.TestCase):
         self.assertEqual(rc2, 0, out2)
         self.assertIn("已经和仓库一致", out2)
         self.assertEqual(len([d for d in sb.ls("data/user/default") if d.startswith("workflows-旧版备份-")]), 1)
+
+    # 合并前的 19 个旧版内置工作流（gen_workflows 以前一个功能写一个文件）和合并后的 5 个
+    LEGACY = ["1-图片/01-文生图.app.json", "1-图片/02-海报.app.json", "1-图片/03-商品改图与合成.app.json", "1-图片/04-多尺寸套图.app.json", "1-图片/05-图片后处理.app.json",
+              "1-图片/06-商品一条龙.app.json", "1-图片/15-商品抠图.app.json", "1-图片/16-图层合成.app.json", "2-文案与配音/07-文案.app.json", "2-文案与配音/08-配音.app.json",
+              "2-文案与配音/09-音乐.app.json", "2-文案与配音/13-多角色配音.app.json", "3-视频/10-文生视频成片.app.json", "3-视频/11-视频成片.app.json",
+              "3-视频/12-图生视频成片.app.json", "3-视频/14-对白成片.app.json", "3-视频/17-视频改视频.app.json", "3-视频/18-视频拼接.app.json", "3-视频/19-视频换人.app.json"]
+    MERGED = ["1-图片/01-做图.app.json", "1-图片/02-处理图.app.json", "2-文案与配音/03-文案配音音乐.app.json", "3-视频/04-做视频.app.json", "3-视频/05-改视频.app.json"]
+
+    @each_bash
+    def test_seed_moves_the_19_merged_away_legacy_workflows_into_a_backup_and_leaves_user_files(self, sb, bash):
+        self.assertEqual(len(self.LEGACY), 19)
+        for rel in self.MERGED:
+            sb.w("workflows/" + rel, "NEW:" + rel)
+        for rel in self.LEGACY:
+            sb.w("data/user/default/workflows/" + rel, "OLD:" + rel)
+        sb.w("data/user/default/workflows/1-图片/我自己存的海报.app.json", "MINE")
+        sb.w("data/user/default/workflows/我自己存的.json", "MINE2")
+        rc, out = sb.run(bash, "seed_workflows")
+        self.assertEqual(rc, 0, out)
+        for rel in self.MERGED:
+            self.assertEqual(sb.r("data/user/default/workflows/" + rel), "NEW:" + rel)
+        for rel in self.LEGACY:
+            self.assertFalse(sb.exists("data/user/default/workflows/" + rel), f"{rel} 应该被移走")
+        self.assertEqual(sb.r("data/user/default/workflows/1-图片/我自己存的海报.app.json"), "MINE", "你自己存的不碰")
+        self.assertEqual(sb.r("data/user/default/workflows/我自己存的.json"), "MINE2")
+        baks = [d for d in sb.ls("data/user/default") if d.startswith("workflows-旧版备份-")]
+        self.assertEqual(len(baks), 1)
+        for rel in self.LEGACY:                                                         # 移走 = 备份：内容原样在备份里
+            self.assertEqual(sb.r(f"data/user/default/{baks[0]}/{rel}"), "OLD:" + rel)
+        self.assertIn("合并前的旧版工作流 19 个已移到", out)
+        rc2, out2 = sb.run(bash, "seed_workflows")                                       # 再跑一次：没有旧的了，什么都不做、不再多一个备份
+        self.assertEqual((rc2, out2.strip()), (0, ""), out2)
+        self.assertEqual(len([d for d in sb.ls("data/user/default") if d.startswith("workflows-旧版备份-")]), 1)
+
+    @each_bash
+    def test_legacy_workflows_stay_until_every_new_one_is_in_place(self, sb, bash):
+        for rel in self.MERGED:
+            sb.w("workflows/" + rel, "NEW")
+        for rel in self.MERGED[:3]:                                                      # 新的只铺进去了 3 个（比如拷贝中途出错）：旧的先别动
+            sb.w("data/user/default/workflows/" + rel, "NEW")
+        for rel in self.LEGACY:
+            sb.w("data/user/default/workflows/" + rel, "OLD")
+        rc, out = sb.run(bash, "retire_legacy_workflows")
+        self.assertEqual((rc, out.strip()), (0, ""), out)
+        self.assertTrue(all(sb.exists("data/user/default/workflows/" + rel) for rel in self.LEGACY))
+        self.assertEqual([d for d in sb.ls("data/user/default") if d.startswith("workflows-旧版备份-")], [])
+
+    @each_bash
+    def test_refresh_also_retires_the_legacy_workflows_and_then_lists_only_the_rest(self, sb, bash):
+        for rel in self.MERGED:
+            sb.w("workflows/" + rel, "NEW")
+        for rel in self.LEGACY[:4]:
+            sb.w("data/user/default/workflows/" + rel, "OLD")
+        sb.w("data/user/default/workflows/我自己存的.json", "MINE")
+        rc, out = sb.run(bash, "do_refresh_workflows")
+        self.assertEqual(rc, 0, out)
+        self.assertFalse(any(sb.exists("data/user/default/workflows/" + rel) for rel in self.LEGACY[:4]))
+        self.assertIn("合并前的旧版工作流 4 个已移到", out)
+        self.assertIn("还有 1 个不在仓库里", out, "移走的旧版不该再算进「不在仓库里的」")
 
     @each_bash
     def test_refresh_without_workflows_dir_dies(self, sb, bash):

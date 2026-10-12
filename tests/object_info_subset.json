@@ -1840,6 +1840,271 @@
   "output_name": [],
   "output_node": true
  },
+ "ProBlock": {
+  "has_intermediate_output": false,
+  "input": {
+   "optional": {
+    "value": [
+     "*",
+     {
+      "lazy": true
+     }
+    ]
+   },
+   "required": {
+    "enabled": [
+     "BOOLEAN",
+     {
+      "default": true,
+      "display_name": "这个功能被选中了",
+      "label_off": "不用",
+      "label_on": "用"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "optional": [
+    "value"
+   ],
+   "required": [
+    "enabled"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProBlock",
+  "output": [
+   "*"
+  ],
+  "output_is_list": [
+   false
+  ],
+  "output_name": [
+   "value"
+  ],
+  "output_node": false
+ },
+ "ProFuncEdit": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "视频改视频",
+      "视频拼接",
+      "视频换人"
+     ],
+     {
+      "default": "视频改视频",
+      "display_name": "做什么"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProFuncEdit",
+  "output": [
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "f0",
+   "f1",
+   "f2"
+  ],
+  "output_node": false
+ },
+ "ProFuncImage": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "文生图",
+      "海报",
+      "商品改图与合成",
+      "多尺寸套图",
+      "商品一条龙"
+     ],
+     {
+      "default": "文生图",
+      "display_name": "做什么"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProFuncImage",
+  "output": [
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "f0",
+   "f1",
+   "f2",
+   "f3",
+   "f4"
+  ],
+  "output_node": false
+ },
+ "ProFuncProcess": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "图片后处理",
+      "商品抠图",
+      "图层合成"
+     ],
+     {
+      "default": "图片后处理",
+      "display_name": "做什么"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProFuncProcess",
+  "output": [
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "f0",
+   "f1",
+   "f2"
+  ],
+  "output_node": false
+ },
+ "ProFuncText": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "文案",
+      "配音",
+      "音乐",
+      "多角色配音"
+     ],
+     {
+      "default": "文案",
+      "display_name": "做什么"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProFuncText",
+  "output": [
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "f0",
+   "f1",
+   "f2",
+   "f3"
+  ],
+  "output_node": false
+ },
+ "ProFuncVideo": {
+  "has_intermediate_output": false,
+  "input": {
+   "required": {
+    "mode": [
+     [
+      "文生视频成片",
+      "视频成片",
+      "图生视频成片",
+      "对白成片"
+     ],
+     {
+      "default": "文生视频成片",
+      "display_name": "做什么"
+     }
+    ]
+   }
+  },
+  "input_order": {
+   "required": [
+    "mode"
+   ]
+  },
+  "is_input_list": false,
+  "name": "ProFuncVideo",
+  "output": [
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN",
+   "BOOLEAN"
+  ],
+  "output_is_list": [
+   false,
+   false,
+   false,
+   false
+  ],
+  "output_name": [
+   "f0",
+   "f1",
+   "f2",
+   "f3"
+  ],
+  "output_node": false
+ },
  "ProGate": {
   "has_intermediate_output": false,
   "input": {
